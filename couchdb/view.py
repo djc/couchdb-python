@@ -81,7 +81,10 @@ def run(input=sys.stdin, output=sys.stdout):
     handlers = {'reset': reset, 'add_map_fun': add_map_fun, 'map_doc': map_doc}
 
     try:
-        for line in input:
+        while True:
+            line = input.readline()
+            if not line:
+                break
             try:
                 cmd = json.loads(line)
             except ValueError, e:
