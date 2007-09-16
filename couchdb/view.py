@@ -42,7 +42,7 @@ def run(input=sys.stdin, output=sys.stdout):
     functions = []
 
     def reset():
-        functions = []
+        del functions[:]
         return True
 
     def add_map_fun(string):
