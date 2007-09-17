@@ -35,8 +35,14 @@ u'John Doe'
 >>> person.added                #doctest: +ELLIPSIS
 datetime.datetime(...)
 
+To update a document, simply set the attributes, and then call the ``store()``
+method:
+
 >>> person.name = 'John R. Doe'
 >>> person.store(db)
+
+If you retrieve the document from the server again, you should be getting the
+updated data:
 
 >>> person = Person.load(db, doc_id)
 >>> person.name
@@ -61,6 +67,11 @@ __docformat__ = 'restructuredtext en'
 
 
 class Field(object):
+    """Basic unit for mapping a piece of data between Python and JSON.
+    
+    Instances of this class can be added to subclasses of `Document` to describe
+    the schema of a document.
+    """
 
     def __init__(self, default=None):
         self.name = None
@@ -105,6 +116,18 @@ class Document(object):
 
     def __init__(self, data):
         self._data = data
+
+    def __repr__(self):
+        return '<%s %r@%r>' % (type(self).__name__, self.id, self.rev)
+
+    def __delitem__(self, name):
+        del self._data[name]
+
+    def __getitem__(self, name):
+        return self._data[name]
+
+    def __setitem__(self, name, value):
+        self._data[name] = value
 
     def id(self):
         if hasattr(self._data, 'id'):
