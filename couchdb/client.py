@@ -175,8 +175,6 @@ class Database(object):
     """
 
     def __init__(self, uri, name=None, http=None):
-        if http is None:
-            http = httplib2.Http()
         self.resource = Resource(http, uri)
         self._name = name
 
@@ -322,8 +320,6 @@ class View(object):
     """Representation of a permanent view on the server."""
 
     def __init__(self, uri, name, http=None):
-        if http is None:
-            http = httplib2.Http()
         self.resource = Resource(http, uri)
         self.name = name
 
@@ -364,6 +360,9 @@ class Row(dict):
 class Resource(object):
 
     def __init__(self, http, uri):
+        if http is None:
+            http = httplib2.Http()
+            http.force_exception_to_status_code = False
         self.http = http
         self.uri = uri
 
@@ -403,11 +402,11 @@ class Resource(object):
             except ValueError:
                 pass
         if status_code == 404:
-            raise ResourceNotFound()
+            raise ResourceNotFound(data['error']['reason'])
         elif status_code == 409:
-            raise ResourceConflict()
+            raise ResourceConflict(data['error']['reason'])
         elif status_code >= 400:
-            raise ServerError(data)
+            raise ServerError(data['error']['reason'])
         return data
 
 
