@@ -57,12 +57,14 @@ True
 
 from calendar import timegm
 from datetime import datetime
+from decimal import Decimal
 from time import strptime
 
 from couchdb.client import Row
 
 __all__ = ['Document', 'Field', 'TextField', 'FloatField', 'IntegerField',
-           'LongField', 'BoolField', 'DateField', 'DateTimeField', 'TimeField']
+           'LongField', 'BoolField', 'DecimalField', 'DateField',
+           'DateTimeField', 'TimeField']
 __docformat__ = 'restructuredtext en'
 
 
@@ -172,6 +174,15 @@ class LongField(Field):
 
 class BoolField(Field):
     _to_python = bool
+
+
+class DecimalField(Field):
+
+    def _to_python(self, value):
+        return Decimal(value)
+
+    def _to_json(self, value):
+        return unicode(value)
 
 
 class DateField(Field):
