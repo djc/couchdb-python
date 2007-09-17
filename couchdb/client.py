@@ -13,7 +13,8 @@ from urllib import quote, urlencode
 import re
 import simplejson as json
 
-__all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server']
+__all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
+           'Database', 'View']
 __docformat__ = 'restructuredtext en'
 
 
@@ -173,11 +174,11 @@ class Database(object):
     >>> del server['foo']
     """
 
-    def __init__(self, uri, name, http=None):
+    def __init__(self, uri, name=None, http=None):
         if http is None:
             http = httplib2.Http()
         self.resource = Resource(http, uri)
-        self.name = name
+        self._name = name
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.name)
@@ -237,6 +238,12 @@ class Database(object):
         content['_id'] = data['_id']
         content['_rev'] = data['_rev']
 
+    def _get_name(self):
+        if self._name is None:
+            self._name = self.resource.get()['db_name']
+        return self._name
+    name = property(_get_name)
+
     def create(self, **content):
         """Create a new document in the database with a generated ID.
 
@@ -248,6 +255,21 @@ class Database(object):
         """
         data = self.resource.post(content=content)
         return data['_id']
+
+    def get(self, id, default=None):
+        """Return the document with the specified ID.
+
+        :param id: the document ID
+        :param default: the default value to return when the document is not
+                        found
+        :return: a `Row` object representing the requested document, or `None`
+                 if no document with the ID was found
+        :rtype: `Row`
+        """
+        try:
+            return self[id]
+        except ResourceNotFound:
+            return default
 
     def query(self, code):
         """Execute an ad-hoc query against the database.
@@ -308,8 +330,8 @@ class View(object):
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.name)
 
-    def __call__(self, **kwargs):
-        data = self.resource.get(**kwargs)
+    def __call__(self, **options):
+        data = self.resource.get(**options)
         for row in data['rows']:
             yield Row(row)
 
@@ -374,14 +396,18 @@ class Resource(object):
                 body = content
         resp, data = self.http.request(uri(self.uri, path), method, body=body,
                                        headers=headers)
+        status_code = int(resp.status)
         if data:# FIXME and resp.get('content-type') == 'application/json':
-            data = json.loads(data)
-        if resp.status >= 500:
-            raise ServerError()
-        elif resp.status == 404:
+            try:
+                data = json.loads(data)
+            except ValueError:
+                pass
+        if status_code == 404:
             raise ResourceNotFound()
-        elif resp.status == 409:
+        elif status_code == 409:
             raise ResourceConflict()
+        elif status_code >= 400:
+            raise ServerError(data)
         return data
 
 
