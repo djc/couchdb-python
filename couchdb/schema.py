@@ -11,42 +11,37 @@
 >>> from couchdb import Server
 >>> server = Server('http://localhost:8888/')
 >>> db = server.create('python-tests')
->>> doc_id = db.create(number=123, summary='Foo bar')
+>>> doc_id = db.create(name='John Doe', age=42)
 
 To define a document schema, you declare a Python class inherited from
 `Document`, and add any number of `Field` attributes:
 
->>> class Ticket(Document):
-...     reporter = TextField(default='anonymous')
-...     number = IntegerField()
-...     summary = TextField()
-...     description = TextField()
-...     time = DateTimeField(default=datetime.now)
+>>> class Person(Document):
+...     name = TextField()
+...     age = IntegerField()
+...     added = DateTimeField(default=datetime.now)
 
 You can then load the data from the CouchDB server through your `Document`
 subclass, and conveniently access all attributes:
 
->>> ticket = Ticket.load(db, doc_id)
->>> ticket.id == doc_id
+>>> person = Person.load(db, doc_id)
+>>> person.id == doc_id
 True
->>> old_rev = ticket.rev
->>> ticket.reporter
-u'anonymous'
->>> ticket.number
-123
->>> ticket.summary
-u'Foo bar'
->>> ticket.description
->>> ticket.time                 #doctest: +ELLIPSIS
+>>> old_rev = person.rev
+>>> person.name
+u'John Doe'
+>>> person.age
+42
+>>> person.added                #doctest: +ELLIPSIS
 datetime.datetime(...)
 
->>> ticket.description = 'Your description here'
->>> ticket.store(db)
+>>> person.name = 'John R. Doe'
+>>> person.store(db)
 
->>> ticket = Ticket.load(db, doc_id)
->>> ticket.description
-u'Your description here'
->>> ticket.rev != old_rev
+>>> person = Person.load(db, doc_id)
+>>> person.name
+u'John R. Doe'
+>>> person.rev != old_rev
 True
 
 >>> del server['python-tests']
