@@ -7,6 +7,8 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+"""Implementation of a view server for functions written in Python."""
+
 import simplejson as json
 import sys
 import traceback

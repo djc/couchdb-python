@@ -6,15 +6,14 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+import doctest
 import unittest
 
-from couchdb.tests import client, schema, view
+from couchdb import schema
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(client.suite())
-    suite.addTest(schema.suite())
-    suite.addTest(view.suite())
+    suite.addTest(doctest.DocTestSuite(schema))
     return suite
 
 if __name__ == '__main__':

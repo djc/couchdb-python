@@ -143,8 +143,8 @@ class Database(object):
     <Row u'...'@...>
 
     Documents are represented as instances of the `Row` class, which is
-    basically just a normal dictionary with the additional attributes `id` and
-    `rev`:
+    basically just a normal dictionary with the additional attributes ``id`` and
+    ``rev``:
 
     >>> doc.id, doc.rev     #doctest: +ELLIPSIS
     (u'...', ...)
