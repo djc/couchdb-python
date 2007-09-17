@@ -10,6 +10,7 @@
 
 import httplib2
 from urllib import quote, urlencode
+import re
 import simplejson as json
 
 __all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server']
@@ -43,32 +44,32 @@ class Server(object):
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
-    server object:
-
-    >>> for name in server:
-    ...     print repr(name)
-    u'test'
-    >>> 'test' in server
-    True
-    >>> len(server)
-    1
+    server object.
 
     New databases can be created using the `create` method:
 
     >>> db = server.create('foo')
     >>> db
     <Database 'foo'>
+
+    You can access existing databases using item access, specifying the database
+    name as the key:
+
+    >>> db = server['foo']
     >>> db.name
     'foo'
+
+    Databases can be deleted using a ``del`` statement:
+
     >>> del server['foo']
     """
 
     def __init__(self, uri):
-        self.resource =  Resource(httplib2.Http(), uri)
+        self.resource = Resource(httplib2.Http(), uri)
 
     def __contains__(self, name):
         try:
-            self.resource.get(name) # FIXME: should use HEAD
+            self.resource.get(validate_dbname(name)) # FIXME: should use HEAD
             return True
         except ResourceNotFound:
             return False
@@ -86,24 +87,25 @@ class Server(object):
 
     def __delitem__(self, name):
         """Remove the database with the specified name.
-        
+
         :param name: the name of the database
         :raise ResourceNotFound: if no database with that name exists
         """
-        self.resource.delete(name)
+        self.resource.delete(validate_dbname(name))
 
     def __getitem__(self, name):
         """Return a `Database` object representing the database with the
         specified name.
-        
+
         :param name: the name of the database
         :raise ResourceNotFound: if no database with that name exists
         """
-        return Database(self.resource, name)
+        return Database(uri(self.resource.uri, name), validate_dbname(name),
+                        http=self.resource.http)
 
     def _get_version(self):
         """Return the version number of the CouchDB server.
-        
+
         Note that this results in a request being made, and can also be used
         to check for the availability of the server.
         """
@@ -114,19 +116,67 @@ class Server(object):
 
     def create(self, name):
         """Create a new database with the given name.
-        
+
         :param name: the name of the database
         :return: a `Database` object representing the created database
         """
-        self.resource.put(name)
-        return Database(self.resource, name)
+        self.resource.put(validate_dbname(name))
+        return self[name]
 
 
 class Database(object):
-    """Representation of a database on a CouchDB server."""
+    """Representation of a database on a CouchDB server.
 
-    def __init__(self, resource, name):
-        self.resource = Resource(resource.http, URI(resource.uri, name))
+    >>> server = Server('http://localhost:8888/')
+    >>> db = server.create('foo')
+
+    New documents can be added to the database using the `create()` method:
+
+    >>> doc_id = db.create(type='Person', name='John Doe')
+
+    This class provides a dictionary-like interface to databases: documents are
+    retrieved by their ID using item access
+
+    >>> doc = db[doc_id]
+    >>> doc                 #doctest: +ELLIPSIS
+    <Row u'...'@...>
+
+    Documents are represented as instances of the `Row` class, which is
+    basically just a normal dictionary with the additional attributes `id` and
+    `rev`:
+
+    >>> doc.id, doc.rev     #doctest: +ELLIPSIS
+    (u'...', ...)
+    >>> doc['type']
+    u'Person'
+    >>> doc['name']
+    u'John Doe'
+
+    To update an existing document, you use item access, too:
+
+    >>> doc['name'] = 'Mary Jane'
+    >>> db[doc.id] = doc
+
+    The `create()` method creates a document with an auto-generated ID. If you
+    want to explicitly specify the ID, you'd use item access just as with
+    updating:
+
+    >>> db['JohnDoe'] = {'type': 'person', 'name': 'John Doe'}
+
+    >>> 'JohnDoe' in db
+    True
+    >>> len(db)
+    2
+    >>> list(db)            #doctest: +ELLIPSIS
+    [u'...', u'JohnDoe']
+
+    >>> del server['foo']
+    """
+
+    def __init__(self, uri, name, http=None):
+        if http is None:
+            http = httplib2.Http()
+        self.resource = Resource(http, uri)
         self.name = name
 
     def __repr__(self):
@@ -135,7 +185,7 @@ class Database(object):
     def __contains__(self, id):
         """Return whether the database contains a document with the specified
         ID.
-        
+
         :param id: the document ID
         :return: `True` if a document with the ID exists, `False` otherwise
         """
@@ -155,23 +205,23 @@ class Database(object):
 
     def __delitem__(self, id):
         """Remove the document with the specified ID from the database.
-        
+
         :param id: the document ID
         """
         self.resource.delete(id)
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
-        
+
         :param id: the document ID
         :return: a `Row` object representing the requested document
         :rtype: `Row`
         """
-        return Row(self.resource, self.resource.get(id))
+        return Row(self.resource.get(id))
 
     def __setitem__(self, id, content):
         """Create or update a document with the specified ID.
-        
+
         :param id: the document ID
         :param content: the document content; either a plain dictionary for
                         new documents, or a `Row` object for existing
@@ -189,53 +239,70 @@ class Database(object):
 
     def create(self, **content):
         """Create a new document in the database with a generated ID.
-        
+
         Any keyword arguments are used to populate the fields of the new
         document.
-        
+
         :return: the ID of the created document
         :rtype: `unicode`
         """
         data = self.resource.post(content=content)
         return data['_id']
 
-    def query(self, *args, **kwargs):
+    def query(self, code):
         """Execute an ad-hoc query against the database.
         
-        The query can either be specified as a string containing the view
-        function definition, or by using keyword arguments, from which a
-        simple Javascript view function is dynamically constructed.
+        >>> server = Server('http://localhost:8888/')
+        >>> db = server.create('foo')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> code = '''function(doc) {
+        ...     if (doc.type=='Person')
+        ...         return {'key': doc.name};
+        ... }'''
+        >>> for row in db.query(code):
+        ...     print row['key']
+        John Doe
+        Mary Jane
         
+        >>> del server['foo']
+        
+        :param code: the code of the view function
         :return: an iterable over the resulting `Row` objects
         :rtype: ``generator``
         """
-        if kwargs:
-            assert not args
-            code = 'function(doc){if(' + '&&'.join([
-                'doc.%s==%s' % (k, json.dumps(v)) for k, v in kwargs.items()
-            ]) + ')return doc;}'
-        else:
-            assert len(args) == 1
-            code = args[0]
-
         data = self.resource.post('_temp_view', content=code)
         for row in data['rows']:
             yield Row(row)
 
-    def view(self, name, **kwargs):
+    def view(self, name, **options):
         """Execute a predefined view.
+        
+        >>> server = Server('http://localhost:8888/')
+        >>> db = server.create('foo')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        
+        >>> for row in db.view('_all_docs'):
+        ...     print row.id
+        gotham
+        
+        >>> del server['foo']
         
         :return: a `View` object
         :rtype: `View`
         """
-        return View(self.resource, name)(**kwargs)
+        view = View(uri(self.resource.uri, name), name, http=self.resource.http)
+        return view(**options)
 
 
 class View(object):
     """Representation of a permanent view on the server."""
 
-    def __init__(self, resource, name):
-        self.resource = Resource(resource.http, URI(resource.uri, name))
+    def __init__(self, uri, name, http=None):
+        if http is None:
+            http = httplib2.Http()
+        self.resource = Resource(http, uri)
         self.name = name
 
     def __repr__(self):
@@ -252,7 +319,7 @@ class View(object):
 
 class Row(dict):
     """Representation of a row as returned by database views.
-    
+
     This is basically just a dictionary with the two additional properties
     `id` and `rev`, which contain the document ID and revision, respectively.
     """
@@ -305,7 +372,7 @@ class Resource(object):
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content
-        resp, data = self.http.request(URI(self.uri, path), method, body=body,
+        resp, data = self.http.request(uri(self.uri, path), method, body=body,
                                        headers=headers)
         if data:# FIXME and resp.get('content-type') == 'application/json':
             data = json.loads(data)
@@ -318,11 +385,11 @@ class Resource(object):
         return data
 
 
-def URI(base, *path, **query):
-    """Assemble a URI based on a base, any number of path segments, and query
+def uri(base, *path, **query):
+    """Assemble a uri based on a base, any number of path segments, and query
     string parameters.
 
-    >>> URI('http://example.org/', '/_all_dbs')
+    >>> uri('http://example.org/', '/_all_dbs')
     'http://example.org/_all_dbs'
     """
     if base and base.endswith('/'):
@@ -331,7 +398,8 @@ def URI(base, *path, **query):
 
     # build the path
     path = '/'.join([''] +
-                    [quote(s.strip('/')) for s in path if s is not None])
+                    [unicode_quote(s.strip('/')) for s in path
+                     if s is not None])
     if path:
         retval.append(path)
 
@@ -343,11 +411,25 @@ def URI(base, *path, **query):
         elif value is not None:
             params.append((name, value))
     if params:
-        retval.extend(['?', urlencode(params)])
+        retval.extend(['?', unicode_urlencode(params)])
 
     return ''.join(retval)
 
+def unicode_quote(string):
+    if isinstance(string, unicode):
+        string = string.encode('utf-8')
+    return quote(string)
 
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
+def unicode_urlencode(string):
+    if isinstance(params, dict):
+        params = params.items()
+    return urlencode([
+        (name, isinstance(value, unicode) and value.encode('utf-8') or value)
+        for name, value in params
+    ])
+
+VALID_DB_NAME = re.compile(r'^[a-z0-9_$()+-/]+$')
+def validate_dbname(name):
+    if not VALID_DB_NAME.match(name):
+        raise ValueError('Invalid database name')
+    return name
