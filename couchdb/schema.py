@@ -63,7 +63,7 @@ from time import strptime
 from couchdb.client import Row
 
 __all__ = ['Document', 'Field', 'TextField', 'FloatField', 'IntegerField',
-           'LongField', 'BoolField', 'DecimalField', 'DateField',
+           'LongField', 'BooleanField', 'DecimalField', 'DateField',
            'DateTimeField', 'TimeField']
 __docformat__ = 'restructuredtext en'
 
@@ -86,7 +86,7 @@ class Field(object):
         if value is None and self.default is not None:
             default = self.default
             if callable(default):
-                return default()
+                default = default()
             value = default
         if value is not None:
             value = self._to_python(value)
@@ -172,7 +172,7 @@ class LongField(Field):
     _to_python = long
 
 
-class BoolField(Field):
+class BooleanField(Field):
     _to_python = bool
 
 
@@ -188,11 +188,13 @@ class DecimalField(Field):
 class DateField(Field):
 
     def _to_python(self, value):
-        try:
-            timestamp = timegm(strptime(value, '%Y-%m-%d'))
-            return date.fromtimestamp(timestamp)
-        except ValueError, e:
-            raise ValueError('Invalid ISO date %r' % value)
+        if isinstance(value, basestring):
+            try:
+                timestamp = timegm(strptime(value, '%Y-%m-%d'))
+                value = date.fromtimestamp(timestamp)
+            except ValueError, e:
+                raise ValueError('Invalid ISO date %r' % value)
+        return value
 
     def _to_json(self, value):
         if isinstance(value, datetime):
@@ -203,12 +205,14 @@ class DateField(Field):
 class DateTimeField(Field):
 
     def _to_python(self, value):
-        try:
-            value = value.split('.', 1)[0] # strip out microseconds
-            timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
-            return datetime.utcfromtimestamp(timestamp)
-        except ValueError, e:
-            raise ValueError('Invalid ISO date/time %r' % value)
+        if isinstance(value, basestring):
+            try:
+                value = value.split('.', 1)[0] # strip out microseconds
+                timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
+                value = datetime.utcfromtimestamp(timestamp)
+            except ValueError, e:
+                raise ValueError('Invalid ISO date/time %r' % value)
+        return value
 
     def _to_json(self, value):
         return value.isoformat()
@@ -217,12 +221,14 @@ class DateTimeField(Field):
 class TimeField(Field):
 
     def _to_python(self, value):
-        try:
-            value = value.split('.', 1)[0] # strip out microseconds
-            timestamp = timegm(strptime(value, '%H:%M:%S'))
-            return datetime.utcfromtimestamp(timestamp).time()
-        except ValueError, e:
-            raise ValueError('Invalid ISO time %r' % value)
+        if isinstance(value, basestring):
+            try:
+                value = value.split('.', 1)[0] # strip out microseconds
+                timestamp = timegm(strptime(value, '%H:%M:%S'))
+                value = datetime.utcfromtimestamp(timestamp).time()
+            except ValueError, e:
+                raise ValueError('Invalid ISO time %r' % value)
+        return value
 
     def _to_json(self, value):
         if isinstance(value, datetime):
