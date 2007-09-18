@@ -49,20 +49,20 @@ class Server(object):
 
     New databases can be created using the `create` method:
 
-    >>> db = server.create('foo')
+    >>> db = server.create('python-tests')
     >>> db
-    <Database 'foo'>
+    <Database 'python-tests'>
 
     You can access existing databases using item access, specifying the database
     name as the key:
 
-    >>> db = server['foo']
+    >>> db = server['python-tests']
     >>> db.name
-    'foo'
+    'python-tests'
 
     Databases can be deleted using a ``del`` statement:
 
-    >>> del server['foo']
+    >>> del server['python-tests']
     """
 
     def __init__(self, uri):
@@ -129,11 +129,11 @@ class Database(object):
     """Representation of a database on a CouchDB server.
 
     >>> server = Server('http://localhost:8888/')
-    >>> db = server.create('foo')
+    >>> db = server.create('python-tests')
 
     New documents can be added to the database using the `create()` method:
 
-    >>> doc_id = db.create(type='Person', name='John Doe')
+    >>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
 
     This class provides a dictionary-like interface to databases: documents are
     retrieved by their ID using item access
@@ -171,7 +171,7 @@ class Database(object):
     >>> list(db)            #doctest: +ELLIPSIS
     [u'...', u'JohnDoe']
 
-    >>> del server['foo']
+    >>> del server['python-tests']
     """
 
     def __init__(self, uri, name=None, http=None):
@@ -242,16 +242,17 @@ class Database(object):
         return self._name
     name = property(_get_name)
 
-    def create(self, **content):
+    def create(self, data):
         """Create a new document in the database with a generated ID.
 
         Any keyword arguments are used to populate the fields of the new
         document.
 
+        :param data: the data to store in the document
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        data = self.resource.post(content=content)
+        data = self.resource.post(content=data)
         return data['_id']
 
     def get(self, id, default=None):
@@ -273,7 +274,7 @@ class Database(object):
         """Execute an ad-hoc query against the database.
         
         >>> server = Server('http://localhost:8888/')
-        >>> db = server.create('foo')
+        >>> db = server.create('python-tests')
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
         >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
@@ -286,7 +287,7 @@ class Database(object):
         John Doe
         Mary Jane
         
-        >>> del server['foo']
+        >>> del server['python-tests']
         
         :param code: the code of the view function
         :return: an iterable over the resulting `Row` objects
@@ -300,14 +301,14 @@ class Database(object):
         """Execute a predefined view.
         
         >>> server = Server('http://localhost:8888/')
-        >>> db = server.create('foo')
+        >>> db = server.create('python-tests')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
         
         >>> for row in db.view('_all_docs'):
         ...     print row.id
         gotham
         
-        >>> del server['foo']
+        >>> del server['python-tests']
         
         :return: a `View` object
         :rtype: `View`
