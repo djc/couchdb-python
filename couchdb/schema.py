@@ -20,7 +20,6 @@ To define a document schema, you declare a Python class inherited from
 ...     age = IntegerField(),
 ...     added = DateTimeField(default=datetime.now)
 ... )
-
 >>> person = Person(name='John Doe', age=42)
 >>> doc_id = person.store(db)
 >>> person.age

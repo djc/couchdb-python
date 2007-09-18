@@ -6,7 +6,22 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-"""Python client API for CouchDB."""
+"""Python client API for CouchDB.
+
+>>> server = Server('http://localhost:8888/')
+>>> db = server.create('python-tests')
+>>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
+>>> doc = db[doc_id]
+>>> doc['type']
+u'Person'
+>>> doc['name']
+u'John Doe'
+>>> del db[doc.id]
+>>> doc.id in db
+False
+
+>>> del server['python-tests']
+"""
 
 import httplib2
 from urllib import quote, urlencode
