@@ -29,10 +29,10 @@ class CouchTests(unittest.TestCase):
         for i in range(num):
             self.db[str(i)] = {'a': i + 1, 'b': (i + 1) ** 2}
 
-    def test_db_info(self):
+    def test_basics(self):
         self.assertEqual(0, len(self.db))
 
-    def test_create_doc(self):
+        # create a document
         data = {'a': 1, 'b': 1}
         self.db['0'] = data
         self.assertEqual('0', data['_id'])
@@ -42,25 +42,17 @@ class CouchTests(unittest.TestCase):
         self.assertEqual(data['_rev'], doc.rev)
         self.assertEqual(1, len(self.db))
 
-    def test_iter_docs(self):
-        self._create_test_docs(4)
-        self.assertEqual(4, len(self.db))
-        for doc_id in self.db:
-            assert int(doc_id) in range(4)
-
-    def test_all_docs(self):
-        self._create_test_docs(4)
-        self.assertEqual(4, len(self.db))
-        for doc_id in self.db:
-            assert int(doc_id) in range(4)
-
-    def test_delete_doc(self):
-        self._create_test_docs(1)
+        # delete a document
         del self.db['0']
         self.assertRaises(ResourceNotFound, self.db.__getitem__, '0')
 
-    def test_simple_query(self):
+        # test _all_docs
         self._create_test_docs(4)
+        self.assertEqual(4, len(self.db))
+        for doc_id in self.db:
+            assert int(doc_id) in range(4)
+
+        # test a simple query
         query = """function(doc) {
             if (doc.a==4)
                 return doc.b
@@ -111,7 +103,7 @@ class CouchTests(unittest.TestCase):
         self.db['foo'] = data
 
     def test_lots_of_docs(self):
-        num = 500 # Crank up manually to really test
+        num = 5 # Crank up manually to really test
         for i in range(num): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
         self.assertEqual(num, len(self.db))
