@@ -239,7 +239,8 @@ class Database(object):
 
         :param id: the document ID
         """
-        self.resource.delete(id)
+        doc = self[id] # FIXME: this should use HEAD once Etags are supported
+        self.resource.delete(id, rev=doc.rev)
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -302,7 +303,7 @@ class Database(object):
         except ResourceNotFound:
             return default
 
-    def query(self, code):
+    def query(self, code, **options):
         """Execute an ad-hoc query against the database.
         
         >>> server = Server('http://localhost:8888/')
@@ -325,7 +326,7 @@ class Database(object):
         :return: an iterable over the resulting `Row` objects
         :rtype: ``generator``
         """
-        data = self.resource.post('_temp_view', content=code)
+        data = self.resource.post('_temp_view', content=code, **options)
         for row in data['rows']:
             yield Row(row)
 
@@ -345,7 +346,8 @@ class Database(object):
         :return: a `View` object
         :rtype: `View`
         """
-        view = View(uri(self.resource.uri, name), name, http=self.resource.http)
+        view = View(uri(self.resource.uri, name), name,
+                    http=self.resource.http)
         return view(**options)
 
 
@@ -426,20 +428,28 @@ class Resource(object):
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content
-        resp, data = self.http.request(uri(self.uri, path), method, body=body,
-                                       headers=headers)
+
+        resp, data = self.http.request(uri(self.uri, path, **params), method,
+                                       body=body, headers=headers)
         status_code = int(resp.status)
         if data:# FIXME and resp.get('content-type') == 'application/json':
             try:
                 data = json.loads(data)
             except ValueError:
                 pass
-        if status_code == 404:
-            raise ResourceNotFound(data['error']['reason'])
-        elif status_code == 409:
-            raise ResourceConflict(data['error']['reason'])
-        elif status_code >= 400:
-            raise ServerError(data['error']['reason'])
+
+        if status_code >= 400:
+            if type(data) is dict:
+                error = data.get('error', {}).get('reason', data)
+            else:
+                error = data
+            if status_code == 404:
+                raise ResourceNotFound(error)
+            elif status_code == 409:
+                raise ResourceConflict(error)
+            else:
+                raise ServerError(error)
+
         return data
 
 
@@ -478,13 +488,17 @@ def unicode_quote(string):
         string = string.encode('utf-8')
     return quote(string)
 
-def unicode_urlencode(string):
-    if isinstance(params, dict):
-        params = params.items()
-    return urlencode([
-        (name, isinstance(value, unicode) and value.encode('utf-8') or value)
-        for name, value in params
-    ])
+def unicode_urlencode(data):
+    if isinstance(data, dict):
+        data = data.items()
+    params = []
+    for name, value in data:
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        elif not isinstance(value, basestring):
+            value = json.dumps(value)
+        params.append((name, value))
+    return urlencode(params)
 
 VALID_DB_NAME = re.compile(r'^[a-z0-9_$()+-/]+$')
 def validate_dbname(name):
