@@ -320,13 +320,25 @@ class Database(object):
         John Doe
         Mary Jane
         
+        >>> for row in db.query(code, reverse=True):
+        ...     print row['key']
+        Mary Jane
+        John Doe
+        
+        >>> for row in db.query(code, key='John Doe'):
+        ...     print row['key']
+        John Doe
+        
         >>> del server['python-tests']
         
         :param code: the code of the view function
         :return: an iterable over the resulting `Row` objects
         :rtype: ``generator``
         """
-        data = self.resource.post('_temp_view', content=code, **options)
+        json_options = {}
+        for name, value in options.items():
+            json_options[name] = json.dumps(value)
+        data = self.resource.post('_temp_view', content=code, **json_options)
         for row in data['rows']:
             yield Row(row)
 
@@ -362,7 +374,10 @@ class View(object):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def __call__(self, **options):
-        data = self.resource.get(**options)
+        json_options = {}
+        for name, value in options.items():
+            json_options[name] = json.dumps(value)
+        data = self.resource.get(**json_options)
         for row in data['rows']:
             yield Row(row)
 
@@ -495,8 +510,6 @@ def unicode_urlencode(data):
     for name, value in data:
         if isinstance(value, unicode):
             value = value.encode('utf-8')
-        elif not isinstance(value, basestring):
-            value = json.dumps(value)
         params.append((name, value))
     return urlencode(params)
 

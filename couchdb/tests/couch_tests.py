@@ -194,6 +194,72 @@ class CouchTests(unittest.TestCase):
         results = list(self.db.query(query))
         self.assertEqual(4, len(results))
 
+    def test_utf8_encoding(self):
+        texts = [
+            u"1. Ascii: hello",
+            u"2. Russian: На берегу пустынных волн",
+            u"3. Math: ∮ E⋅da = Q,  n → ∞, ∑ f(i) = ∏ g(i),",
+            u"4. Geek: STARGΛ̊TE SG-1",
+            u"5. Braille: ⡌⠁⠧⠑ ⠼⠁⠒  ⡍⠜⠇⠑⠹⠰⠎ ⡣⠕⠌"
+        ]
+        for idx, text in enumerate(texts):
+            self.db[str(idx)] = {'text': text}
+        for idx, text in enumerate(texts):
+            doc = self.db[str(idx)]
+            self.assertEqual(text, doc['text'])
+
+        query = """function(doc) {
+            return {key: doc.text};
+        }"""
+        for idx, row in enumerate(self.db.query(query)):
+            self.assertEqual(texts[idx], row['key'])
+
+    def test_design_docs(self):
+        for i in range(50): 
+            self.db[str(i)] = {'integer': i, 'string': str(i)}
+        self.db['_design_foo'] = {'views': {
+            'all_docs': 'function(doc){return {key:doc.integer}}',
+            'no_docs': 'function(doc){}',
+            'single_doc': 'function(doc){if(doc._id == "1"){return 1}}'
+        }}
+        for idx, row in enumerate(self.db.view('_design_foo:all_docs')):
+            self.assertEqual(idx, row['key'])
+        self.assertEqual(0, len(list(self.db.view('_design_foo:no_docs'))))
+        self.assertEqual(1, len(list(self.db.view('_design_foo:single_doc'))))
+
+    def test_collation(self):
+        values = [
+            None, False, True,
+            1, 2, 3.0, 4,
+            'a', 'A', 'aa', 'b', 'B', 'ba', 'bb',
+            ['a'], ['b'], ['b', 'c'], ['b', 'c', 'a'], ['b', 'd'],
+            ['b', 'd', 'e'],
+            {'a': 1}, {'a': 2}, {'b': 1}, {'b': 2}, {'b': 2, 'c': 2},
+        ]
+        self.db['0'] = {'bar': 0}
+        for idx, value in enumerate(values):
+            self.db[str(idx + 1)] = {'foo': value}
+
+        query = """function(doc) {
+            return {key: doc.foo};
+        }"""
+        rows = self.db.query(query)
+        self.assertEqual({'value': {}}, rows.next())
+        for idx, row in enumerate(rows):
+            self.assertEqual(values[idx], row['key'])
+
+        rows = self.db.query(query, reverse=True)
+        for idx, row in enumerate(rows):
+            if idx < len(values):
+                self.assertEqual(values[len(values) - 1- idx], row['key'])
+            else:
+                self.assertEqual({'value': {}}, row)
+
+        for value in values:
+            rows = list(self.db.query(query, key=value))
+            self.assertEqual(1, len(rows))
+            self.assertEqual(value, rows[0]['key'])
+
 
 def suite():
     suite = unittest.TestSuite()
