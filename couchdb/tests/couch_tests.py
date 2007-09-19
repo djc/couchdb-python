@@ -244,7 +244,7 @@ class CouchTests(unittest.TestCase):
             return {key: doc.foo};
         }"""
         rows = self.db.query(query)
-        self.assertEqual({'value': {}}, rows.next())
+        self.assertEqual({'value': {}}, dict(rows.next()))
         for idx, row in enumerate(rows):
             self.assertEqual(values[idx], row['key'])
 
@@ -253,7 +253,7 @@ class CouchTests(unittest.TestCase):
             if idx < len(values):
                 self.assertEqual(values[len(values) - 1- idx], row['key'])
             else:
-                self.assertEqual({'value': {}}, row)
+                self.assertEqual({'value': {}}, dict(row))
 
         for value in values:
             rows = list(self.db.query(query, key=value))
