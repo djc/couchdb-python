@@ -398,7 +398,8 @@ class Row(dict):
         self._rev = self.pop('_rev')
 
     def __repr__(self):
-        return '<%s %r@%r>' % (type(self).__name__, self.id, self.rev)
+        return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
+                                  dict(self.items()))
 
     id = property(lambda self: self._id)
     rev = property(lambda self: self._rev)

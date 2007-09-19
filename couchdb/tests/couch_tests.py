@@ -103,7 +103,7 @@ class CouchTests(unittest.TestCase):
         self.db['foo'] = data
 
     def test_lots_of_docs(self):
-        num = 5 # Crank up manually to really test
+        num = 100 # Crank up manually to really test
         for i in range(num): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
         self.assertEqual(num, len(self.db))
