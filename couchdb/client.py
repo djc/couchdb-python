@@ -81,9 +81,20 @@ class Server(object):
     """
 
     def __init__(self, uri):
+        """Initialize the server object.
+        
+        :param uri: the URI of the server (for example
+                    ``http://localhost:8888/``)
+        """
         self.resource = Resource(httplib2.Http(), uri)
 
     def __contains__(self, name):
+        """Return whether the server contains a database with the specified
+        name.
+
+        :param name: the database name
+        :return: `True` if a database with the name exists, `False` otherwise
+        """
         try:
             self.resource.get(validate_dbname(name)) # FIXME: should use HEAD
             return True
@@ -114,27 +125,33 @@ class Server(object):
         specified name.
 
         :param name: the name of the database
+        :return: a `Database` object representing the database
+        :rtype: `Database`
         :raise ResourceNotFound: if no database with that name exists
         """
         return Database(uri(self.resource.uri, name), validate_dbname(name),
                         http=self.resource.http)
 
     def _get_version(self):
-        """Return the version number of the CouchDB server.
-
-        Note that this results in a request being made, and can also be used
-        to check for the availability of the server.
-        """
         data = self.resource.get()
         version = data['version']
         return tuple([int(part) for part in version.split('.')])
-    version = property(_get_version)
+    version = property(_get_version, doc="""\
+        The version number tuple for the CouchDB server.
+
+        Note that this results in a request being made, and can also be used
+        to check for the availability of the server.
+        
+        :type: `tuple`
+        """)
 
     def create(self, name):
         """Create a new database with the given name.
 
         :param name: the name of the database
         :return: a `Database` object representing the created database
+        :rtype: `Database`
+        :raise ResourceConflict: if a database with that name already exists
         """
         self.resource.put(validate_dbname(name))
         return self[name]

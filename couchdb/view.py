@@ -40,6 +40,9 @@ def run(input=sys.stdin, output=sys.stdout):
     true
     [{"foo": "bar"}]
     <BLANKLINE>
+    
+    :param input: the readable file-like object to read input from
+    :param output: the writable file-like object to write output to
     """
     functions = []
 
