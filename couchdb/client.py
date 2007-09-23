@@ -172,7 +172,7 @@ class Database(object):
 
     >>> doc = db[doc_id]
     >>> doc                 #doctest: +ELLIPSIS
-    <Row u'...'@...>
+    <Row u'...'@... {...}>
 
     Documents are represented as instances of the `Row` class, which is
     basically just a normal dictionary with the additional attributes ``id`` and
@@ -258,13 +258,7 @@ class Database(object):
         :param content: the document content; either a plain dictionary for
                         new documents, or a `Row` object for existing
                         documents
-        :return: a `Row` object representing the requested document
-        :rtype: `Row`
         """
-        if isinstance(content, Row):
-            row = content
-            content = row.copy()
-            content['_rev'] = row.rev
         data = self.resource.put(id, content=content)
         content['_id'] = data['_id']
         content['_rev'] = data['_rev']
@@ -394,15 +388,14 @@ class Row(dict):
 
     def __init__(self, content):
         dict.__init__(self, content)
-        self._id = self.pop('_id')
-        self._rev = self.pop('_rev')
 
     def __repr__(self):
         return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
-                                  dict(self.items()))
+                                  dict([(k,v) for k,v in self.items()
+                                        if k not in ('_id', '_rev')]))
 
-    id = property(lambda self: self._id)
-    rev = property(lambda self: self._rev)
+    id = property(lambda self: self.get('_id'))
+    rev = property(lambda self: self.get('_rev'))
 
 
 # Internals
@@ -502,7 +495,7 @@ def uri(base, *path, **query):
 def unicode_quote(string):
     if isinstance(string, unicode):
         string = string.encode('utf-8')
-    return quote(string)
+    return quote(string, '/:')
 
 def unicode_urlencode(data):
     if isinstance(data, dict):
