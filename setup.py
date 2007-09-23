@@ -107,7 +107,7 @@ setup(
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
-interface for CouchDB databases.""",
+interface for CouchDB server.""",
     author = 'Christopher Lenz',
     author_email = 'cmlenz@gmx.de',
     license = 'BSD',
@@ -115,14 +115,12 @@ interface for CouchDB databases.""",
     zip_safe = True,
 
     classifiers = [
-        'Development Status :: 4 - Beta',
-        'Environment :: Web Environment',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Topic :: Database :: Front-Ends',
-        'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     packages = ['couchdb'],

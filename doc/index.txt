@@ -1,0 +1,22 @@
+.. -*- mode: rst; encoding: utf-8 -*-
+
+=======
+CouchDB
+=======
+
+``couchdb`` is Python package for working with CouchDB_ from Python code.
+It consists of the following main modules:
+
+* ``couchdb.client``: This is the client library for interfacing CouchDB
+  servers. If you don't know where to start, this is likely to be what you're
+  looking for.
+
+* ``couchdb.schema``: This module provides advanced mapping between CouchDB
+  JSON documents and Python objects.
+
+* ``couchdb.view``: This implements a CouchDB view server that allows writing
+  view functions in Python
+
+Please see the `generated API documentation <api/index.html>`_ for details.
+
+.. _couchdb: http://couchdb.com/

@@ -1,0 +1,5 @@
+Version 0.1
+http://couchdb-python.googlecode.com/svn/tags/0.1.0
+(Sep 23, 2007, from branches/0.1.x)
+
+ * First public release.
