@@ -111,7 +111,7 @@ interface for CouchDB server.""",
     author = 'Christopher Lenz',
     author_email = 'cmlenz@gmx.de',
     license = 'BSD',
-    url = 'http://code.google.com/p/couchprojects/wiki/CouchDbPython',
+    url = 'http://code.google.com/p/couchdb-python/',
     zip_safe = True,
 
     classifiers = [
