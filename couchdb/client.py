@@ -426,6 +426,7 @@ class Resource(object):
     def _request(self, method, path=None, content=None, headers=None,
                  **params):
         headers = headers or {}
+        headers.setdefault('Accept', 'application/json')
         body = None
         if content:
             if not isinstance(content, basestring):
