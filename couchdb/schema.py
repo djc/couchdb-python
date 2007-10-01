@@ -134,6 +134,12 @@ class Schema(object):
             else:
                 setattr(self, attrname, getattr(self, attrname))
 
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
+
     def __delitem__(self, name):
         del self._data[name]
 

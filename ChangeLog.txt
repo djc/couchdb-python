@@ -1,3 +1,13 @@
+Version 0.2
+http://couchdb-python.googlecode.com/svn/tags/0.2.0
+(?, from branches/0.2.x)
+
+ * Added __len__ and __iter__ to the `schema.Schema` class to iterate
+   over and get the number of items in a document or compound field.
+ * The "version" property of client.Server now returns a plain string
+   instead of a tuple of ints.
+
+
 Version 0.1
 http://couchdb-python.googlecode.com/svn/tags/0.1.0
 (Sep 23, 2007, from branches/0.1.x)

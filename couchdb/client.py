@@ -55,8 +55,6 @@ class Server(object):
     """Representation of a CouchDB server.
 
     >>> server = Server('http://localhost:8888/')
-    >>> server.version
-    (0, 6, 4)
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
@@ -133,16 +131,14 @@ class Server(object):
                         http=self.resource.http)
 
     def _get_version(self):
-        data = self.resource.get()
-        version = data['version']
-        return tuple([int(part) for part in version.split('.')])
+        return self.resource.get()['version']
     version = property(_get_version, doc="""\
         The version number tuple for the CouchDB server.
 
         Note that this results in a request being made, and can also be used
         to check for the availability of the server.
         
-        :type: `tuple`
+        :type: `unicode`
         """)
 
     def create(self, name):
