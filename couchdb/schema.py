@@ -20,16 +20,15 @@ To define a document schema, you declare a Python class inherited from
 ...     age = IntegerField()
 ...     added = DateTimeField(default=datetime.now)
 >>> person = Person(name='John Doe', age=42)
->>> doc_id = person.store(db)
+>>> person.store(db) #doctest: +ELLIPSIS
+<Person ...>
 >>> person.age
 42
 
 You can then load the data from the CouchDB server through your `Document`
 subclass, and conveniently access all attributes:
 
->>> person = Person.load(db, doc_id)
->>> person.id == doc_id
-True
+>>> person = Person.load(db, person.id)
 >>> old_rev = person.rev
 >>> person.name
 u'John Doe'
@@ -43,12 +42,12 @@ method:
 
 >>> person.name = 'John R. Doe'
 >>> person.store(db)            #doctest: +ELLIPSIS
-u'...'
+<Person ...>
 
 If you retrieve the document from the server again, you should be getting the
 updated data:
 
->>> person = Person.load(db, doc_id)
+>>> person = Person.load(db, person.id)
 >>> person.name
 u'John R. Doe'
 >>> person.rev != old_rev
@@ -178,7 +177,10 @@ class Schema(object):
 class Document(Schema):
 
     def __repr__(self):
-        return repr(self._data)
+        return '<%s %r@%r %r>' % (type(self).__name__, self._data.id,
+                                  self._data.rev,
+                                  dict([(k, v) for k, v in self._data.items()
+                                        if k not in ('_id', '_rev')]))
 
     def id(self):
         if hasattr(self._data, 'id'):
@@ -200,10 +202,9 @@ class Document(Schema):
         if getattr(self._data, 'id', None) is None:
             docid = db.create(self._data)
             self._data = db.get(docid)
-            return docid
         else:
             db[self._data.id] = self._data
-            return self._data.id
+        return self
 
 
 class TextField(Field):
@@ -337,8 +338,9 @@ class DictField(Field):
 
     >>> post = Post(title='Foo bar', author=dict(name='John Doe',
     ...                                          email='john@doe.com'))
-    >>> doc_id = post.store(db)
-    >>> post = Post.load(db, doc_id)
+    >>> post.store(db) #doctest: +ELLIPSIS
+    <Post ...>
+    >>> post = Post.load(db, post.id)
     >>> post.author.name
     u'John Doe'
     >>> post.author.email
@@ -379,8 +381,9 @@ class ListField(Field):
     >>> post.comments.append(author='myself', content='Bla bla')
     >>> len(post.comments)
     1
-    >>> doc_id = post.store(db)
-    >>> post = Post.load(db, doc_id)
+    >>> post.store(db) #doctest: +ELLIPSIS
+    <Post ...>
+    >>> post = Post.load(db, post.id)
     >>> comment = post.comments[0]
     >>> comment['author']
     u'myself'

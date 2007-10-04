@@ -425,8 +425,10 @@ class Resource(object):
 
     def _request(self, method, path=None, content=None, headers=None,
                  **params):
+        from couchdb import __version__
         headers = headers or {}
         headers.setdefault('Accept', 'application/json')
+        headers.setdefault('User-Agent', 'couchdb-python %s' % __version__)
         body = None
         if content:
             if not isinstance(content, basestring):

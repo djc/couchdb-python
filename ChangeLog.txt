@@ -6,6 +6,12 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
    over and get the number of items in a document or compound field.
  * The "version" property of client.Server now returns a plain string
    instead of a tuple of ints.
+ * The client library now identifies itself with a meaningful
+   User-Agent string.
+ * `schema.Document.store()` now returns the document object instance,
+   instead of just the document ID.
+ * The string representation of `schema.Document` objects is now more
+   comprehensive.
 
 
 Version 0.1
