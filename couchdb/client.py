@@ -438,7 +438,7 @@ class Resource(object):
         resp, data = self.http.request(uri(self.uri, path, **params), method,
                                        body=body, headers=headers)
         status_code = int(resp.status)
-        if data:# FIXME and resp.get('content-type') == 'application/json':
+        if data and resp.get('content-type') == 'application/json':
             try:
                 data = json.loads(data)
             except ValueError:
