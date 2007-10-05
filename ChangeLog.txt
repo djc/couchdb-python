@@ -12,6 +12,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
    instead of just the document ID.
  * The string representation of `schema.Document` objects is now more
    comprehensive.
+ * Only the view parameters "key", "startkey", and "endkey" are JSON
+   encoded, anything else is left alone.
 
 
 Version 0.1

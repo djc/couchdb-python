@@ -325,10 +325,11 @@ class Database(object):
         :return: an iterable over the resulting `Row` objects
         :rtype: ``generator``
         """
-        json_options = {}
         for name, value in options.items():
-            json_options[name] = json.dumps(value)
-        data = self.resource.post('_temp_view', content=code, **json_options)
+            if name in ('key', 'startkey', 'endkey') \
+                    or not isinstance(value, basestring):
+                options[name] = json.dumps(value)
+        data = self.resource.post('_temp_view', content=code, **options)
         for row in data['rows']:
             yield Row(row)
 
@@ -364,10 +365,11 @@ class View(object):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def __call__(self, **options):
-        json_options = {}
         for name, value in options.items():
-            json_options[name] = json.dumps(value)
-        data = self.resource.get(**json_options)
+            if name in ('key', 'startkey', 'endkey') \
+                    or not isinstance(value, basestring):
+                options[name] = json.dumps(value)
+        data = self.resource.get(**options)
         for row in data['rows']:
             yield Row(row)
 
