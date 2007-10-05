@@ -14,6 +14,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
    comprehensive.
  * Only the view parameters "key", "startkey", and "endkey" are JSON
    encoded, anything else is left alone.
+ * Slashes in document IDs are now URL-quoted until CouchDB supports
+   them.
 
 
 Version 0.1

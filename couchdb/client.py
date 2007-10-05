@@ -236,7 +236,7 @@ class Database(object):
         :param id: the document ID
         """
         doc = self[id] # FIXME: this should use HEAD once Etags are supported
-        self.resource.delete(id, rev=doc.rev)
+        self.resource.delete(unicode_quote(id, ''), rev=doc.rev)
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -245,7 +245,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Row`
         """
-        return Row(self.resource.get(id))
+        return Row(self.resource.get(unicode_quote(id, '')))
 
     def __setitem__(self, id, content):
         """Create or update a document with the specified ID.
@@ -255,7 +255,7 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        data = self.resource.put(id, content=content)
+        data = self.resource.put(unicode_quote(id, ''), content=content)
         content['_id'] = data['_id']
         content['_rev'] = data['_rev']
 
@@ -493,10 +493,10 @@ def uri(base, *path, **query):
 
     return ''.join(retval)
 
-def unicode_quote(string):
+def unicode_quote(string, safe='/:'):
     if isinstance(string, unicode):
         string = string.encode('utf-8')
-    return quote(string, '/:')
+    return quote(string, safe)
 
 def unicode_urlencode(data):
     if isinstance(data, dict):
