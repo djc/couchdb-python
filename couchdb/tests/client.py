@@ -26,7 +26,7 @@ class DatabaseTestCase(unittest.TestCase):
         if 'python-tests' in self.server:
             del self.server['python-tests']
 
-    def testDocIdQuoting(self):
+    def test_doc_id_quoting(self):
         self.db['foo/bar'] = {'foo': 'bar'}
         self.assertEqual('bar', self.db['foo/bar']['foo'])
         del self.db['foo/bar']
@@ -37,7 +37,7 @@ class DatabaseTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
-    #suite.addTest(doctest.DocTestSuite(client))
+    suite.addTest(doctest.DocTestSuite(client))
     return suite
 
 if __name__ == '__main__':

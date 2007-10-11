@@ -303,14 +303,14 @@ class Database(object):
         >>> db['gotham'] = dict(type='City', name='Gotham City')
         >>> code = '''function(doc) {
         ...     if (doc.type=='Person')
-        ...         return {'key': doc.name};
+        ...         map(doc.name, null);
         ... }'''
         >>> for row in db.query(code):
         ...     print row['key']
         John Doe
         Mary Jane
         
-        >>> for row in db.query(code, reverse=True):
+        >>> for row in db.query(code, descending=True):
         ...     print row['key']
         Mary Jane
         John Doe

@@ -55,7 +55,7 @@ class CouchTests(unittest.TestCase):
         # test a simple query
         query = """function(doc) {
             if (doc.a==4)
-                return doc.b
+                map(null, doc.b);
         }"""
         result = list(self.db.query(query))
         self.assertEqual(1, len(result))
@@ -109,14 +109,14 @@ class CouchTests(unittest.TestCase):
         self.assertEqual(num, len(self.db))
 
         query = """function(doc) {
-            return {key: doc.integer};
+            map(doc.integer, null);
         }"""
         results = list(self.db.query(query))
         self.assertEqual(num, len(results))
         for idx, row in enumerate(results):
             self.assertEqual(idx, row['key'])
 
-        results = list(self.db.query(query, reverse=True))
+        results = list(self.db.query(query, descending=True))
         self.assertEqual(num, len(results))
         for idx, row in enumerate(results):
             self.assertEqual(num - idx - 1, row['key'])
@@ -129,14 +129,9 @@ class CouchTests(unittest.TestCase):
                                     "Springfield"]}
 
         query = """function(doc){
-            var rows = []
             for (var i = 0; i < doc.cities.length; i++) {
-                rows[i] = {key: doc.cities[i] + ", " + doc._id};
+                map(doc.cities[i] + ", " + doc._id, null);
             }
-            // if a function returns a object with a single "multi" member
-            // then each element in the member will be output as its own row
-            // in the results
-            return {multi: rows}
         }"""
         results = list(self.db.query(query))
         self.assertEqual(11, len(results))
@@ -181,7 +176,7 @@ class CouchTests(unittest.TestCase):
         self.db.create({'longtext': longtext})
 
         query = """function(doc) {
-            return doc.longtext;
+            map(null, doc.longtext);
         }"""
         results = list(self.db.query(query))
         self.assertEqual(4, len(results))
@@ -201,7 +196,7 @@ class CouchTests(unittest.TestCase):
             self.assertEqual(text, doc['text'])
 
         query = """function(doc) {
-            return {key: doc.text};
+            map(doc.text, null);
         }"""
         for idx, row in enumerate(self.db.query(query)):
             self.assertEqual(texts[idx], row['key'])
@@ -210,9 +205,9 @@ class CouchTests(unittest.TestCase):
         for i in range(50): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
         self.db['_design_foo'] = {'views': {
-            'all_docs': 'function(doc){return {key:doc.integer}}',
-            'no_docs': 'function(doc){}',
-            'single_doc': 'function(doc){if(doc._id == "1"){return 1}}'
+            'all_docs': 'function(doc) { map(doc.integer, null) }',
+            'no_docs': 'function(doc) {}',
+            'single_doc': 'function(doc) { if (doc._id == "1") map(null, 1) }'
         }}
         for idx, row in enumerate(self.db.view('_design_foo:all_docs')):
             self.assertEqual(idx, row['key'])
@@ -233,19 +228,19 @@ class CouchTests(unittest.TestCase):
             self.db[str(idx + 1)] = {'foo': value}
 
         query = """function(doc) {
-            return {key: doc.foo};
+            map(doc.foo, null);
         }"""
         rows = self.db.query(query)
-        self.assertEqual({}, dict(rows.next())['value'])
+        self.assertEqual(None, dict(rows.next())['value'])
         for idx, row in enumerate(rows):
-            self.assertEqual(values[idx], row['key'])
+            self.assertEqual(values[idx + 1], row['key'])
 
-        rows = self.db.query(query, reverse=True)
+        rows = self.db.query(query, descending=True)
         for idx, row in enumerate(rows):
             if idx < len(values):
                 self.assertEqual(values[len(values) - 1- idx], row['key'])
             else:
-                self.assertEqual({}, dict(row)['value'])
+                self.assertEqual(None, dict(row)['value'])
 
         for value in values:
             rows = list(self.db.query(query, key=value))
