@@ -137,7 +137,7 @@ class Schema(object):
         return iter(self._data)
 
     def __len__(self):
-        return len(self._data)
+        return len(self._data or ())
 
     def __delitem__(self, name):
         del self._data[name]

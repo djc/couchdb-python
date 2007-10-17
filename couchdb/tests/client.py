@@ -32,6 +32,20 @@ class DatabaseTestCase(unittest.TestCase):
         del self.db['foo/bar']
         self.assertEqual(None, self.db.get('foo/bar'))
 
+    def test_doc_revs(self):
+        doc = {'bar': 42}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+        doc['bar'] = 43
+        self.db['foo'] = doc
+        new_rev = doc['_rev']
+
+        new_doc = self.db.get('foo')
+        self.assertEqual(new_rev, new_doc['_rev'])
+        new_doc = self.db.get('foo', rev=new_rev)
+        self.assertEqual(new_rev, new_doc['_rev'])
+        old_doc = self.db.get('foo', rev=old_rev)
+        self.assertEqual(old_rev, old_doc['_rev'])
 
 
 def suite():

@@ -29,7 +29,7 @@ import re
 import simplejson as json
 
 __all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
-           'Database', 'View']
+           'Database', 'Document', 'View']
 __docformat__ = 'restructuredtext en'
 
 
@@ -46,8 +46,8 @@ class ResourceConflict(Exception):
 
 
 class ServerError(Exception):
-    """Exception raised when a 500 HTTP error is received in response to a
-    request.
+    """Exception raised when an unexpected HTTP error is received in response
+    to a request.
     """
 
 
@@ -168,7 +168,7 @@ class Database(object):
 
     >>> doc = db[doc_id]
     >>> doc                 #doctest: +ELLIPSIS
-    <Row u'...'@... {...}>
+    <Document u'...'@... {...}>
 
     Documents are represented as instances of the `Row` class, which is
     basically just a normal dictionary with the additional attributes ``id`` and
@@ -224,7 +224,7 @@ class Database(object):
 
     def __iter__(self):
         """Return the IDs of all documents in the database."""
-        return (item.id for item in self.view('_all_docs'))
+        return iter([item.id for item in self.view('_all_docs')])
 
     def __len__(self):
         """Return the number of documents in the database."""
@@ -236,7 +236,7 @@ class Database(object):
         :param id: the document ID
         """
         doc = self[id] # FIXME: this should use HEAD once Etags are supported
-        self.resource.delete(unicode_quote(id, ''), rev=doc.rev)
+        self.resource.delete(id, rev=doc.rev)
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -245,7 +245,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Row`
         """
-        return Row(self.resource.get(unicode_quote(id, '')))
+        return Document(self.resource.get(id))
 
     def __setitem__(self, id, content):
         """Create or update a document with the specified ID.
@@ -255,9 +255,9 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        data = self.resource.put(unicode_quote(id, ''), content=content)
-        content['_id'] = data['_id']
-        content['_rev'] = data['_rev']
+        result = self.resource.put(id, content=content)
+        content['_id'] = result['id']
+        content['_rev'] = result['rev']
 
     def _get_name(self):
         if self._name is None:
@@ -275,10 +275,9 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        data = self.resource.post(content=data)
-        return data['_id']
+        return self.resource.post(content=data)['id']
 
-    def get(self, id, default=None):
+    def get(self, id, default=None, **options):
         """Return the document with the specified ID.
 
         :param id: the document ID
@@ -289,9 +288,18 @@ class Database(object):
         :rtype: `Row`
         """
         try:
-            return self[id]
+            row = self.resource.get(id, **options)
         except ResourceNotFound:
             return default
+        else:
+            if 'rev' in options:
+                for info in row['_doc_revs']:
+                    if 'ok' in info:
+                        row = info['ok']
+                        break
+                else:
+                    return default
+            return Document(row)
 
     def query(self, code, **options):
         """Execute an ad-hoc query against the database.
@@ -306,17 +314,17 @@ class Database(object):
         ...         map(doc.name, null);
         ... }'''
         >>> for row in db.query(code):
-        ...     print row['key']
+        ...     print row.key
         John Doe
         Mary Jane
         
         >>> for row in db.query(code, descending=True):
-        ...     print row['key']
+        ...     print row.key
         Mary Jane
         John Doe
         
         >>> for row in db.query(code, key='John Doe'):
-        ...     print row['key']
+        ...     print row.key
         John Doe
         
         >>> del server['python-tests']
@@ -331,7 +339,7 @@ class Database(object):
                 options[name] = json.dumps(value)
         data = self.resource.post('_temp_view', content=code, **options)
         for row in data['rows']:
-            yield Row(row)
+            yield Row(row['id'], row['key'], row['value'])
 
     def view(self, name, **options):
         """Execute a predefined view.
@@ -354,6 +362,25 @@ class Database(object):
         return view(**options)
 
 
+class Document(dict):
+    """Representation of a document in the database.
+
+    This is basically just a dictionary with the two additional properties
+    `id` and `rev`, which contain the document ID and revision, respectively.
+    """
+
+    def __init__(self, content):
+        dict.__init__(self, content)
+
+    def __repr__(self):
+        return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
+                                  dict([(k,v) for k,v in self.items()
+                                        if k not in ('_id', '_rev')]))
+
+    id = property(lambda self: self['_id'])
+    rev = property(lambda self: self['_rev'])
+
+
 class View(object):
     """Representation of a permanent view on the server."""
 
@@ -371,29 +398,27 @@ class View(object):
                 options[name] = json.dumps(value)
         data = self.resource.get(**options)
         for row in data['rows']:
-            yield Row(row)
+            yield Row(row['id'], row['key'], row['value'])
 
     def __iter__(self):
         return self()
 
 
-class Row(dict):
+class Row(object):
     """Representation of a row as returned by database views.
 
     This is basically just a dictionary with the two additional properties
     `id` and `rev`, which contain the document ID and revision, respectively.
     """
 
-    def __init__(self, content):
-        dict.__init__(self, content)
+    def __init__(self, id, key, value):
+        self.id = id
+        self.key = key
+        self.value = value
 
     def __repr__(self):
-        return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
-                                  dict([(k,v) for k,v in self.items()
-                                        if k not in ('_id', '_rev')]))
-
-    id = property(lambda self: self.get('_id'))
-    rev = property(lambda self: self.get('_rev'))
+        return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
+                                                 self.key, self.value)
 
 
 # Internals
@@ -458,7 +483,7 @@ class Resource(object):
             elif status_code == 409:
                 raise ResourceConflict(error)
             else:
-                raise ServerError(error)
+                raise ServerError((status_code, error))
 
         return data
 
