@@ -256,8 +256,7 @@ class Database(object):
                         documents
         """
         result = self.resource.put(id, content=content)
-        content['_id'] = result['id']
-        content['_rev'] = result['rev']
+        content.update({'_id': result['id'], '_rev': result['rev']})
 
     def _get_name(self):
         if self._name is None:
@@ -301,7 +300,7 @@ class Database(object):
                     return default
             return Document(row)
 
-    def query(self, code, **options):
+    def query(self, code, content_type='text/javascript', **options):
         """Execute an ad-hoc query against the database.
         
         >>> server = Server('http://localhost:8888/')
@@ -330,6 +329,8 @@ class Database(object):
         >>> del server['python-tests']
         
         :param code: the code of the view function
+        :param content_type: the MIME type of the code, which determines the
+                             language the view function is written in
         :return: an iterable over the resulting `Row` objects
         :rtype: ``generator``
         """
@@ -337,9 +338,46 @@ class Database(object):
             if name in ('key', 'startkey', 'endkey') \
                     or not isinstance(value, basestring):
                 options[name] = json.dumps(value)
-        data = self.resource.post('_temp_view', content=code, **options)
+        headers = {}
+        if content_type:
+            headers['Content-Type'] = content_type
+        data = self.resource.post('_temp_view', content=code, headers=headers,
+                                  **options)
         for row in data['rows']:
             yield Row(row['id'], row['key'], row['value'])
+
+    def update(self, documents):
+        """Perform a bulk update or insertion of the given documents using a
+        single HTTP request.
+        
+        >>> server = Server('http://localhost:8888/')
+        >>> db = server.create('python-tests')
+        >>> for doc in db.update([
+        ...     Document(type='Person', name='John Doe'),
+        ...     Document(type='Person', name='Mary Jane'),
+        ...     Document(type='City', name='Gotham City')
+        ... ]):
+        ...     print repr(doc) #doctest: +ELLIPSIS
+        <Document u'...'@u'...' {'type': 'Person', 'name': 'John Doe'}>
+        <Document u'...'@u'...' {'type': 'Person', 'name': 'Mary Jane'}>
+        <Document u'...'@u'...' {'type': 'City', 'name': 'Gotham City'}>
+        
+        >>> del server['python-tests']
+        
+        :param documents: a sequence of dictionaries or `Document` objects
+        :return: an iterable over the resulting documents
+        :rtype: ``generator``
+        
+        :since: version 0.2
+        """
+        documents = list(documents)
+        content = {'_bulk_docs': documents}
+        data = self.resource.post(content=content)
+        for idx, result in enumerate(data['results']):
+            assert 'ok' in result # FIXME: how should error handling work here?
+            doc = documents[idx]
+            doc.update({'_id': result['id'], '_rev': result['rev']})
+            yield doc
 
     def view(self, name, **options):
         """Execute a predefined view.
@@ -369,8 +407,8 @@ class Document(dict):
     `id` and `rev`, which contain the document ID and revision, respectively.
     """
 
-    def __init__(self, content):
-        dict.__init__(self, content)
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
 
     def __repr__(self):
         return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,

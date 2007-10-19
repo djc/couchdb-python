@@ -16,6 +16,11 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
    encoded, anything else is left alone.
  * Slashes in document IDs are now URL-quoted until CouchDB supports
    them.
+ * Allow the content-type to be passed for temp views via
+   `client.Database.query()` so that view languages other than
+   Javascript can be used.
+ * Added `client.Database.update()` method to bulk insert/update
+   documents in a database.
 
 
 Version 0.1
