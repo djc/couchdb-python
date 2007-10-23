@@ -10,5 +10,5 @@ from couchdb.client import *
 
 try:
     __version__ = __import__('pkg_resources').get_distribution('CouchDB').version
-except ImportError:
+except:
     __version__ = '?'
