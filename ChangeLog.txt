@@ -1,6 +1,6 @@
 Version 0.2
 http://couchdb-python.googlecode.com/svn/tags/0.2.0
-(?, from branches/0.2.x)
+(Nov 21, 2007, from branches/0.2.x)
 
  * Added __len__ and __iter__ to the `schema.Schema` class to iterate
    over and get the number of items in a document or compound field.
@@ -23,6 +23,7 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
    documents in a database.
  * The view-server script wrapper has been renamed to `couchpy`.
  * `couchpy` now supports `--help` and `--version` options.
+ * Updated for compatibility with CouchDB release 0.7.0.
 
 
 Version 0.1

@@ -204,15 +204,15 @@ class CouchTests(unittest.TestCase):
     def test_design_docs(self):
         for i in range(50): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
-        self.db['_design/foo'] = {'views': {
+        self.db['_design/test'] = {'views': {
             'all_docs': 'function(doc) { map(doc.integer, null) }',
             'no_docs': 'function(doc) {}',
             'single_doc': 'function(doc) { if (doc._id == "1") map(null, 1) }'
         }}
-        for idx, row in enumerate(self.db.view('_design/foo/all_docs')):
+        for idx, row in enumerate(self.db.view('_view/test/all_docs')):
             self.assertEqual(idx, row.key)
-        self.assertEqual(0, len(list(self.db.view('_design/foo/no_docs'))))
-        self.assertEqual(1, len(list(self.db.view('_design/foo/single_doc'))))
+        self.assertEqual(0, len(list(self.db.view('_view/test/no_docs'))))
+        self.assertEqual(1, len(list(self.db.view('_view/test/single_doc'))))
 
     def test_collation(self):
         values = [

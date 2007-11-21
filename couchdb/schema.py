@@ -177,8 +177,7 @@ class Schema(object):
 class Document(Schema):
 
     def __repr__(self):
-        return '<%s %r@%r %r>' % (type(self).__name__, self._data.id,
-                                  self._data.rev,
+        return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
                                   dict([(k, v) for k, v in self._data.items()
                                         if k not in ('_id', '_rev')]))
 

@@ -217,7 +217,7 @@ class Database(object):
         :return: `True` if a document with the ID exists, `False` otherwise
         """
         try:
-            self.resource.get(id) # FIXME: should use HEAD
+            self.resource.head(id) # FIXME: should use HEAD
             return True
         except ResourceNotFound:
             return False
@@ -287,21 +287,12 @@ class Database(object):
         :rtype: `Row`
         """
         try:
-            row = self.resource.get(id, **options)
+            return Document(self.resource.get(id, **options))
         except ResourceNotFound:
             return default
-        else:
-            if 'rev' in options:
-                for info in row['_doc_revs']:
-                    if 'ok' in info:
-                        row = info['ok']
-                        break
-                else:
-                    return default
-            return Document(row)
 
     def query(self, code, content_type='text/javascript', **options):
-        """Execute an ad-hoc query against the database.
+        """Execute an ad-hoc query (a "temp view") against the database.
         
         >>> server = Server('http://localhost:8888/')
         >>> db = server.create('python-tests')
@@ -371,8 +362,7 @@ class Database(object):
         :since: version 0.2
         """
         documents = list(documents)
-        content = {'_bulk_docs': documents}
-        data = self.resource.post(content=content)
+        data = self.resource.post('_bulk_docs', content=documents)
         for idx, result in enumerate(data['results']):
             assert 'ok' in result # FIXME: how should error handling work here?
             doc = documents[idx]
@@ -395,7 +385,7 @@ class Database(object):
         :return: a `View` object
         :rtype: `View`
         """
-        view = View(uri(self.resource.uri, name), name,
+        view = View(uri(self.resource.uri, *name.split('/')), name,
                     http=self.resource.http)
         return view(**options)
 
@@ -513,7 +503,7 @@ class Resource(object):
 
         if status_code >= 400:
             if type(data) is dict:
-                error = data.get('error', {}).get('reason', data)
+                error = (data.get('error'), data.get('reason'))
             else:
                 error = data
             if status_code == 404:
@@ -556,7 +546,7 @@ def uri(base, *path, **query):
 
     return ''.join(retval)
 
-def unicode_quote(string, safe='/:'):
+def unicode_quote(string, safe=''):
     if isinstance(string, unicode):
         string = string.encode('utf-8')
     return quote(string, safe)
