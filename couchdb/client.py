@@ -8,7 +8,7 @@
 
 """Python client API for CouchDB.
 
->>> server = Server('http://localhost:8888/')
+>>> server = Server('http://localhost:5984/')
 >>> db = server.create('python-tests')
 >>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
@@ -54,7 +54,7 @@ class ServerError(Exception):
 class Server(object):
     """Representation of a CouchDB server.
 
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
@@ -82,7 +82,7 @@ class Server(object):
         """Initialize the server object.
         
         :param uri: the URI of the server (for example
-                    ``http://localhost:8888/``)
+                    ``http://localhost:5984/``)
         """
         self.resource = Resource(httplib2.Http(), uri)
 
@@ -156,7 +156,7 @@ class Server(object):
 class Database(object):
     """Representation of a database on a CouchDB server.
 
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
     New documents can be added to the database using the `create()` method:
@@ -294,7 +294,7 @@ class Database(object):
     def query(self, code, content_type='text/javascript', **options):
         """Execute an ad-hoc query (a "temp view") against the database.
         
-        >>> server = Server('http://localhost:8888/')
+        >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
         >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
@@ -341,7 +341,7 @@ class Database(object):
         """Perform a bulk update or insertion of the given documents using a
         single HTTP request.
         
-        >>> server = Server('http://localhost:8888/')
+        >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
         >>> for doc in db.update([
         ...     Document(type='Person', name='John Doe'),
@@ -372,7 +372,7 @@ class Database(object):
     def view(self, name, **options):
         """Execute a predefined view.
         
-        >>> server = Server('http://localhost:8888/')
+        >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
         

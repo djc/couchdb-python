@@ -9,7 +9,7 @@
 """Mapping from raw JSON data structures to Python objects and vice versa.
 
 >>> from couchdb import Server
->>> server = Server('http://localhost:8888/')
+>>> server = Server('http://localhost:5984/')
 >>> db = server.create('python-tests')
 
 To define a document schema, you declare a Python class inherited from
@@ -343,7 +343,7 @@ class DictField(Field):
     """Field type for nested dictionaries.
     
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):
@@ -383,7 +383,7 @@ class ListField(Field):
     """Field type for sequences of other fields.
 
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):

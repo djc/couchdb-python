@@ -15,7 +15,7 @@ from couchdb import ResourceConflict, ResourceNotFound, Server
 class CouchTests(unittest.TestCase):
 
     def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:8888/')
+        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
         self.server = Server(uri)
         if 'python-tests' in self.server:
             del self.server['python-tests']
