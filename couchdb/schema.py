@@ -205,6 +205,25 @@ class Document(Schema):
             db[self._data.id] = self._data
         return self
 
+    def view(cls, db, viewname, eager=False, **options):
+        """Execute a CouchDB named view and map the result values back to
+        objects of this schema.
+        
+        Note that by default, any properties of the document that are not
+        included in the values of the view will be treated as if they were
+        missing from the document. If you'd rather want to load the full
+        document for every row, set the `eager` option to `True`, but note that
+        this will initiate a new HTTP request for every document.
+        """
+        for row in db.view(viewname, **options):
+            if eager:
+                yield cls.load(db, row.id)
+            else:
+                data = row.value
+                data['_id'] = row.id
+                yield cls.wrap(data)
+    view = classmethod(view)
+
 
 class TextField(Field):
     """Schema field for string values."""
