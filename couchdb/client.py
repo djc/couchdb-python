@@ -29,7 +29,7 @@ import re
 import simplejson as json
 
 __all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
-           'Database', 'Document', 'View']
+           'Database']
 __docformat__ = 'restructuredtext en'
 
 
@@ -291,7 +291,8 @@ class Database(object):
         except ResourceNotFound:
             return default
 
-    def query(self, code, content_type='text/javascript', **options):
+    def query(self, code, content_type='text/javascript', wrapper=None,
+              **options):
         """Execute an ad-hoc query (a "temp view") against the database.
         
         >>> server = Server('http://localhost:5984/')
@@ -322,20 +323,12 @@ class Database(object):
         :param code: the code of the view function
         :param content_type: the MIME type of the code, which determines the
                              language the view function is written in
-        :return: an iterable over the resulting `Row` objects
-        :rtype: ``generator``
+        :return: the view reults
+        :rtype: `ViewResults`
         """
-        for name, value in options.items():
-            if name in ('key', 'startkey', 'endkey') \
-                    or not isinstance(value, basestring):
-                options[name] = json.dumps(value)
-        headers = {}
-        if content_type:
-            headers['Content-Type'] = content_type
-        data = self.resource.post('_temp_view', content=code, headers=headers,
-                                  **options)
-        for row in data['rows']:
-            yield Row(row['id'], row['key'], row['value'])
+        return TemporaryView(uri(self.resource.uri, '_temp_view'), code,
+                             content_type=content_type, wrapper=wrapper,
+                             http=self.resource.http)(**options)
 
     def update(self, documents):
         """Perform a bulk update or insertion of the given documents using a
@@ -369,7 +362,7 @@ class Database(object):
             doc.update({'_id': result['id'], '_rev': result['rev']})
             yield doc
 
-    def view(self, name, **options):
+    def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
         
         >>> server = Server('http://localhost:5984/')
@@ -382,12 +375,12 @@ class Database(object):
         
         >>> del server['python-tests']
         
-        :return: a `View` object
-        :rtype: `View`
+        :return: the view results
+        :rtype: `ViewResults`
         """
-        view = View(uri(self.resource.uri, *name.split('/')), name,
-                    http=self.resource.http)
-        return view(**options)
+        return PermanentView(uri(self.resource.uri, *name.split('/')), name,
+                             wrapper=wrapper,
+                             http=self.resource.http)(**options)
 
 
 class Document(dict):
@@ -410,26 +403,124 @@ class Document(dict):
 
 
 class View(object):
+    """Abstract representation of a view or query."""
+
+    def __init__(self, uri, wrapper=None, http=None):
+        self.resource = Resource(http, uri)
+        self.wrapper = wrapper
+
+    def __call__(self, **options):
+        return ViewResults(self, options)
+
+    def __iter__(self):
+        return self()
+
+    def _encode_options(self, options):
+        retval = {}
+        for name, value in options.items():
+            if name in ('key', 'startkey', 'endkey') \
+                    or not isinstance(value, basestring):
+                value = json.dumps(value)
+            retval[name] = value
+        return retval
+
+    def _exec(self, options):
+        raise NotImplementedError
+
+
+class PermanentView(View):
     """Representation of a permanent view on the server."""
 
-    def __init__(self, uri, name, http=None):
+    def __init__(self, uri, name, wrapper=None, http=None):
+        View.__init__(self, uri, wrapper=wrapper, http=http)
         self.resource = Resource(http, uri)
         self.name = name
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.name)
 
-    def __call__(self, **options):
-        for name, value in options.items():
-            if name in ('key', 'startkey', 'endkey') \
-                    or not isinstance(value, basestring):
-                options[name] = json.dumps(value)
-        data = self.resource.get(**options)
-        for row in data['rows']:
-            yield Row(row['id'], row['key'], row['value'])
+    def _exec(self, options):
+        return self.resource.get(**self._encode_options(options))
+
+
+class TemporaryView(View):
+    """Representation of a temporary view."""
+
+    def __init__(self, uri, code=None, content_type='text/javascript',
+                 wrapper=None, http=None):
+        View.__init__(self, uri, wrapper=wrapper, http=http)
+        self.resource = Resource(http, uri)
+        self.code = code
+        self.content_type = content_type
+
+    def __repr__(self):
+        return '<%s %r>' % (type(self).__name__, self.code)
+
+    def _exec(self, options):
+        headers = {}
+        if self.content_type:
+            headers['Content-Type'] = self.content_type
+        return self.resource.post(content=self.code, headers=headers,
+                                  **self._encode_options(options))
+
+
+class ViewResults(object):
+
+    def __init__(self, view, options):
+        self.view = view
+        self.options = options
+        self._rows = self._total_rows = self._offset = None
+
+    def __repr__(self):
+        return '<%s %r %r>' % (type(self).__name__, self.view, self.options)
+
+    def __getitem__(self, key):
+        options = self.options.copy()
+        if type(key) is slice:
+            if key.start is not None:
+                options['startkey'] = key.start
+            if key.stop is not None:
+                options['endkey'] = key.stop
+            return ViewResults(self.view, options)
+        else:
+            options['key'] = key
+            return ViewResults(self.view, options)
 
     def __iter__(self):
-        return self()
+        wrapper = self.view.wrapper
+        for row in self.rows:
+            row = Row(row['id'], row['key'], row['value'])
+            if wrapper is not None:
+                yield wrapper(row)
+            else:
+                yield row
+
+    def __len__(self):
+        return sum(1 for _ in self)
+
+    def _fetch(self):
+        data = self.view._exec(self.options)
+        self._rows = data['rows']
+        self._total_rows = data['total_rows']
+        self._offset = data.get('offset', 0)
+
+    def _get_rows(self):
+        if self._rows is None:
+            self._fetch()
+        return self._rows
+    rows = property(_get_rows)
+
+    def _get_total_rows(self):
+        if self._total_rows is None:
+            self._fetch()
+        return self._total_rows
+    total_rows = property(_get_total_rows)
+
+    def _get_offset(self):
+        if self._offset is None:
+            self._fetch()
+        return self._offset
+    offset = property(_get_offset)
 
 
 class Row(object):

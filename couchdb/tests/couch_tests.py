@@ -230,7 +230,7 @@ class CouchTests(unittest.TestCase):
         query = """function(doc) {
             map(doc.foo, null);
         }"""
-        rows = self.db.query(query)
+        rows = iter(self.db.query(query))
         self.assertEqual(None, rows.next().value)
         for idx, row in enumerate(rows):
             self.assertEqual(values[idx + 1], row.key)

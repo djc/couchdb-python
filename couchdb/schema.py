@@ -62,7 +62,7 @@ True
 from calendar import timegm
 from datetime import date, datetime, time
 from decimal import Decimal
-from time import strptime
+from time import strptime, struct_time
 
 __all__ = ['Schema', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
@@ -215,13 +215,13 @@ class Document(Schema):
         document for every row, set the `eager` option to `True`, but note that
         this will initiate a new HTTP request for every document.
         """
-        for row in db.view(viewname, **options):
+        def _wrapper(row):
             if eager:
-                yield cls.load(db, row.id)
-            else:
-                data = row.value
-                data['_id'] = row.id
-                yield cls.wrap(data)
+                return cls.load(db, row.id)
+            data = row.value
+            data['_id'] = row.id
+            return cls.wrap(data)
+        return db.view(viewname, wrapper=_wrapper, **options)
     view = classmethod(view)
 
 
@@ -308,7 +308,9 @@ class DateTimeField(Field):
         return value
 
     def _to_json(self, value):
-        if not isinstance(value, datetime):
+        if isinstance(value, struct_time):
+            value = datetime.utcfromtimestamp(timegm(value))
+        elif not isinstance(value, datetime):
             value = datetime.combine(value, time(0))
         return value.isoformat()
 
