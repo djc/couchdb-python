@@ -29,7 +29,7 @@ import re
 import simplejson as json
 
 __all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
-           'Database']
+           'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
 
 
@@ -243,7 +243,7 @@ class Database(object):
 
         :param id: the document ID
         :return: a `Row` object representing the requested document
-        :rtype: `Row`
+        :rtype: `Document`
         """
         return Document(self.resource.get(id))
 
@@ -284,7 +284,7 @@ class Database(object):
                         found
         :return: a `Row` object representing the requested document, or `None`
                  if no document with the ID was found
-        :rtype: `Row`
+        :rtype: `Document`
         """
         try:
             return Document(self.resource.get(id, **options))
@@ -465,6 +465,47 @@ class TemporaryView(View):
 
 
 class ViewResults(object):
+    """Representation of a parameterized view (either permanent or temporary)
+    and the results it produces.
+    
+    This class allows the specification of ``key``, ``startkey``, and
+    ``endkey`` options using Python slice notation.
+    
+    >>> server = Server('http://localhost:5984/')
+    >>> db = server.create('python-tests')
+    >>> db['johndoe'] = dict(type='Person', name='John Doe')
+    >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+    >>> db['gotham'] = dict(type='City', name='Gotham City')
+    >>> code = '''function(doc) {
+    ...     map([doc.type, doc.name], doc.name);
+    ... }'''
+    >>> results = db.query(code)
+
+    At this point, the view has not actually been accessed yet. It is accessed
+    as soon as it is iterated over, its length is requested, or one of its
+    `rows`, `total_rows`, or `offset` properties are accessed:
+    
+    >>> len(results)
+    3
+
+    You can use slices to apply ``startkey`` and/or ``endkey`` options to the
+    view:
+
+    >>> people = results[['Person']:['Person','ZZZZ']]
+    >>> for person in people:
+    ...     print person.value
+    John Doe
+    Mary Jane
+    >>> people.total_rows, people.offset
+    (3, 1)
+    
+    Use plain indexed notation (without a slice) to apply the ``key`` option.
+    Note that as CouchDB makes no claim that keys are unique in a view, this
+    can still return multiple rows:
+    
+    >>> list(results[['City', 'Gotham City']])
+    [<Row id=u'gotham', key=[u'City', u'Gotham City'], value=u'Gotham City'>]
+    """
 
     def __init__(self, view, options):
         self.view = view
@@ -489,18 +530,17 @@ class ViewResults(object):
     def __iter__(self):
         wrapper = self.view.wrapper
         for row in self.rows:
-            row = Row(row['id'], row['key'], row['value'])
             if wrapper is not None:
                 yield wrapper(row)
             else:
                 yield row
 
     def __len__(self):
-        return sum(1 for _ in self)
+        return len(self.rows)
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = data['rows']
+        self._rows = [Row(r['id'], r['key'], r['value']) for r in data['rows']]
         self._total_rows = data['total_rows']
         self._offset = data.get('offset', 0)
 
@@ -508,32 +548,40 @@ class ViewResults(object):
         if self._rows is None:
             self._fetch()
         return self._rows
-    rows = property(_get_rows)
+    rows = property(_get_rows, doc="""\
+        The list of rows returned by the view.
+        
+        :type: `list`
+        """)
 
     def _get_total_rows(self):
         if self._total_rows is None:
             self._fetch()
         return self._total_rows
-    total_rows = property(_get_total_rows)
+    total_rows = property(_get_total_rows, doc="""\
+        The total number of rows in this view.
+        
+        :type: `int`
+        """)
 
     def _get_offset(self):
         if self._offset is None:
             self._fetch()
         return self._offset
-    offset = property(_get_offset)
+    offset = property(_get_offset, doc="""\
+        The offset of the results from the first row in the view.
+        
+        :type: `int`
+        """)
 
 
 class Row(object):
-    """Representation of a row as returned by database views.
-
-    This is basically just a dictionary with the two additional properties
-    `id` and `rev`, which contain the document ID and revision, respectively.
-    """
+    """Representation of a row as returned by database views."""
 
     def __init__(self, id, key, value):
-        self.id = id
-        self.key = key
-        self.value = value
+        self.id = id #: The document ID
+        self.key = key #: The key of the row
+        self.value = value #: The value of the row
 
     def __repr__(self):
         return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
