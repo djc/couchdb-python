@@ -312,18 +312,19 @@ class DateTimeField(Field):
     """Schema field for storing date/time values.
     
     >>> field = DateTimeField()
-    >>> field._to_python('2007-04-01T15:30:00')
+    >>> field._to_python('2007-04-01T15:30:00Z')
     datetime.datetime(2007, 4, 1, 15, 30)
-    >>> field._to_json(datetime(2007, 4, 1, 15, 30))
-    '2007-04-01T15:30:00'
+    >>> field._to_json(datetime(2007, 4, 1, 15, 30, 0, 9876))
+    '2007-04-01T15:30:00Z'
     >>> field._to_json(date(2007, 4, 1))
-    '2007-04-01T00:00:00'
+    '2007-04-01T00:00:00Z'
     """
 
     def _to_python(self, value):
         if isinstance(value, basestring):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
+                value = value.rstrip('Z') # remove timezone separator
                 timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
                 value = datetime.utcfromtimestamp(timestamp)
             except ValueError, e:
@@ -335,7 +336,7 @@ class DateTimeField(Field):
             value = datetime.utcfromtimestamp(timegm(value))
         elif not isinstance(value, datetime):
             value = datetime.combine(value, time(0))
-        return value.isoformat()
+        return value.replace(microsecond=0).isoformat() + 'Z'
 
 
 class TimeField(Field):
@@ -353,6 +354,7 @@ class TimeField(Field):
     def _to_python(self, value):
         if isinstance(value, basestring):
             try:
+                value = value.split('.', 1)[0] # strip out microseconds
                 value = time(*strptime(value, '%H:%M:%S')[3:6])
             except ValueError, e:
                 raise ValueError('Invalid ISO time %r' % value)
@@ -361,7 +363,7 @@ class TimeField(Field):
     def _to_json(self, value):
         if isinstance(value, datetime):
             value = value.time()
-        return value.isoformat()
+        return value.replace(microsecond=0).isoformat()
 
 
 class DictField(Field):
