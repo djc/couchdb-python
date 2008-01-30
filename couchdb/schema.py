@@ -158,7 +158,7 @@ class Schema(object):
                 attrval.name = attrname
             fields[attrname] = attrval
         d['_fields'] = fields
-        return type('AnonymousDocument', (cls,), d)
+        return type('AnonymousStruct', (cls,), d)
     build = classmethod(build)
 
     def wrap(cls, data):
@@ -401,9 +401,9 @@ class DictField(Field):
         return self.schema.wrap(value)
 
     def _to_json(self, value):
-        if isinstance(value, Schema):
-            return value.unwrap()
-        return dict(value)
+        if not isinstance(value, Schema):
+            value = self.schema(**value)
+        return value.unwrap()
 
 
 class ListField(Field):
@@ -419,11 +419,13 @@ class ListField(Field):
     ...     pubdate = DateTimeField(default=datetime.now)
     ...     comments = ListField(DictField(Schema.build(
     ...         author = TextField(),
-    ...         content = TextField()
+    ...         content = TextField(),
+    ...         time = DateTimeField()
     ...     )))
 
     >>> post = Post(title='Foo bar')
-    >>> post.comments.append(author='myself', content='Bla bla')
+    >>> post.comments.append(author='myself', content='Bla bla',
+    ...                      time=datetime.now())
     >>> len(post.comments)
     1
     >>> post.store(db) #doctest: +ELLIPSIS
@@ -434,14 +436,19 @@ class ListField(Field):
     u'myself'
     >>> comment['content']
     u'Bla bla'
+    >>> comment['time'] #doctest: +ELLIPSIS
+    u'...T...Z'
 
     >>> del server['python-tests']
     """
 
     def __init__(self, field, name=None, default=None):
         Field.__init__(self, name=name, default=default or [])
-        if type(field) is type and issubclass(field, Field):
-            field = field()
+        if type(field) is type:
+            if issubclass(field, Field):
+                field = field()
+            elif issubclass(field, Schema):
+                field = DictField(field)
         self.field = field
 
     def _to_python(self, value):
