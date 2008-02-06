@@ -56,9 +56,6 @@ True
 >>> del server['python-tests']
 """
 
-# NOTE: this module is very much under construction and still subject to major
-#       changes or even removal
-
 from calendar import timegm
 from datetime import date, datetime, time
 from decimal import Decimal

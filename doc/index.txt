@@ -19,4 +19,7 @@ It consists of the following main modules:
 
 Please see the `generated API documentation <api/index.html>`_ for details.
 
-.. _couchdb: http://couchdb.com/
+There may also be more information on the `project website`_.
+
+.. _couchdb: http://couchdb.org/
+.. _project website: http://couchdb-python.googlecode.com/
