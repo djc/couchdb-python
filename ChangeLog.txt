@@ -1,11 +1,14 @@
 Version 0.3
 http://couchdb-python.googlecode.com/svn/tags/0.3.0
-(???, from branches/0.3.x)
+(Feb 6, 2008, from branches/0.3.x)
 
- * The `schema.Document` class now has a `view` method that can be used to
+ * The `schema.Document` class now has a `view()` method that can be used to
    execute a CouchDB view and map the result rows back to objects of that
    schema.
  * The test suite now uses the new default port of CouchDB, 5984.
+ * Views now return proxy objects to which you can apply slice syntax for
+   "key", "startkey", and "endkey" filtering.
+ * Add a `query()` classmethod to the `Document` class.
 
 
 Version 0.2
