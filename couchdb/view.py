@@ -95,14 +95,14 @@ def run(input=sys.stdin, output=sys.stdout):
             except ValueError, e:
                 sys.stderr.write('error: %s\n' % e)
                 sys.stderr.flush()
-                exit(1)
+                return 1
             else:
                 retval = handlers[cmd[0]](*cmd[1:])
                 output.write(json.dumps(retval))
                 output.write('\n')
                 output.flush()
     except KeyboardInterrupt:
-        exit(0)
+        return 0
 
 _VERSION = """%(name)s - CouchDB Python %(version)s
 
@@ -139,15 +139,15 @@ def main():
         if message:
             sys.stdout.write(message)
             sys.stdout.flush()
-            exit(0)
+            sys.exit(0)
     except getopt.GetoptError, error:
         message = '%s\n\nTry `%s --help` for more information.\n' % (
             str(error), os.path.basename(sys.argv[0])
         )
         sys.stderr.write(message)
         sys.stderr.flush()
-        exit(1)
-    run()
+        sys.exit(1)
+    sys.exit(run())
 
 if __name__ == '__main__':
     main()
