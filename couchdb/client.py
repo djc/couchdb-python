@@ -84,7 +84,7 @@ class Server(object):
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
         """
-        self.resource = Resource(httplib2.Http(), uri)
+        self.resource = Resource(None, uri)
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -390,9 +390,6 @@ class Document(dict):
     `id` and `rev`, which contain the document ID and revision, respectively.
     """
 
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-
     def __repr__(self):
         return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
                                   dict([(k,v) for k,v in self.items()
@@ -624,7 +621,7 @@ class Resource(object):
         headers.setdefault('Accept', 'application/json')
         headers.setdefault('User-Agent', 'couchdb-python %s' % __version__)
         body = None
-        if content:
+        if content is not None:
             if not isinstance(content, basestring):
                 body = json.dumps(content)
                 headers.setdefault('Content-Type', 'application/json')
