@@ -1,3 +1,10 @@
+Version 0.4
+http://couchdb-python.googlecode.com/svn/tags/0.4.0
+(?, from branches/0.4.x)
+
+ * Add command-line scripts for importing/exporting databases.
+
+
 Version 0.3
 http://couchdb-python.googlecode.com/svn/tags/0.3.0
 (Feb 6, 2008, from branches/0.3.x)

@@ -130,7 +130,9 @@ interface for the CouchDB server.""",
 
     entry_points = {
         'console_scripts': [
-            'couchpy = couchdb.view:main'
+            'couchpy = couchdb.view:main',
+            'couchdb-dump = couchdb.tools.dump:main',
+            'couchdb-load = couchdb.tools.load:main'
         ],
     },
 
