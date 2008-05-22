@@ -9,7 +9,7 @@
 
 import os
 import unittest
-from couchdb import ResourceConflict, ResourceNotFound, Server
+from couchdb import PreconditionFailed, ResourceNotFound, Server
 
 
 class CouchTests(unittest.TestCase):
@@ -55,7 +55,7 @@ class CouchTests(unittest.TestCase):
         # test a simple query
         query = """function(doc) {
             if (doc.a==4)
-                map(null, doc.b);
+                emit(null, doc.b);
         }"""
         result = list(self.db.query(query))
         self.assertEqual(1, len(result))
@@ -93,11 +93,11 @@ class CouchTests(unittest.TestCase):
         doc1['a'] = 2
         doc2['a'] = 3
         self.db['foo'] = doc1
-        self.assertRaises(ResourceConflict, self.db.__setitem__, 'foo', doc2)
+        self.assertRaises(PreconditionFailed, self.db.__setitem__, 'foo', doc2)
 
         # try submitting without the revision info
         data = {'_id': 'foo', 'a': 3, 'b': 1}
-        self.assertRaises(ResourceConflict, self.db.__setitem__, 'foo', data)
+        self.assertRaises(PreconditionFailed, self.db.__setitem__, 'foo', data)
 
         del self.db['foo']
         self.db['foo'] = data
@@ -109,7 +109,7 @@ class CouchTests(unittest.TestCase):
         self.assertEqual(num, len(self.db))
 
         query = """function(doc) {
-            map(doc.integer, null);
+            emit(doc.integer, null);
         }"""
         results = list(self.db.query(query))
         self.assertEqual(num, len(results))
@@ -130,7 +130,7 @@ class CouchTests(unittest.TestCase):
 
         query = """function(doc){
             for (var i = 0; i < doc.cities.length; i++) {
-                map(doc.cities[i] + ", " + doc._id, null);
+                emit(doc.cities[i] + ", " + doc._id, null);
             }
         }"""
         results = list(self.db.query(query))
@@ -176,7 +176,7 @@ class CouchTests(unittest.TestCase):
         self.db.create({'longtext': longtext})
 
         query = """function(doc) {
-            map(null, doc.longtext);
+            emit(null, doc.longtext);
         }"""
         results = list(self.db.query(query))
         self.assertEqual(4, len(results))
@@ -196,7 +196,7 @@ class CouchTests(unittest.TestCase):
             self.assertEqual(text, doc['text'])
 
         query = """function(doc) {
-            map(doc.text, null);
+            emit(doc.text, null);
         }"""
         for idx, row in enumerate(self.db.query(query)):
             self.assertEqual(texts[idx], row.key)
@@ -205,9 +205,9 @@ class CouchTests(unittest.TestCase):
         for i in range(50): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
         self.db['_design/test'] = {'views': {
-            'all_docs': 'function(doc) { map(doc.integer, null) }',
-            'no_docs': 'function(doc) {}',
-            'single_doc': 'function(doc) { if (doc._id == "1") map(null, 1) }'
+            'all_docs': {'map': 'function(doc) { emit(doc.integer, null) }'},
+            'no_docs': {'map': 'function(doc) {}'},
+            'single_doc': {'map': 'function(doc) { if (doc._id == "1") emit(null, 1) }'}
         }}
         for idx, row in enumerate(self.db.view('_view/test/all_docs')):
             self.assertEqual(idx, row.key)
@@ -228,7 +228,7 @@ class CouchTests(unittest.TestCase):
             self.db[str(idx + 1)] = {'foo': value}
 
         query = """function(doc) {
-            map(doc.foo, null);
+            emit(doc.foo, null);
         }"""
         rows = iter(self.db.query(query))
         self.assertEqual(None, rows.next().value)

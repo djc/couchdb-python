@@ -24,6 +24,8 @@ def load_db(fileobj, dburl, username=None, password=None):
         docid = part['Content-ID']
         doc = json.loads(part.get_payload())
         del doc['_rev']
+        if '_attachments' in doc:
+            del doc['_attachments']
         print>>sys.stderr, 'Loading document %r' % docid
         db[docid] = doc
 

@@ -204,8 +204,8 @@ class Document(Schema):
             db[self._data.id] = self._data
         return self
 
-    def query(cls, db, code, content_type='text/javascript', eager=False,
-              **options):
+    def query(cls, db, map_fun, reduce_fun, language='javascript',
+              eager=False, **options):
         """Execute a CouchDB temporary view and map the result values back to
         objects of this schema.
         
@@ -221,8 +221,8 @@ class Document(Schema):
             data = row.value
             data['_id'] = row.id
             return cls.wrap(data)
-        return db.query(code, content_type=content_type, wrapper=_wrapper,
-                        **options)
+        return db.query(map_fun, reduce_fun=reduce_fun, language=language,
+                        wrapper=_wrapper, **options)
     query = classmethod(query)
 
     def view(cls, db, viewname, eager=False, **options):

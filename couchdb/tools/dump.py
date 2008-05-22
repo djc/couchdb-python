@@ -23,6 +23,8 @@ def dump_db(dburl, username=None, password=None, boundary=None):
         db.resource.http.add_credentials(username, password)
     for docid in db:
         doc = db[docid]
+        if '_attachments' in doc:
+            del doc['_attachments']
         print>>sys.stderr, 'Dumping document %r' % doc.id
         part = MIMEBase('application', 'json')
         part['Content-ID'] = doc.id
