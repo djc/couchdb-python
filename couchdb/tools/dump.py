@@ -34,7 +34,7 @@ def dump_db(dburl, username=None, password=None, boundary=None):
             inner = MIMEMultipart('mixed')
             inner.attach(part)
             for name, info in attachments.items():
-                maintype, subtype = info['content-type'].split('/', 1)
+                maintype, subtype = info['content_type'].split('/', 1)
                 subpart = MIMEBase(maintype, subtype)
                 subpart['Content-ID'] = name
                 subpart.set_payload(b64decode(info['data']))
