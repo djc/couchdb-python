@@ -7,6 +7,7 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+from base64 import b64encode
 from email import message_from_file
 from optparse import OptionParser
 import simplejson as json
@@ -20,12 +21,26 @@ def load_db(fileobj, dburl, username=None, password=None):
     db = Database(dburl)
     if username is not None and password is not None:
         db.resource.http.add_credentials(username, password)
+
     for part in envelope.get_payload():
         docid = part['Content-ID']
-        doc = json.loads(part.get_payload())
+        if part.is_multipart(): # doc has attachments
+            for subpart in part.walk():
+                if subpart is part:
+                    continue
+                if 'Content-ID' not in subpart:
+                    doc = json.loads(subpart.get_payload())
+                    doc['_attachments'] = {}
+                else:
+                    data = subpart.get_payload()
+                    doc['_attachments'][subpart['Content-ID']] = {
+                        'data': b64encode(data),
+                        'content-type': subpart['Content-Type'],
+                        'length': len(data)
+                    }
+        else:
+            doc = json.loads(part.get_payload())
         del doc['_rev']
-        if '_attachments' in doc:
-            del doc['_attachments']
         print>>sys.stderr, 'Loading document %r' % docid
         db[docid] = doc
 

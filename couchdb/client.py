@@ -697,6 +697,10 @@ def uri(base, *path, **query):
         if type(value) in (list, tuple):
             params.extend([(name, i) for i in value if i is not None])
         elif value is not None:
+            if value is True:
+                value = 'true'
+            elif value is False:
+                value = 'false'
             params.append((name, value))
     if params:
         retval.extend(['?', unicode_urlencode(params)])

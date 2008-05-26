@@ -7,6 +7,7 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+from base64 import b64decode
 from email.MIMEBase import MIMEBase
 from email.MIMEMultipart import MIMEMultipart
 from optparse import OptionParser
@@ -22,14 +23,27 @@ def dump_db(dburl, username=None, password=None, boundary=None):
     if username is not None and password is not None:
         db.resource.http.add_credentials(username, password)
     for docid in db:
-        doc = db[docid]
-        if '_attachments' in doc:
-            del doc['_attachments']
+        doc = db.get(docid, attachments=True)
         print>>sys.stderr, 'Dumping document %r' % doc.id
+        attachments = doc.pop('_attachments', {})
+
         part = MIMEBase('application', 'json')
+        part.set_payload(json.dumps(doc, sort_keys=True, indent=2))
+
+        if attachments:
+            inner = MIMEMultipart('mixed')
+            inner.attach(part)
+            for name, info in attachments.items():
+                maintype, subtype = info['content-type'].split('/', 1)
+                subpart = MIMEBase(maintype, subtype)
+                subpart['Content-ID'] = name
+                subpart.set_payload(b64decode(info['data']))
+                inner.attach(subpart)
+            part = inner
+
         part['Content-ID'] = doc.id
         part['ETag'] = doc.rev
-        part.set_payload(json.dumps(doc, sort_keys=True, indent=2))
+
         envelope.attach(part)
     return envelope.as_string()
 
