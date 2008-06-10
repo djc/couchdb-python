@@ -32,6 +32,10 @@ class DatabaseTestCase(unittest.TestCase):
         del self.db['foo/bar']
         self.assertEqual(None, self.db.get('foo/bar'))
 
+    def test_unicode(self):
+        self.db[u'føø'] = {u'bår': u'Iñtërnâtiônàlizætiøn'}
+        self.assertEqual(u'Iñtërnâtiônàlizætiøn', self.db[u'føø'][u'bår'])
+
     def test_doc_revs(self):
         doc = {'bar': 42}
         self.db['foo'] = doc
