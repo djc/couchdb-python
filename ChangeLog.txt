@@ -2,9 +2,11 @@ Version 0.4
 http://couchdb-python.googlecode.com/svn/tags/0.4.0
 (?, from branches/0.4.x)
 
+ * Updated for compatibility with CouchDB 0.8.0
  * Add command-line scripts for importing/exporting databases.
  * The `Database.update()` function will now actually perform the `POST`
    request even when you do not iterate over the results (issue 5).
+ * The `_view` prefix can now be omitted when specifying view names.
 
 
 Version 0.3

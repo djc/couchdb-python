@@ -394,6 +394,8 @@ class Database(object):
         :return: the view results
         :rtype: `ViewResults`
         """
+        if not name.startswith('_'):
+            name = '_view/' + name
         return PermanentView(uri(self.resource.uri, *name.split('/')), name,
                              wrapper=wrapper,
                              http=self.resource.http)(**options)
