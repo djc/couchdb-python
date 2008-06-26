@@ -265,7 +265,7 @@ class Database(object):
 
     def _get_name(self):
         if self._name is None:
-            self._name = self.resource.get()['db_name']
+            self._name = self.info()['db_name']
         return self._name
     name = property(_get_name)
 
@@ -295,6 +295,18 @@ class Database(object):
             return Document(self.resource.get(id, **options))
         except ResourceNotFound:
             return default
+
+    def info(self):
+        """Return information about the database as a dictionary.
+        
+        The returned dictionary exactly corresponds to the JSON response to
+        a ``GET`` request on the database URI.
+        
+        :return: a dictionary of database properties
+        :rtype: ``dict``
+        :since: 0.4
+        """
+        return self.resource.get()
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
@@ -386,7 +398,7 @@ class Database(object):
         
         >>> del server['python-tests']
         
-        :param name: the name of the view, including the `_view/design_docid`
+        :param name: the name of the view, including the ``_view/design_docid``
                      prefix for custom views
         :param wrapper: an optional callable that should be used to wrap the
                         result rows
@@ -559,8 +571,9 @@ class ViewResults(object):
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = [Row(r['id'], r['key'], r['value']) for r in data['rows']]
-        self._total_rows = data['total_rows']
+        self._rows = [Row(r.get('id'), r['key'], r['value'])
+                      for r in data['rows']]
+        self._total_rows = data.get('total_rows')
         self._offset = data.get('offset', 0)
 
     def _get_rows(self):
@@ -574,21 +587,25 @@ class ViewResults(object):
         """)
 
     def _get_total_rows(self):
-        if self._total_rows is None:
+        if self._rows is None:
             self._fetch()
         return self._total_rows
     total_rows = property(_get_total_rows, doc="""\
         The total number of rows in this view.
         
-        :type: `int`
+        This value is `None` for reduce views.
+        
+        :type: `int` or ``NoneType`` for reduce views
         """)
 
     def _get_offset(self):
-        if self._offset is None:
+        if self._rows is None:
             self._fetch()
         return self._offset
     offset = property(_get_offset, doc="""\
         The offset of the results from the first row in the view.
+        
+        This value is 0 for reduce views.
         
         :type: `int`
         """)
@@ -598,11 +615,14 @@ class Row(object):
     """Representation of a row as returned by database views."""
 
     def __init__(self, id, key, value):
-        self.id = id #: The document ID
+        self.id = id #: The document ID, or `None` for rows in a reduce view
         self.key = key #: The key of the row
         self.value = value #: The value of the row
 
     def __repr__(self):
+        if self.id is None:
+            return '<%s key=%r, value=%r>' % (type(self).__name__, self.key,
+                                              self.value)
         return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
                                                  self.key, self.value)
 
