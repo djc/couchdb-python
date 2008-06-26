@@ -13,6 +13,7 @@ import os
 import simplejson as json
 import sys
 import traceback
+from codecs import BOM_UTF8
 from types import FunctionType
 
 __all__ = ['main', 'run']
@@ -55,7 +56,7 @@ def run(input=sys.stdin, output=sys.stdout):
         return True
 
     def add_fun(string):
-        string = '\xef\xbb\xbf' + string.encode('utf-8')
+        string = BOM_UTF8 + string.encode('utf-8')
         globals_ = {}
         try:
             exec string in {}, globals_
@@ -83,7 +84,37 @@ def run(input=sys.stdin, output=sys.stdout):
                 output.write(json.dumps({'log': e.args[0]}))
         return results
 
-    handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc}
+    def reduce(*cmd, **kwargs):
+        code = BOM_UTF8 + cmd[0][0].encode('utf-8')
+        args = cmd[1:][0]
+        globals_ = {}
+        try:
+            exec code in {}, globals_
+        except Exception, e:
+            return {'error': {'id': 'reduce_compilation_error', 'reason': e.args[0]}}
+        err = {'error': {
+            'id': 'reduce_compilation_error',
+            'reason': 'string must eval to a function (ex: "def(doc): return 1")'
+        }}
+        if len(globals_) != 1:
+            return err
+        function = globals_.values()[0]
+        if type(function) is not FunctionType:
+            return err
+
+        results = []
+        keys,vals = zip(*args)
+        if(function.func_code.co_argcount == 3):
+            rereduce = kwargs['rereduce'] if kwargs.has_key('rereduce') else False
+            results = function(keys, vals, rereduce)
+        else:
+            results = function(keys, vals)
+        return [True, [results]]
+
+    def rereduce(*cmd):
+        reduce(cmd, rereduce=True)
+
+    handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc, 'reduce': reduce, 'rereduce': rereduce}
 
     try:
         while True:
