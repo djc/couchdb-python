@@ -271,6 +271,7 @@ class BooleanField(Field):
 
 
 class DecimalField(Field):
+    """Schema field for decimal values."""
 
     def _to_python(self, value):
         return Decimal(value)
@@ -452,7 +453,7 @@ class ListField(Field):
         return self.Proxy(value, self.field)
 
     def _to_json(self, value):
-        return list(value)
+        return [self.field._to_json(item) for item in value]
 
 
     class Proxy(list):
@@ -460,6 +461,24 @@ class ListField(Field):
         def __init__(self, list, field):
             self.list = list
             self.field = field
+
+        def __lt__(self, other):
+            return self.list < other
+
+        def __le__(self, other):
+            return self.list <= other
+
+        def __eq__(self, other):
+            return self.list == other
+
+        def __ne__(self, other):
+            return self.list != other
+
+        def __gt__(self, other):
+            return self.list > other
+
+        def __ge__(self, other):
+            return self.list >= other
 
         def __repr__(self):
             return repr(self.list)
