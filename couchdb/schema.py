@@ -82,13 +82,13 @@ class Field(object):
         if instance is None:
             return self
         value = instance._data.get(self.name)
-        if value is None and self.default is not None:
+        if value is not None:
+            value = self._to_python(value)
+        elif self.default is not None:
             default = self.default
             if callable(default):
                 default = default()
             value = default
-        if value is not None:
-            value = self._to_python(value)
         return value
 
     def __set__(self, instance, value):
