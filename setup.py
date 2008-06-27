@@ -123,7 +123,7 @@ interface for the CouchDB server.""",
         'Topic :: Database :: Front-Ends',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    packages = ['couchdb'],
+    packages = ['couchdb', 'couchdb.tools'],
     test_suite = 'couchdb.tests.suite',
 
     install_requires = ['httplib2', 'simplejson'],
