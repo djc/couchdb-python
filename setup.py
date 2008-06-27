@@ -103,7 +103,7 @@ class test_doc(Command):
 
 setup(
     name = 'CouchDB',
-    version = '0.3',
+    version = '0.5',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
