@@ -91,7 +91,10 @@ def run(input=sys.stdin, output=sys.stdout):
         try:
             exec code in {}, globals_
         except Exception, e:
-            return {'error': {'id': 'reduce_compilation_error', 'reason': e.args[0]}}
+            return {'error': {
+                'id': 'reduce_compilation_error',
+                'reason': e.args[0]
+            }}
         err = {'error': {
             'id': 'reduce_compilation_error',
             'reason': 'string must eval to a function (ex: "def(doc): return 1")'
@@ -103,10 +106,9 @@ def run(input=sys.stdin, output=sys.stdout):
             return err
 
         results = []
-        keys,vals = zip(*args)
-        if(function.func_code.co_argcount == 3):
-            rereduce = kwargs['rereduce'] if kwargs.has_key('rereduce') else False
-            results = function(keys, vals, rereduce)
+        keys, vals = zip(*args)
+        if function.func_code.co_argcount == 3:
+            results = function(keys, vals, kwargs.get('rereduce', False))
         else:
             results = function(keys, vals)
         return [True, [results]]
@@ -114,7 +116,8 @@ def run(input=sys.stdin, output=sys.stdout):
     def rereduce(*cmd):
         reduce(cmd, rereduce=True)
 
-    handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc, 'reduce': reduce, 'rereduce': rereduce}
+    handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc,
+                'reduce': reduce, 'rereduce': rereduce}
 
     try:
         while True:
