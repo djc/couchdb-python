@@ -26,7 +26,13 @@ False
 import httplib2
 from urllib import quote, urlencode
 import re
-import simplejson as json
+
+try:
+    import cjson as json
+    json.dumps = json.encode
+    json.loads = json.decode
+except ImportError:
+    import simplejson as json
 
 __all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
            'ServerError', 'Server', 'Database', 'Document', 'ViewResults',
