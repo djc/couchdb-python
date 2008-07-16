@@ -10,11 +10,17 @@
 """Implementation of a view server for functions written in Python."""
 
 import os
-import simplejson as json
 import sys
 import traceback
 from codecs import BOM_UTF8
 from types import FunctionType
+
+try:
+    import cjson as json
+    json.dumps = json.encode
+    json.loads = json.decode
+except ImportError:
+    import simplejson as json
 
 __all__ = ['main', 'run']
 __docformat__ = 'restructuredtext en'
