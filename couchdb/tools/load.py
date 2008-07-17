@@ -10,14 +10,8 @@
 from base64 import b64encode
 from email import message_from_file
 from optparse import OptionParser
+import simplejson as json
 import sys
-
-try:
-    import cjson as json
-    json.dumps = json.encode
-    json.loads = json.decode
-except ImportError:
-    import simplejson as json
 
 from couchdb import __version__ as VERSION
 from couchdb.client import Database
