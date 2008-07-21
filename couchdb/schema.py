@@ -173,19 +173,28 @@ class Schema(object):
 
 class Document(Schema):
 
+    def __init__(self, id=None, **values):
+        Schema.__init__(self, **values)
+        if id is not None:
+            self.id = id
+
     def __repr__(self):
         return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
                                   dict([(k, v) for k, v in self._data.items()
                                         if k not in ('_id', '_rev')]))
 
-    def id(self):
-        if hasattr(self._data, 'id'):
+    def _get_id(self):
+        if hasattr(self._data, 'id'): # When data is client.Document
             return self._data.id
         return self._data.get('_id')
-    id = property(id)
+    def _set_id(self, value):
+        if self.id is not None:
+            raise AttributeError('id can only be set on new documents')
+        self._data['_id'] = value
+    id = property(_get_id, _set_id)
 
     def rev(self):
-        if hasattr(self._data, 'rev'):
+        if hasattr(self._data, 'rev'): # When data is client.Document
             return self._data.rev
         return self._data.get('_rev')
     rev = property(rev)
@@ -197,11 +206,11 @@ class Document(Schema):
 
     def store(self, db):
         """Store the document in the given database."""
-        if getattr(self._data, 'id', None) is None:
+        if self.id is None:
             docid = db.create(self._data)
             self._data = db.get(docid)
         else:
-            db[self._data.id] = self._data
+            db[self.id] = self._data
         return self
 
     def query(cls, db, map_fun, reduce_fun, language='javascript',
