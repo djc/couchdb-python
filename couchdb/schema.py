@@ -200,8 +200,17 @@ class Document(Schema):
     rev = property(rev)
 
     def load(cls, db, id):
-        """Load a specific document from the given database."""
-        return cls.wrap(db.get(id))
+        """Load a specific document from the given database.
+        
+        :param db: the `Database` object to retrieve the document from
+        :param id: the document ID
+        :return: the `Document` instance, or `None` if no document with the
+                 given ID was found
+        """
+        doc = db.get(id)
+        if doc is None:
+            return None
+        return cls.wrap(doc)
     load = classmethod(load)
 
     def store(self, db):
