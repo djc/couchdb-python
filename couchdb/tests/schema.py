@@ -64,6 +64,16 @@ class DocumentTestCase(unittest.TestCase):
         except AttributeError, e:
             self.assertEqual('id can only be set on new documents', e.args[0])
 
+    def test_batch_update(self):
+        class Post(schema.Document):
+            title = schema.TextField()
+        post1 = Post(title='Foo bar')
+        post2 = Post(title='Foo baz')
+        results = list(self.db.update([post1, post2]))
+        self.assertEqual(2, len(results))
+        self.assertEqual(dict, type(results[0]))
+        self.assertEqual(dict, type(results[1]))
+
 
 class ListFieldTestCase(unittest.TestCase):
 

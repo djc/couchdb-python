@@ -199,6 +199,32 @@ class Document(Schema):
         return self._data.get('_rev')
     rev = property(rev)
 
+    def items(self):
+        """Return the fields as a list of ``(name, value)`` tuples.
+        
+        This method is provided to enable easy conversion to native dictionary
+        objects, for example to allow use of `schema.Document` instances with
+        `client.Database.update`.
+        
+        >>> class Post(Document):
+        ...     title = TextField()
+        ...     author = TextField()
+        >>> post = Post(id='foo-bar', title='Foo bar', author='Joe')
+        >>> sorted(post.items())
+        [('_id', 'foo-bar'), ('author', u'Joe'), ('title', u'Foo bar')]
+        
+        :return: a list of ``(name, value)`` tuples
+        """
+        retval = []
+        if self.id is not None:
+            retval.append(('_id', self.id))
+            if self.rev is not None:
+                retval.append(('_rev', self.rev))
+        for name, value in self._data.items():
+            if name not in ('_id', '_rev'):
+                retval.append((name, value))
+        return retval
+
     def load(cls, db, id):
         """Load a specific document from the given database.
         

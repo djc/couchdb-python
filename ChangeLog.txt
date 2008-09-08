@@ -1,3 +1,11 @@
+Version 0.4.1
+http://couchdb-python.googlecode.com/svn/tags/0.4.1
+(???, from branches/0.4.x)
+
+ * `schema.Document` objects can now be used in the documents list passed to
+   `client.Database.update()`.
+
+
 Version 0.4
 http://couchdb-python.googlecode.com/svn/tags/0.4.0
 (Jun 28, 2008, from branches/0.4.x)
