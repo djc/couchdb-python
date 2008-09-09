@@ -361,7 +361,8 @@ class Database(object):
         :param filename: the name of the attachment file
         :since: 0.4.1
         """
-        self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
+        resp, data = self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
+        doc.update({'_rev': data['rev']})
 
     def get_attachment(self, id_or_doc, filename, default=None):
         """Return an attachment from the specified doc id and filename.
@@ -399,9 +400,10 @@ class Database(object):
         """
         if hasattr(content, 'read'):
             content = content.read()
-        self.resource(doc['_id']).put(filename, content=content, headers={
+        resp, data = self.resource(doc['_id']).put(filename, content=content, headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
+        doc.update({'_rev': data['rev']})
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
