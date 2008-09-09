@@ -10,6 +10,7 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
  * The `Database` class now has a method `delete()` that takes a document
    dictionary as parameter. This method should be used in preference to
    `__del__` as it allow conflict detection and handling.
+ * Added `cache` and `timeout` arguments to the `client.Server` initializer.
 
 
 Version 0.4

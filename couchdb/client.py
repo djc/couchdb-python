@@ -85,13 +85,20 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri):
+    def __init__(self, uri, cache=None, timeout=None):
         """Initialize the server object.
         
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
+        :param cache: either a cache directory path (as a string) or an object
+                      compatible with the `httplib2.FileCache` interface. If
+                      `None` (the default), no caching is performed.
+        :param timeout: socket timeout in number of seconds, or `None` for no
+                        timeout
         """
-        self.resource = Resource(None, uri)
+        http = httplib2.Http(cache=cache, timeout=timeout)
+        http.force_exception_to_status_code = False
+        self.resource = Resource(http, uri)
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
