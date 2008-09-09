@@ -11,6 +11,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
    dictionary as parameter. This method should be used in preference to
    `__del__` as it allow conflict detection and handling.
  * Added `cache` and `timeout` arguments to the `client.Server` initializer.
+ * The `Database` class now provides methods for deleting, retrieving, and
+   updating attachments.
 
 
 Version 0.4

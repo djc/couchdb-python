@@ -252,7 +252,7 @@ class Database(object):
         :param id: the document ID
         """
         resp, data = self.resource.head(id)
-        self.resource.delete(id, headers={'If-Match': resp['etag']})
+        self.resource.delete(id, rev=resp['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -352,6 +352,56 @@ class Database(object):
         """
         resp, data = self.resource.get()
         return data
+
+    def delete_attachment(self, doc, filename):
+        """Delete the specified attachment.
+        
+        :param doc: the dictionary or `Document` object representing the
+                    document that the attachment belongs to
+        :param filename: the name of the attachment file
+        :since: 0.4.1
+        """
+        self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
+
+    def get_attachment(self, id_or_doc, filename, default=None):
+        """Return an attachment from the specified doc id and filename.
+        
+        :param id_or_doc: either a document ID or a dictionary or `Document`
+                          object representing the document that the attachment
+                          belongs to
+        :param filename: the name of the attachment file
+        :param default: default value to return when the document or attachment
+                        is not found
+        :return: the content of the attachment as a string, or the value of the
+                 `default` argument if the attachment is not found
+        :since: 0.4.1
+        """
+        if isinstance(id_or_doc, basestring):
+            id = id_or_doc
+        else:
+            id = id_or_doc['_id']
+        try:
+            resp, data = self.resource(id).get(filename)
+            return data
+        except ResourceNotFound:
+            return default
+
+    def put_attachment(self, doc, filename, content, content_type):
+        """Create or replace an attachment.
+        
+        :param doc: the dictionary or `Document` object representing the
+                    document that the attachment should be added to
+        :param filename: the name of the attachment file
+        :param content: the content to upload, either a file-like object or
+                        a string
+        :param content_type: content type of the attachment
+        :since: 0.4.1
+        """
+        if hasattr(content, 'read'):
+            content = content.read()
+        self.resource(doc['_id']).put(filename, content=content, headers={
+            'Content-Type': content_type
+        }, rev=doc['_rev'])
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
@@ -703,6 +753,9 @@ class Resource(object):
             http.force_exception_to_status_code = False
         self.http = http
         self.uri = uri
+
+    def __call__(self, path):
+        return type(self)(self.http, uri(self.uri, path))
 
     def delete(self, path=None, headers=None, **params):
         return self._request('DELETE', path, headers=headers, **params)

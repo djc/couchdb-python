@@ -52,6 +52,22 @@ class DatabaseTestCase(unittest.TestCase):
         old_doc = self.db.get('foo', rev=old_rev)
         self.assertEqual(old_rev, old_doc['_rev'])
 
+    def test_attachment_crud(self):
+        doc = {'bar': 42}
+        self.db['foo'] = doc
+
+        self.db.put_attachment(doc, 'foo.txt', 'Foo bar', 'text/plain')
+        doc = self.db['foo']
+        attachment = doc['_attachments']['foo.txt']
+        self.assertEqual(len('Foo bar'), attachment['length'])
+        self.assertEqual('text/plain', attachment['content_type'])
+
+        self.assertEqual('Foo bar', self.db.get_attachment(doc, 'foo.txt'))
+        self.assertEqual('Foo bar', self.db.get_attachment('foo', 'foo.txt'))
+
+        self.db.delete_attachment(doc, 'foo.txt')
+        self.assertEqual(None, self.db['foo'].get('_attachments'))
+
 
 def suite():
     suite = unittest.TestSuite()
