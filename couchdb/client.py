@@ -101,18 +101,20 @@ class Server(object):
         :return: `True` if a database with the name exists, `False` otherwise
         """
         try:
-            self.resource.get(validate_dbname(name)) # FIXME: should use HEAD
+            self.resource.head(validate_dbname(name))
             return True
         except ResourceNotFound:
             return False
 
     def __iter__(self):
         """Iterate over the names of all databases."""
-        return iter(self.resource.get('_all_dbs'))
+        resp, data = self.resource.get('_all_dbs')
+        return iter(data)
 
     def __len__(self):
         """Return the number of databases."""
-        return len(self.resource.get('_all_dbs'))
+        resp, data = self.resource.get('_all_dbs')
+        return len(data)
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.resource.uri)
@@ -138,7 +140,8 @@ class Server(object):
                         http=self.resource.http)
 
     def _get_version(self):
-        return self.resource.get()['version']
+        resp, data = self.resource.get()
+        return data['version']
     version = property(_get_version, doc="""\
         The version number tuple for the CouchDB server.
 
@@ -222,7 +225,7 @@ class Database(object):
         :return: `True` if a document with the ID exists, `False` otherwise
         """
         try:
-            self.resource.head(id) # FIXME: should use HEAD
+            self.resource.head(id)
             return True
         except ResourceNotFound:
             return False
@@ -233,15 +236,16 @@ class Database(object):
 
     def __len__(self):
         """Return the number of documents in the database."""
-        return self.resource.get()['doc_count']
+        resp, data = self.resource.get()
+        return data['doc_count']
 
     def __delitem__(self, id):
         """Remove the document with the specified ID from the database.
 
         :param id: the document ID
         """
-        doc = self[id] # FIXME: this should use HEAD once Etags are supported
-        self.resource.delete(id, rev=doc.rev)
+        resp, data = self.resource.head(id)
+        self.resource.delete(id, headers={'If-Match': resp['etag']})
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -250,7 +254,8 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        return Document(self.resource.get(id))
+        resp, data = self.resource.get(id)
+        return Document(data)
 
     def __setitem__(self, id, content):
         """Create or update a document with the specified ID.
@@ -260,8 +265,8 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        result = self.resource.put(id, content=content)
-        content.update({'_id': result['id'], '_rev': result['rev']})
+        resp, data = self.resource.put(id, content=content)
+        content.update({'_id': data['id'], '_rev': data['rev']})
 
     def _get_name(self):
         if self._name is None:
@@ -279,7 +284,37 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        return self.resource.post(content=data)['id']
+        resp, data = self.resource.post(content=data)
+        return data['id']
+
+    def delete(self, doc):
+        """Delete the given document from the database.
+
+        Use this method in preference over ``__del__`` to ensure you're
+        deleting the revision that you had previously retrieved. In the case
+        the document has been updated since it was retrieved, this method will
+        raise a `PreconditionFailed` exception.
+
+        >>> server = Server('http://localhost:5984/')
+        >>> db = server.create('python-tests')
+
+        >>> doc = dict(type='Person', name='John Doe')
+        >>> db['johndoe'] = doc
+        >>> doc2 = db['johndoe']
+        >>> doc2['age'] = 42
+        >>> db['johndoe'] = doc2
+        >>> db.delete(doc)
+        Traceback (most recent call last):
+          ...
+        PreconditionFailed: (u'conflict', u'Update conflict')
+
+        >>> del server['python-tests']
+        
+        :param doc: a dictionary or `Document` object holding the document data
+        :raise PreconditionFailed: if the document was updated in the database
+        :since: 0.4.1
+        """
+        self.resource.delete(doc['_id'], rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
         """Return the document with the specified ID.
@@ -292,9 +327,11 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            return Document(self.resource.get(id, **options))
+            resp, data = self.resource.get(id, **options)
         except ResourceNotFound:
             return default
+        else:
+            return Document(data)
 
     def info(self):
         """Return information about the database as a dictionary.
@@ -306,7 +343,8 @@ class Database(object):
         :rtype: ``dict``
         :since: 0.4
         """
-        return self.resource.get()
+        resp, data = self.resource.get()
+        return data
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
@@ -391,7 +429,7 @@ class Database(object):
                 docs.append(dict(doc.items()))
             else:
                 raise TypeError('expected dict, got %s' % type(doc))
-        data = self.resource.post('_bulk_docs', content={'docs': docs})
+        resp, data = self.resource.post('_bulk_docs', content={'docs': docs})
         assert data['ok'] # FIXME: Should probably raise a proper exception
         def _update():
             for idx, result in enumerate(data['new_revs']):
@@ -485,7 +523,8 @@ class PermanentView(View):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def _exec(self, options):
-        return self.resource.get(**self._encode_options(options))
+        resp, data = self.resource.get(**self._encode_options(options))
+        return data
 
 
 class TemporaryView(View):
@@ -508,9 +547,10 @@ class TemporaryView(View):
         if self.reduce_fun:
             body['reduce'] = self.reduce_fun
         content = json.dumps(body, ensure_ascii=False).encode('utf-8')
-        return self.resource.post(content=content,
-                                  headers={'Content-Type': 'application/json'},
-                                  **self._encode_options(options))
+        resp, data = self.resource.post(content=content, headers={
+            'Content-Type': 'application/json'
+        }, **self._encode_options(options))
+        return data
 
 
 class ViewResults(object):
@@ -711,7 +751,7 @@ class Resource(object):
             else:
                 raise ServerError((status_code, error))
 
-        return data
+        return resp, data
 
 
 def uri(base, *path, **query):

@@ -4,6 +4,12 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
 
  * `schema.Document` objects can now be used in the documents list passed to
    `client.Database.update()`.
+ * `Server.__contains__()` and `Database.__contains__()` now use the HTTP HEAD
+   method to avoid unnecessary transmission of data. `Database.__del__()` also
+   uses HEAD to determine the latest revision of the document.
+ * The `Database` class now has a method `delete()` that takes a document
+   dictionary as parameter. This method should be used in preference to
+   `__del__` as it allow conflict detection and handling.
 
 
 Version 0.4
