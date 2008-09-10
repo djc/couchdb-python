@@ -9,6 +9,7 @@
 import doctest
 import os
 import unittest
+import StringIO
 
 from couchdb import client
 
@@ -72,7 +73,28 @@ class DatabaseTestCase(unittest.TestCase):
         self.db.delete_attachment(doc, 'foo.txt')
         self.assertNotEquals(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
+        
+    def test_attachment_crud_with_files(self):
+        doc = {'bar': 42}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+        f = StringIO.StringIO('Foo bar baz')
+        
+        self.db.put_attachment(doc, 'foo.txt', f, 'text/plain')
+        self.assertNotEquals(old_rev, doc['_rev'])
 
+        doc = self.db['foo']
+        attachment = doc['_attachments']['foo.txt']
+        self.assertEqual(len('Foo bar baz'), attachment['length'])
+        self.assertEqual('text/plain', attachment['content_type'])
+
+        self.assertEqual('Foo bar baz', self.db.get_attachment(doc, 'foo.txt'))
+        self.assertEqual('Foo bar baz', self.db.get_attachment('foo', 'foo.txt'))
+
+        old_rev = doc['_rev']
+        self.db.delete_attachment(doc, 'foo.txt')
+        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertEqual(None, self.db['foo'].get('_attachments'))
 
 def suite():
     suite = unittest.TestSuite()
