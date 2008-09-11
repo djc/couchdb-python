@@ -118,7 +118,10 @@ class ReplicationHelper(object):
 
 
 def main():
-    parser = optparse.OptionParser(usage='%prog [options]', version=VERSION)
+    usage = '%prog [options] --source-server=http://server:port/ \
+--target-servers=http://server2:port2/[,http://server3:port3/, ...]'
+
+    parser = optparse.OptionParser(usage=usage, version=VERSION)
 
     parser.add_option('--source-server',
         action='store',
@@ -146,9 +149,11 @@ def main():
 
     options, arg = parser.parse_args()
 
-    options.target_servers = options.target_servers.split(',')
     if not options.target_servers or not options.source_server:
+        parser.error("Need at least --source-server and --target-servers")
         sys.exit(1)
+
+    options.target_servers = options.target_servers.split(',')
             
     ReplicationHelper(options)()
 
