@@ -58,7 +58,9 @@ class ReplicationHelper(object):
         # send replication request to target server
         for target_server in self.args.target_servers: 
             body['target'] = self.concat_uri(target_server, database)
-            self.http.request(self.concat_uri(self.args.source_server, '_replicate'), 'POST', 
+            self.http.request(
+                self.concat_uri(self.args.source_server, '_replicate'), 
+                'POST', 
                 body=json.dumps(body, ensure_ascii=False))
 
     def sync_databases(self):
