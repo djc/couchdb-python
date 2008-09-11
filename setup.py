@@ -132,7 +132,9 @@ interface for the CouchDB server.""",
         'console_scripts': [
             'couchpy = couchdb.view:main',
             'couchdb-dump = couchdb.tools.dump:main',
-            'couchdb-load = couchdb.tools.load:main'
+            'couchdb-load = couchdb.tools.load:main',
+            'couchdb-replicate= couchdb.tools.replication-helper:main'
+            'couchdb-replicate-test = couchdb.tools.replication-helper-test:main'
         ],
     },
 
