@@ -116,6 +116,7 @@ class ReplicationHelper(object):
                 time.sleep(1)
                 # implicit continue
 
+
 def main():
     parser = optparse.OptionParser(usage='%prog [options]', version=VERSION)
 
