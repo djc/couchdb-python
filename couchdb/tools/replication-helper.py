@@ -45,6 +45,7 @@ class ReplicationHelper(object):
         self.databases = []
 
     def concat_uri(self, server, path):
+        """Concat a server name and a path, is smart about slashes"""
         if not server.endswith("/"):
             return server + "/" + path
         else:
