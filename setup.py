@@ -133,8 +133,8 @@ interface for the CouchDB server.""",
             'couchpy = couchdb.view:main',
             'couchdb-dump = couchdb.tools.dump:main',
             'couchdb-load = couchdb.tools.load:main',
-            'couchdb-replicate= couchdb.tools.replication-helper:main'
-            'couchdb-replicate-test = couchdb.tools.replication-helper-test:main'
+            'couchdb-replicate= couchdb.tools.replication_helper:main',
+            'couchdb-replicate-test = couchdb.tools.replication_helper_test:main'
         ],
     },
 
