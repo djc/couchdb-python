@@ -35,6 +35,9 @@ __all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
 __docformat__ = 'restructuredtext en'
 
 
+DEFAULT_BASE_URI = 'http://localhost:5984/'
+
+
 class PreconditionFailed(Exception):
     """Exception raised when a 412 HTTP error is received in response to a
     request.
@@ -86,7 +89,7 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri, cache=None, timeout=None):
+    def __init__(self, uri=DEFAULT_BASE_URI, cache=None, timeout=None):
         """Initialize the server object.
         
         :param uri: the URI of the server (for example
