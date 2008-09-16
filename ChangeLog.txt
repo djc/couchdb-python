@@ -13,6 +13,9 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
  * Added `cache` and `timeout` arguments to the `client.Server` initializer.
  * The `Database` class now provides methods for deleting, retrieving, and
    updating attachments.
+ * The Python view server now exposes a `log()` function to map and reduce
+   functions (issue 21).
+ * Handling of the rereduce stage in the Python view server has been fixed.
 
 
 Version 0.4

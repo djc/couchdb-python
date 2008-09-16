@@ -19,37 +19,21 @@ from types import FunctionType
 __all__ = ['main', 'run']
 __docformat__ = 'restructuredtext en'
 
+
 def run(input=sys.stdin, output=sys.stdout):
     r"""CouchDB view function handler implementation for Python.
-
-    >>> from StringIO import StringIO
-
-    >>> output = StringIO()
-    >>> run(input=StringIO('["reset"]\n'), output=output)
-    >>> print output.getvalue()
-    true
-    <BLANKLINE>
-
-    >>> output = StringIO()
-    >>> run(input=StringIO('["add_fun", "def fun(doc): yield None, doc"]\n'),
-    ...     output=output)
-    >>> print output.getvalue()
-    true
-    <BLANKLINE>
-
-    >>> output = StringIO()
-    >>> run(input=StringIO('["add_fun", "def fun(doc): yield None, doc"]\n'
-    ...                    '["map_doc", {"foo": "bar"}]\n'),
-    ...     output=output)
-    >>> print output.getvalue()
-    true
-    [[[null, {"foo": "bar"}]]]
-    <BLANKLINE>
 
     :param input: the readable file-like object to read input from
     :param output: the writable file-like object to write output to
     """
     functions = []
+
+    def _log(message):
+        if not isinstance(message, basestring):
+            message = json.dumps(message)
+        output.write(json.dumps({'log': message}))
+        output.write('\n')
+        output.flush()
 
     def reset():
         del functions[:]
@@ -59,12 +43,16 @@ def run(input=sys.stdin, output=sys.stdout):
         string = BOM_UTF8 + string.encode('utf-8')
         globals_ = {}
         try:
-            exec string in {}, globals_
+            exec string in {'log': _log}, globals_
         except Exception, e:
-            return {'error': {'id': 'map_compilation_error', 'reason': e.args[0]}}
+            return {'error': {
+                'id': 'map_compilation_error',
+                'reason': e.args[0]
+            }}
         err = {'error': {
             'id': 'map_compilation_error',
-            'reason': 'string must eval to a function (ex: "def(doc): return 1")'
+            'reason': 'string must eval to a function '
+                      '(ex: "def(doc): return 1")'
         }}
         if len(globals_) != 1:
             return err
@@ -89,7 +77,7 @@ def run(input=sys.stdin, output=sys.stdout):
         args = cmd[1:][0]
         globals_ = {}
         try:
-            exec code in {}, globals_
+            exec code in {'log': _log}, globals_
         except Exception, e:
             return {'error': {
                 'id': 'reduce_compilation_error',
@@ -97,7 +85,8 @@ def run(input=sys.stdin, output=sys.stdout):
             }}
         err = {'error': {
             'id': 'reduce_compilation_error',
-            'reason': 'string must eval to a function (ex: "def(doc): return 1")'
+            'reason': 'string must eval to a function '
+                      '(ex: "def(keys, values): return 1")'
         }}
         if len(globals_) != 1:
             return err
@@ -105,16 +94,21 @@ def run(input=sys.stdin, output=sys.stdout):
         if type(function) is not FunctionType:
             return err
 
+        rereduce = kwargs.get('rereduce', False)
         results = []
-        keys, vals = zip(*args)
+        if rereduce:
+            keys = None
+            vals = args
+        else:
+            keys, vals = zip(*args)
         if function.func_code.co_argcount == 3:
-            results = function(keys, vals, kwargs.get('rereduce', False))
+            results = function(keys, vals, rereduce)
         else:
             results = function(keys, vals)
         return [True, [results]]
 
     def rereduce(*cmd):
-        reduce(cmd, rereduce=True)
+        return reduce(*cmd, **{'rereduce': True})
 
     handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc,
                 'reduce': reduce, 'rereduce': rereduce}
@@ -138,10 +132,12 @@ def run(input=sys.stdin, output=sys.stdout):
     except KeyboardInterrupt:
         return 0
 
+
 _VERSION = """%(name)s - CouchDB Python %(version)s
 
 Copyright (C) 2007 Christopher Lenz <cmlenz@gmx.de>.
 """
+
 _HELP = """Usage: %(name)s [OPTION]
 
 The %(name)s command runs the CouchDB Python view server.
@@ -155,6 +151,7 @@ Options:
 
 Report bugs via the web at <http://code.google.com/p/couchdb-python>.
 """
+
 
 def main():
     """Command-line entry point for running the view server."""
@@ -182,6 +179,7 @@ def main():
         sys.stderr.flush()
         sys.exit(1)
     sys.exit(run())
+
 
 if __name__ == '__main__':
     main()
