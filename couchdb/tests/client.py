@@ -58,7 +58,7 @@ class DatabaseTestCase(unittest.TestCase):
         self.db['foo'] = doc
         old_rev = doc['_rev']
         
-        self.db.put_attachment(doc, 'foo.txt', 'Foo bar', 'text/plain')
+        self.db.put_attachment(doc, 'Foo bar', 'foo.txt', 'text/plain')
         self.assertNotEquals(old_rev, doc['_rev'])
 
         doc = self.db['foo']
@@ -79,8 +79,8 @@ class DatabaseTestCase(unittest.TestCase):
         self.db['foo'] = doc
         old_rev = doc['_rev']
         f = StringIO.StringIO('Foo bar baz')
-        
-        self.db.put_attachment(doc, 'foo.txt', f, 'text/plain')
+
+        self.db.put_attachment(doc, f, 'foo.txt')
         self.assertNotEquals(old_rev, doc['_rev'])
 
         doc = self.db['foo']

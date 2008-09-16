@@ -24,6 +24,7 @@ False
 """
 
 import httplib2
+from mimetypes import guess_type
 from urllib import quote, urlencode
 import re
 import simplejson as json
@@ -387,20 +388,33 @@ class Database(object):
         except ResourceNotFound:
             return default
 
-    def put_attachment(self, doc, filename, content, content_type):
+    def put_attachment(self, doc, content, filename=None, content_type=None):
         """Create or replace an attachment.
-        
+
         :param doc: the dictionary or `Document` object representing the
                     document that the attachment should be added to
-        :param filename: the name of the attachment file
         :param content: the content to upload, either a file-like object or
                         a string
-        :param content_type: content type of the attachment
+        :param filename: the name of the attachment file; if omitted, this
+                         function tries to get the filename from the file-like
+                         object passed as the `content` argument value
+        :param content_type: content type of the attachment; if omitted, the
+                             MIME type is guessed based on the file name
+                             extension
         :since: 0.4.1
         """
         if hasattr(content, 'read'):
             content = content.read()
-        resp, data = self.resource(doc['_id']).put(filename, content=content, headers={
+        if filename is None:
+            if hasattr(content, 'name'):
+                filename = content.name
+            else:
+                raise ValueError('no filename specified for attachment')
+        if content_type is None:
+            content_type = ';'.join(filter(None, guess_type(filename)))
+
+        resp, data = self.resource(doc['_id']).put(filename, content=content,
+                                                   headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
         doc.update({'_rev': data['rev']})
