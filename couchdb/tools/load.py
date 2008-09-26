@@ -15,39 +15,51 @@ import sys
 
 from couchdb import __version__ as VERSION
 from couchdb.client import Database
+from couchdb.multipart import read_multipart
 
-def load_db(fileobj, dburl, username=None, password=None):
-    envelope = message_from_file(fileobj)
+
+def load_db(fileobj, dburl, username=None, password=None, ignore_errors=False):
     db = Database(dburl)
     if username is not None and password is not None:
         db.resource.http.add_credentials(username, password)
 
-    for part in envelope.get_payload():
-        docid = part['Content-ID']
-        if part.is_multipart(): # doc has attachments
-            for subpart in part.walk():
-                if subpart is part:
-                    continue
-                if 'Content-ID' not in subpart:
-                    doc = json.loads(subpart.get_payload())
+    for headers, is_multipart, payload in read_multipart(fileobj):
+        docid = headers['content-id']
+
+        if is_multipart: # doc has attachments
+            for headers, _, payload in payload:
+                if 'content-id' not in headers:
+                    doc = json.loads(payload)
                     doc['_attachments'] = {}
                 else:
-                    data = subpart.get_payload()
-                    doc['_attachments'][subpart['Content-ID']] = {
-                        'data': b64encode(data),
-                        'content-type': subpart['Content-Type'],
-                        'length': len(data)
+                    doc['_attachments'][headers['content-id']] = {
+                        'data': b64encode(payload),
+                        'content_type': headers['content-type'],
+                        'length': len(payload)
                     }
-        else:
-            doc = json.loads(part.get_payload())
+
+        else: # no attachments, just the JSON
+            doc = json.loads(payload)
+
         del doc['_rev']
+        print json.dumps(doc, indent=True)
         print>>sys.stderr, 'Loading document %r' % docid
-        db[docid] = doc
+        try:
+            db[docid] = doc
+        except Exception, e:
+            if not ignore_errors:
+                raise
+            print>>sys.stderr, 'Error: %s' % e
+
 
 def main():
     parser = OptionParser(usage='%prog [options] dburl', version=VERSION)
     parser.add_option('--input', action='store', dest='input', metavar='FILE',
                       help='the name of the file to read from')
+    parser.add_option('--ignore-errors', action='store_true',
+                      dest='ignore_errors',
+                      help='whether to ignore errors in document creation '
+                           'and continue with the remaining documents')
     parser.add_option('-u', '--username', action='store', dest='username',
                       help='the username to use for authentication')
     parser.add_option('-p', '--password', action='store', dest='password',
@@ -64,7 +76,8 @@ def main():
         fileobj = sys.stdin
 
     load_db(fileobj, args[0], username=options.username,
-            password=options.password)
+            password=options.password, ignore_errors=options.ignore_errors)
+
 
 if __name__ == '__main__':
     main()

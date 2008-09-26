@@ -95,7 +95,7 @@ class Server(object):
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
         :param cache: either a cache directory path (as a string) or an object
-                      compatible with the `httplib2.FileCache` interface. If
+                      compatible with the ``httplib2.FileCache`` interface. If
                       `None` (the default), no caching is performed.
         :param timeout: socket timeout in number of seconds, or `None` for no
                         timeout
