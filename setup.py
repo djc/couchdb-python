@@ -126,7 +126,7 @@ interface for the CouchDB server.""",
     packages = ['couchdb', 'couchdb.tools'],
     test_suite = 'couchdb.tests.suite',
 
-    install_requires = ['httplib2', 'simplejson'],
+    install_requires = ['httplib2'],
 
     entry_points = {
         'console_scripts': [

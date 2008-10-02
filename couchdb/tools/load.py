@@ -10,7 +10,10 @@
 from base64 import b64encode
 from email import message_from_file
 from optparse import OptionParser
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json # Python 2.6
 import sys
 
 from couchdb import __version__ as VERSION

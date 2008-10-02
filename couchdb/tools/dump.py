@@ -11,7 +11,10 @@ from base64 import b64decode
 from email.MIMEBase import MIMEBase
 from email.MIMEMultipart import MIMEMultipart
 from optparse import OptionParser
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json # Python 2.6
 import sys
 
 from couchdb import __version__ as VERSION

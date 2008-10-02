@@ -9,11 +9,14 @@
 
 """Implementation of a view server for functions written in Python."""
 
+from codecs import BOM_UTF8
 import os
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json # Python 2.6
 import sys
 import traceback
-from codecs import BOM_UTF8
 from types import FunctionType
 
 __all__ = ['main', 'run']

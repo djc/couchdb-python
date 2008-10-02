@@ -31,7 +31,10 @@ import optparse
 import os
 import sys
 import time
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json # Python 2.6
 from couchdb import __version__ as VERSION
 
 

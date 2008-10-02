@@ -27,7 +27,10 @@ import httplib2
 from mimetypes import guess_type
 from urllib import quote, urlencode
 import re
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json # Python 2.6
 
 __all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
            'ServerError', 'Server', 'Database', 'Document', 'ViewResults',

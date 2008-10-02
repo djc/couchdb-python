@@ -37,6 +37,9 @@ def read_multipart(fileobj, boundary=None):
     buf = []
     outer = in_headers = boundary is None
 
+    next_boundary = boundary and '--' + boundary + '\n' or None
+    last_boundary = boundary and '--' + boundary + '--\n' or None
+
     def _current_part():
         payload = ''.join(buf)
         if payload.endswith('\n'):
@@ -53,14 +56,15 @@ def read_multipart(fileobj, boundary=None):
                 mimetype, params = parse_header(headers.get('content-type'))
                 if mimetype.startswith('multipart/'):
                     sub_boundary = params['boundary']
+                    sub_parts = read_multipart(fileobj, boundary=sub_boundary)
                     if boundary is not None:
-                        yield headers, True, read_multipart(fileobj,
-                            boundary=sub_boundary)
-                        return
+                        yield headers, True, sub_parts
                     else:
-                        boundary = sub_boundary
+                        for part in sub_parts:
+                            yield part
+                    return
 
-        elif boundary and line == '--' + boundary + '\n':
+        elif line == next_boundary:
             # We've reached the start of a new part, as indicated by the
             # boundary
             if headers:
@@ -71,7 +75,7 @@ def read_multipart(fileobj, boundary=None):
                 headers.clear()
                 del buf[:]
             in_headers = True
-        elif boundary and line == '--' + boundary + '--\n':
+        elif line == last_boundary:
             # We're done with this multipart envelope
             break
 
