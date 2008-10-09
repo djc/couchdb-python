@@ -20,6 +20,7 @@ import sys
 from couchdb import __version__ as VERSION
 from couchdb.client import Database
 
+
 def dump_db(dburl, username=None, password=None, boundary=None):
     envelope = MIMEMultipart('mixed', boundary)
     db = Database(dburl)
@@ -53,6 +54,7 @@ def dump_db(dburl, username=None, password=None, boundary=None):
         envelope.attach(part)
     return envelope.as_string()
 
+
 def main():
     parser = OptionParser(usage='%prog [options] dburl', version=VERSION)
     parser.add_option('-u', '--username', action='store', dest='username',
@@ -67,6 +69,7 @@ def main():
 
     print dump_db(args[0], username=options.username,
                   password=options.password)
+
 
 if __name__ == '__main__':
     main()

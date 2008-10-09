@@ -595,7 +595,6 @@ class PermanentView(View):
 
     def __init__(self, uri, name, wrapper=None, http=None):
         View.__init__(self, uri, wrapper=wrapper, http=http)
-        self.resource = Resource(http, uri)
         self.name = name
 
     def __repr__(self):
@@ -612,7 +611,6 @@ class TemporaryView(View):
     def __init__(self, uri, map_fun=None, reduce_fun=None,
                  language='javascript', wrapper=None, http=None):
         View.__init__(self, uri, wrapper=wrapper, http=http)
-        self.resource = Resource(http, uri)
         self.map_fun = map_fun
         self.reduce_fun = reduce_fun
         self.language = language
@@ -870,10 +868,12 @@ def uri(base, *path, **query):
 
     return ''.join(retval)
 
+
 def unicode_quote(string, safe=''):
     if isinstance(string, unicode):
         string = string.encode('utf-8')
     return quote(string, safe)
+
 
 def unicode_urlencode(data):
     if isinstance(data, dict):
@@ -884,6 +884,7 @@ def unicode_urlencode(data):
             value = value.encode('utf-8')
         params.append((name, value))
     return urlencode(params)
+
 
 VALID_DB_NAME = re.compile(r'^[a-z0-9_$()+-/]+$')
 def validate_dbname(name):
