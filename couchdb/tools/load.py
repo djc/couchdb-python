@@ -45,7 +45,6 @@ def load_db(fileobj, dburl, username=None, password=None, ignore_errors=False):
             doc = json.loads(payload)
 
         del doc['_rev']
-        print json.dumps(doc, indent=True)
         print>>sys.stderr, 'Loading document %r' % docid
         try:
             db[docid] = doc
