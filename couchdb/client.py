@@ -27,6 +27,7 @@ import httplib2
 from mimetypes import guess_type
 from urllib import quote, urlencode
 import re
+import socket
 try:
     import simplejson as json
 except ImportError:
@@ -129,6 +130,14 @@ class Server(object):
         """Return the number of databases."""
         resp, data = self.resource.get('_all_dbs')
         return len(data)
+
+    def __nonzero__(self):
+        """Return whether the server is available."""
+        try:
+            self.resource.head()
+            return True
+        except:
+            return False
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.resource.uri)
@@ -252,6 +261,14 @@ class Database(object):
         """Return the number of documents in the database."""
         resp, data = self.resource.get()
         return data['doc_count']
+
+    def __nonzero__(self):
+        """Return whether the database is available."""
+        try:
+            self.resource.head()
+            return True
+        except:
+            return False
 
     def __delitem__(self, id):
         """Remove the document with the specified ID from the database.
@@ -808,8 +825,16 @@ class Resource(object):
             else:
                 body = content
 
-        resp, data = self.http.request(uri(self.uri, path, **params), method,
-                                       body=body, headers=headers)
+        def _make_request(retry=1):
+            try:
+                return self.http.request(uri(self.uri, path, **params), method,
+                                             body=body, headers=headers)
+            except socket.error, e:
+                if retry > 0 and e.args[0] == 54: # reset by peer
+                    return _make_request(retry - 1)
+                raise
+        resp, data = _make_request()
+
         status_code = int(resp.status)
         if data and resp.get('content-type') == 'application/json':
             try:

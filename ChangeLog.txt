@@ -16,6 +16,10 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
  * The Python view server now exposes a `log()` function to map and reduce
    functions (issue 21).
  * Handling of the rereduce stage in the Python view server has been fixed.
+ * The `Server` and `Database` classes now implement the `__nonzero__` hook
+   so that they produce sensible results in boolean conditions.
+ * The client module will now reattempt a request that failed with a
+   "connection reset by peer" error.
 
 
 Version 0.4
