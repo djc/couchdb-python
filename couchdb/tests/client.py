@@ -38,6 +38,13 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(u'Iñtërnâtiônàlizætiøn', self.db[u'føø'][u'bår'])
         self.assertEqual(u'ASCII', self.db[u'føø'][u'baz'])
 
+    def test_disallow_nan(self):
+        try:
+            self.db['foo'] = {u'number': float('nan')}
+            self.fail('Expected ValueError')
+        except ValueError, e:
+            pass
+
     def test_doc_revs(self):
         doc = {'bar': 42}
         self.db['foo'] = doc

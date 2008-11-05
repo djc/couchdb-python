@@ -599,7 +599,7 @@ class View(object):
         for name, value in options.items():
             if name in ('key', 'startkey', 'endkey') \
                     or not isinstance(value, basestring):
-                value = json.dumps(value, ensure_ascii=False)
+                value = json.dumps(value, allow_nan=False, ensure_ascii=False)
             retval[name] = value
         return retval
 
@@ -640,7 +640,8 @@ class TemporaryView(View):
         body = {'map': self.map_fun, 'language': self.language}
         if self.reduce_fun:
             body['reduce'] = self.reduce_fun
-        content = json.dumps(body, ensure_ascii=False).encode('utf-8')
+        content = json.dumps(body, allow_nan=False,
+                             ensure_ascii=False).encode('utf-8')
         resp, data = self.resource.post(content=content, headers={
             'Content-Type': 'application/json'
         }, **self._encode_options(options))
@@ -820,7 +821,8 @@ class Resource(object):
         body = None
         if content is not None:
             if not isinstance(content, basestring):
-                body = json.dumps(content, ensure_ascii=False).encode('utf-8')
+                body = json.dumps(content, allow_nan=False,
+                                  ensure_ascii=False).encode('utf-8')
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content

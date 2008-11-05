@@ -20,6 +20,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
    so that they produce sensible results in boolean conditions.
  * The client module will now reattempt a request that failed with a
    "connection reset by peer" error.
+ * inf/nan values now raise a `ValueError` on the client side instead of
+   triggering an internal server error (issue 31).
 
 
 Version 0.4
