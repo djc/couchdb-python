@@ -80,7 +80,7 @@ class DatabaseTestCase(unittest.TestCase):
         self.db.delete_attachment(doc, 'foo.txt')
         self.assertNotEquals(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
-        
+
     def test_attachment_crud_with_files(self):
         doc = {'bar': 42}
         self.db['foo'] = doc
@@ -102,6 +102,17 @@ class DatabaseTestCase(unittest.TestCase):
         self.db.delete_attachment(doc, 'foo.txt')
         self.assertNotEquals(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
+
+    def test_include_docs(self):
+        doc = {'foo': 42, 'bar': 40}
+        self.db['foo'] = doc
+
+        rows = list(self.db.query(
+            'function(doc) { emit(doc._id, null); }',
+            include_docs=True
+        ))
+        self.assertEqual(1, len(rows))
+        self.assertEqual(doc, rows[0].doc)
 
 
 def suite():

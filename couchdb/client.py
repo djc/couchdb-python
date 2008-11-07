@@ -337,7 +337,7 @@ class Database(object):
         >>> db.delete(doc)
         Traceback (most recent call last):
           ...
-        PreconditionFailed: (u'conflict', u'Update conflict')
+        PreconditionFailed: (u'conflict', u'Document update conflict.')
 
         >>> del server['python-tests']
         
@@ -726,8 +726,7 @@ class ViewResults(object):
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = [Row(r.get('id'), r['key'], r['value'])
-                      for r in data['rows']]
+        self._rows = [Row(row) for row in data['rows']]
         self._total_rows = data.get('total_rows')
         self._offset = data.get('offset', 0)
 
@@ -766,13 +765,8 @@ class ViewResults(object):
         """)
 
 
-class Row(object):
+class Row(dict):
     """Representation of a row as returned by database views."""
-
-    def __init__(self, id, key, value):
-        self.id = id #: The document ID, or `None` for rows in a reduce view
-        self.key = key #: The key of the row
-        self.value = value #: The value of the row
 
     def __repr__(self):
         if self.id is None:
@@ -780,6 +774,31 @@ class Row(object):
                                               self.value)
         return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
                                                  self.key, self.value)
+
+    def _get_id(self):
+        return self.get('id')
+    id = property(_get_id, doc="""\
+        The associated Document ID if it exists. Returns `None` when it
+        doesn't (reduce results).
+    """)
+
+    def _get_key(self):
+        return self['key']
+    key = property(_get_key, doc='The associated key.')
+
+    def _get_value(self):
+        return self['value']
+    value = property(_get_value, doc='The associated value.')
+
+    def _get_doc(self):
+        doc = self.get('doc')
+        if doc:
+            return Document(doc)
+    doc = property(_get_doc, doc="""\
+        The associated document for the row. This is only present when the
+        view was accessed with ``include_docs=True`` as a query parameter,
+        otherwise this property will be `None`.
+    """)
 
 
 # Internals

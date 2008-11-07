@@ -26,6 +26,9 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
    managing views in design documents, so that they can be defined in the
    Python application code, and the design documents actually stored in the
    database can be kept in sync with the definitions in the code.
+ * The `include_docs` option for CouchDB views is now supported by the new
+   `doc` property of row instances in view results. Thanks to Paul Davis for
+   the patch.
 
 
 Version 0.4
