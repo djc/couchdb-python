@@ -13,6 +13,9 @@ from itertools import groupby
 from operator import attrgetter
 from textwrap import dedent
 
+__all__ = ['ViewDefinition']
+__docformat__ = 'restructuredtext en'
+
 
 class ViewDefinition(object):
     r"""Definition of a view stored in a specific design document.
@@ -51,7 +54,7 @@ class ViewDefinition(object):
     """
 
     def __init__(self, design, name, map_fun, reduce_fun=None,
-                 language='javascript', wrapper=None):
+                 language='javascript', wrapper=None, **defaults):
         """Initialize the view definition.
         
         Note that the code in `map_fun` and `reduce_fun` is automatically
@@ -76,6 +79,7 @@ class ViewDefinition(object):
         self.reduce_fun = reduce_fun
         self.language = language
         self.wrapper = wrapper
+        self.defaults = defaults
 
     def __call__(self, db, **options):
         """Execute the view in the given database.
@@ -85,8 +89,10 @@ class ViewDefinition(object):
         :return: the view results
         :rtype: `ViewResults`
         """
+        merged_options = self.defaults.copy()
+        merged_options.update(options)
         return db.view('/'.join([self.design, self.name]),
-                       wrapper=self.wrapper, **options)
+                       wrapper=self.wrapper, **merged_options)
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__,

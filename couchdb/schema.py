@@ -68,6 +68,8 @@ __all__ = ['Schema', 'Document', 'Field', 'TextField', 'FloatField',
            'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField']
 __docformat__ = 'restructuredtext en'
 
+DEFAULT = object()
+
 
 class Field(object):
     """Basic unit for mapping a piece of data between Python and JSON.
@@ -206,28 +208,39 @@ class View(object):
     """
 
     def __init__(self, design, map_fun, reduce_fun=None,
-                 language='javascript'):
+                 name=None, language='javascript', wrapper=DEFAULT,
+                 **defaults):
         """Initialize the view descriptor.
         
         :param design: the name of the design document
         :param map_fun: the map function code
         :param reduce_fun: the reduce function code (optional)
+        :param name: the actual name of the view in the design document, if
+                     it differs from the name the descriptor is assigned to
         :param language: the name of the language used
+        :param wrapper: an optional callable that should be used to wrap the
+                        result rows
+        :param defaults: default query string parameters to apply
         """
         self.design = design
-        self.name = None
+        self.name = name
         self.map_fun = map_fun
         self.reduce_fun = reduce_fun
         self.language = language
+        self.wrapper = wrapper
+        self.defaults = defaults
 
     def __get__(self, instance, cls=None):
-        def _wrapper(row):
-            data = row.value
-            data['_id'] = row.id
-            return cls.wrap(data)
+        if self.wrapper is DEFAULT:
+            def wrapper(row):
+                data = row.value
+                data['_id'] = row.id
+                return cls.wrap(data)
+        else:
+            wrapper = self.wrapper
         return ViewDefinition(self.design, self.name, self.map_fun,
                               self.reduce_fun, language=self.language,
-                              wrapper=_wrapper)
+                              wrapper=wrapper, **self.defaults)
 
 
 class DocumentMeta(SchemaMeta):
