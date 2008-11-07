@@ -24,8 +24,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
    triggering an internal server error (issue 31).
  * Added a new `couchdb.design` module that provides functionality for
    managing views in design documents, so that they can be defined in the
-   Python application code, and kept in sync with the design documents
-   actually stored in the database.
+   Python application code, and the design documents actually stored in the
+   database can be kept in sync with the definitions in the code.
 
 
 Version 0.4

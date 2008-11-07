@@ -11,10 +11,11 @@
 from copy import deepcopy
 from itertools import groupby
 from operator import attrgetter
+from textwrap import dedent
 
 
 class ViewDefinition(object):
-    """Definition of a view stored in a specific design document.
+    r"""Definition of a view stored in a specific design document.
     
     An instance of this class can be used to access the results of the view,
     as well as to keep the view definition in the design document up to date
@@ -53,6 +54,10 @@ class ViewDefinition(object):
                  language='javascript', wrapper=None):
         """Initialize the view definition.
         
+        Note that the code in `map_fun` and `reduce_fun` is automatically
+        dedented, that is, any common leading whitespace is removed from each
+        line.
+        
         :param design: the name of the design document
         :param name: the name of the view
         :param map_fun: the map function code
@@ -65,7 +70,9 @@ class ViewDefinition(object):
             design = design[8:]
         self.design = design
         self.name = name
-        self.map_fun = map_fun
+        self.map_fun = dedent(map_fun.lstrip('\n\r'))
+        if reduce_fun:
+            reduce_fun = dedent(reduce_fun.lstrip('\n\r'))
         self.reduce_fun = reduce_fun
         self.language = language
         self.wrapper = wrapper
@@ -121,7 +128,8 @@ class ViewDefinition(object):
                                instances should be removed
         :param callback: a callback function that is invoked when a design
                          document gets updated; the callback gets passed the
-                         design document as only parameter
+                         design document as only parameter, before that doc
+                         has actually been saved back to the database
         """
         docs = []
 

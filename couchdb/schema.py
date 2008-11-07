@@ -174,17 +174,23 @@ class Schema(object):
 
 
 class View(object):
-    """Descriptor that can be used to bind a view definition to a property of
+    r"""Descriptor that can be used to bind a view definition to a property of
     a `Document` class.
     
     >>> class Person(Document):
     ...     name = TextField()
     ...     age = IntegerField()
-    ...     by_name = View('people', '''function(doc) {
-    ...         emit(doc.name, doc.age);
-    ...     }''')
+    ...     by_name = View('people', '''\
+    ...         function(doc) {
+    ...             emit(doc.name, doc.age);
+    ...         }''')
     >>> Person.by_name
     <ViewDefinition '_view/people/by_name'>
+    
+    >>> print Person.by_name.map_fun
+    function(doc) {
+        emit(doc.name, doc.age);
+    }
     
     That property can be used as a function, which will execute the view.
     
