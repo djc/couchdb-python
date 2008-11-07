@@ -61,6 +61,8 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from time import strptime, struct_time
 
+from couchdb.design import ViewDefinition
+
 __all__ = ['Schema', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
            'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField']
@@ -171,7 +173,69 @@ class Schema(object):
         return self.unwrap()
 
 
+class View(object):
+    """Descriptor that can be used to bind a view definition to a property of
+    a `Document` class.
+    
+    >>> class Person(Document):
+    ...     name = TextField()
+    ...     age = IntegerField()
+    ...     by_name = View('people', '''function(doc) {
+    ...         emit(doc.name, doc.age);
+    ...     }''')
+    >>> Person.by_name
+    <ViewDefinition '_view/people/by_name'>
+    
+    That property can be used as a function, which will execute the view.
+    
+    >>> from couchdb import Database
+    >>> db = Database('http://localhost:5984/python-tests')
+    
+    >>> Person.by_name(db, count=3)
+    <ViewResults <PermanentView '_view/people/by_name'> {'count': 3}>
+    
+    Actual results produced are automatically wrapped in the `Document`
+    subclass the descriptor is bound to. In this example, it would return
+    instances of the `Person` class.
+    """
+
+    def __init__(self, design, map_fun, reduce_fun=None,
+                 language='javascript'):
+        """Initialize the view descriptor.
+        
+        :param design: the name of the design document
+        :param map_fun: the map function code
+        :param reduce_fun: the reduce function code (optional)
+        :param language: the name of the language used
+        """
+        self.design = design
+        self.name = None
+        self.map_fun = map_fun
+        self.reduce_fun = reduce_fun
+        self.language = language
+
+    def __get__(self, instance, cls=None):
+        def _wrapper(row):
+            data = row.value
+            data['_id'] = row.id
+            return cls.wrap(data)
+        return ViewDefinition(self.design, self.name, self.map_fun,
+                              self.reduce_fun, language=self.language,
+                              wrapper=_wrapper)
+
+
+class DocumentMeta(SchemaMeta):
+
+    def __new__(cls, name, bases, d):
+        for attrname, attrval in d.items():
+            if isinstance(attrval, View):
+                if not attrval.name:
+                    attrval.name = attrname
+        return SchemaMeta.__new__(cls, name, bases, d)
+
+
 class Document(Schema):
+    __metaclass__ = DocumentMeta
 
     def __init__(self, id=None, **values):
         Schema.__init__(self, **values)

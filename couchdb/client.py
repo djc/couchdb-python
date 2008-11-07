@@ -689,6 +689,8 @@ class ViewResults(object):
     
     >>> list(results[['City', 'Gotham City']])
     [<Row id=u'gotham', key=[u'City', u'Gotham City'], value=u'Gotham City'>]
+
+    >>> del server['python-tests']
     """
 
     def __init__(self, view, options):

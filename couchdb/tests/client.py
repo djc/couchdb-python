@@ -103,11 +103,13 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertNotEquals(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
 
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')

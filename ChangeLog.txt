@@ -22,6 +22,10 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
    "connection reset by peer" error.
  * inf/nan values now raise a `ValueError` on the client side instead of
    triggering an internal server error (issue 31).
+ * Added a new `couchdb.design` module that provides functionality for
+   managing views in design documents, so that they can be defined in the
+   Python application code, and kept in sync with the design documents
+   actually stored in the database.
 
 
 Version 0.4
