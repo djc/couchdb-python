@@ -233,6 +233,8 @@ class View(object):
     def __get__(self, instance, cls=None):
         if self.wrapper is DEFAULT:
             def wrapper(row):
+                if row.doc is not None:
+                    return cls.wrap(row.doc)
                 data = row.value
                 data['_id'] = row.id
                 return cls.wrap(data)
@@ -340,10 +342,13 @@ class Document(Schema):
         included in the values of the view will be treated as if they were
         missing from the document. If you'd rather want to load the full
         document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document.
+        this will initiate a new HTTP request for every document, unless the
+        `include_docs` option is explitly specified.
         """
         def _wrapper(row):
             if eager:
+                if row.doc is not None:
+                    return row.doc
                 return cls.load(db, row.id)
             data = row.value
             data['_id'] = row.id
@@ -360,10 +365,13 @@ class Document(Schema):
         included in the values of the view will be treated as if they were
         missing from the document. If you'd rather want to load the full
         document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document.
+        this will initiate a new HTTP request for every document, unless the
+        `include_docs` option is explitly specified.
         """
         def _wrapper(row):
             if eager:
+                if row.doc is not None:
+                    return row.doc
                 return cls.load(db, row.id)
             data = row.value
             data['_id'] = row.id
