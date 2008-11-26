@@ -566,11 +566,11 @@ class ListField(Field):
     >>> post = Post.load(db, post.id)
     >>> comment = post.comments[0]
     >>> comment['author']
-    u'myself'
+    'myself'
     >>> comment['content']
-    u'Bla bla'
+    'Bla bla'
     >>> comment['time'] #doctest: +ELLIPSIS
-    u'...T...Z'
+    '...T...Z'
 
     >>> del server['python-tests']
     """

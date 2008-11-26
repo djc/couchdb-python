@@ -13,9 +13,9 @@
 >>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
 >>> doc['type']
-u'Person'
+'Person'
 >>> doc['name']
-u'John Doe'
+'John Doe'
 >>> del db[doc.id]
 >>> doc.id in db
 False
@@ -201,18 +201,18 @@ class Database(object):
 
     >>> doc = db[doc_id]
     >>> doc                 #doctest: +ELLIPSIS
-    <Document u'...'@... {...}>
+    <Document '...'@... {...}>
 
     Documents are represented as instances of the `Row` class, which is
     basically just a normal dictionary with the additional attributes ``id`` and
     ``rev``:
 
     >>> doc.id, doc.rev     #doctest: +ELLIPSIS
-    (u'...', ...)
+    ('...', ...)
     >>> doc['type']
-    u'Person'
+    'Person'
     >>> doc['name']
-    u'John Doe'
+    'John Doe'
 
     To update an existing document, you use item access, too:
 
@@ -337,7 +337,7 @@ class Database(object):
         >>> db.delete(doc)
         Traceback (most recent call last):
           ...
-        PreconditionFailed: (u'conflict', u'Document update conflict.')
+        PreconditionFailed: ('conflict', 'Document update conflict.')
 
         >>> del server['python-tests']
         
@@ -497,9 +497,9 @@ class Database(object):
         ...     Document(type='City', name='Gotham City')
         ... ]):
         ...     print repr(doc) #doctest: +ELLIPSIS
-        <Document u'...'@u'...' {'type': 'Person', 'name': 'John Doe'}>
-        <Document u'...'@u'...' {'type': 'Person', 'name': 'Mary Jane'}>
-        <Document u'...'@u'...' {'type': 'City', 'name': 'Gotham City'}>
+        <Document '...'@'...' {'type': 'Person', 'name': 'John Doe'}>
+        <Document '...'@'...' {'type': 'Person', 'name': 'Mary Jane'}>
+        <Document '...'@'...' {'type': 'City', 'name': 'Gotham City'}>
         
         >>> del server['python-tests']
         
@@ -688,7 +688,7 @@ class ViewResults(object):
     can still return multiple rows:
     
     >>> list(results[['City', 'Gotham City']])
-    [<Row id=u'gotham', key=[u'City', u'Gotham City'], value=u'Gotham City'>]
+    [<Row id='gotham', key=['City', 'Gotham City'], value='Gotham City'>]
 
     >>> del server['python-tests']
     """

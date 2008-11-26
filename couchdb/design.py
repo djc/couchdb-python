@@ -40,7 +40,7 @@ class ViewDefinition(object):
 
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
-    <Document u'_design/tests'@u'...' {...}>
+    <Document '_design/tests'@'...' {...}>
     >>> print design_doc['views']['all']['map']
     function(doc) {
         emit(doc._id, null);
