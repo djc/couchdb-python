@@ -103,6 +103,18 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertNotEquals(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
 
+    def test_empty_attachment(self):
+        doc = {}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+
+        self.db.put_attachment(doc, '', 'empty.txt')
+        self.assertNotEquals(old_rev, doc['_rev'])
+
+        doc = self.db['foo']
+        attachment = doc['_attachments']['empty.txt']
+        self.assertEqual(0, attachment['length'])
+
     def test_include_docs(self):
         doc = {'foo': 42, 'bar': 40}
         self.db['foo'] = doc

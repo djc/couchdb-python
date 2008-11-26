@@ -847,6 +847,7 @@ class Resource(object):
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content
+            headers.setdefault('Content-Length', str(len(body)))
 
         def _make_request(retry=1):
             try:
