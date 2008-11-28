@@ -20,8 +20,10 @@ DbUpdateNotificationProcess=/path/to/this/script/replication-helper.py \
 Format of messages it reads
 {"db":"replication_notification_test","type":"updated"}
 
-Todo: Generic'-out the listener part and implement the resplication trigger as
+Todo: 
+ - Generic'-out the listener part and implement the resplication trigger as
 a delegate or subclass.
+ - Check if sub-second sleep delays are possible
 """
 
 import fcntl
@@ -67,15 +69,37 @@ class ReplicationHelper(object):
                 'POST', 
                 body=json.dumps(body, ensure_ascii=False))
 
+    def trigger_creation(self, database):
+        """Creates database in all --target-servers"""
+        
+        # send creation request to target server
+        for target_server in self.args.target_servers: 
+            self.http.request(
+                self.concat_uri(target_server, database), 
+                'PUT',) 
+
+    def trigger_deletion(self, database):
+        """Deletes database in all --target-servers"""
+        # send deletion request to target server
+        for target_server in self.args.target_servers: 
+            self.http.request(
+                self.concat_uri(target_server, database), 
+                'DELETE',) 
+
     def sync_databases(self):
         """Sync self.databases to all target servers"""
 
         if len(self.databases) > 0:
-            for database in self.databases:
+            for operation, database in self.databases:
                 try:
                     # not elegant, but we just don't care for problems
                     # CouchDB will relaunch us
-                    self.trigger_replication(database)
+                    if operation == 'updated':
+                        self.trigger_replication(database)
+                    elif operation == 'deleted':
+                        self.trigger_deletion(database)
+                    elif operation == 'created':
+                        self.trigger_creation(database)
                 except httplib.HTTPException:
                     sys.exit(0)
 
@@ -103,7 +127,7 @@ class ReplicationHelper(object):
                 if note['type'] == 'delete' and not args.ignore_deletes:
                     continue
 
-                self.databases.append(note['db']) 
+                self.databases.append((note['type'], note['db'])) 
                 
                 # if there are more docs that we want to batch, flush
                 if len(self.databases) >= int(args.batch_threshold):
@@ -116,7 +140,7 @@ class ReplicationHelper(object):
                     self.sync_databases()
                     wait_counter = time.time()
 
-                time.sleep(1)
+                time.sleep(float(args.wait_threshold))
                 # implicit continue
 
 
