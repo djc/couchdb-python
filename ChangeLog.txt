@@ -1,6 +1,6 @@
-Version 0.4.1
-http://couchdb-python.googlecode.com/svn/tags/0.4.1
-(???, from branches/0.4.x)
+Version 0.5
+http://couchdb-python.googlecode.com/svn/tags/0.5.0
+(Nov 28, 2008, from branches/0.5.x)
 
  * `schema.Document` objects can now be used in the documents list passed to
    `client.Database.update()`.
@@ -28,7 +28,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.1
    database can be kept in sync with the definitions in the code.
  * The `include_docs` option for CouchDB views is now supported by the new
    `doc` property of row instances in view results. Thanks to Paul Davis for
-   the patch.
+   the patch (issue 33).
+ * The `keys` option for views is now supported (issue 35).
 
 
 Version 0.4

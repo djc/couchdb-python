@@ -618,7 +618,13 @@ class PermanentView(View):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def _exec(self, options):
-        resp, data = self.resource.get(**self._encode_options(options))
+        if 'keys' in options:
+            options = options.copy()
+            keys = {'keys': options.pop('keys')}
+            resp, data = self.resource.post(content=keys,
+                                            **self._encode_options(options))
+        else:
+            resp, data = self.resource.get(**self._encode_options(options))
         return data
 
 
@@ -640,6 +646,9 @@ class TemporaryView(View):
         body = {'map': self.map_fun, 'language': self.language}
         if self.reduce_fun:
             body['reduce'] = self.reduce_fun
+        if 'keys' in options:
+            options = options.copy()
+            body['keys'] = options.pop('keys')
         content = json.dumps(body, allow_nan=False,
                              ensure_ascii=False).encode('utf-8')
         resp, data = self.resource.post(content=content, headers={

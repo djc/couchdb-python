@@ -126,6 +126,30 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(1, len(rows))
         self.assertEqual(doc, rows[0].doc)
 
+    def test_query_multi_get(self):
+        for i in range(1, 6):
+            self.db.create({'i': i})
+        res = list(self.db.query('function(doc) { emit(doc.i, null); }',
+                                 keys=range(1, 6, 2)))
+        self.assertEqual(3, len(res))
+        for idx, i in enumerate(range(1, 6, 2)):
+            self.assertEqual(i, res[idx].key)
+
+    def test_view_multi_get(self):
+        for i in range(1, 6):
+            self.db.create({'i': i})
+        self.db['_design/test'] = {
+            'language': 'javascript',
+            'views': {
+                'multi_key': {'map': 'function(doc) { emit(doc.i, null); }'}
+            }
+        }
+
+        res = list(self.db.view('test/multi_key', keys=range(1, 6, 2)))
+        self.assertEqual(3, len(res))
+        for idx, i in enumerate(range(1, 6, 2)):
+            self.assertEqual(i, res[idx].key)
+
 
 def suite():
     suite = unittest.TestSuite()
