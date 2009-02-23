@@ -7,7 +7,9 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+import shutil
 import os
+import tempfile
 import unittest
 from couchdb import ResourceConflict, ResourceNotFound, Server
 
@@ -16,7 +18,8 @@ class CouchTests(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = Server(uri, cache='.test_cache')
+        self.cache_dir = tempfile.mkdtemp(prefix='couchdb')
+        self.server = Server(uri, cache=self.cache_dir)
         if 'python-tests' in self.server:
             del self.server['python-tests']
         self.db = self.server.create('python-tests')
@@ -24,6 +27,7 @@ class CouchTests(unittest.TestCase):
     def tearDown(self):
         if 'python-tests' in self.server:
             del self.server['python-tests']
+        shutil.rmtree(self.cache_dir)
 
     def _create_test_docs(self, num):
         for i in range(num):
