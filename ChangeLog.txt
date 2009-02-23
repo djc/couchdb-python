@@ -1,3 +1,11 @@
+Version 0.6
+http://couchdb-python.googlecode.com/svn/tags/0.6.0
+(???, from branches/0.6.x)
+
+ * `schema.DictField` instances no longer need to be bound to a `Schema`
+   (issue 51).
+
+
 Version 0.5
 http://couchdb-python.googlecode.com/svn/tags/0.5.0
 (Nov 28, 2008, from branches/0.5.x)

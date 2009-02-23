@@ -513,9 +513,14 @@ class DictField(Field):
     ...         name = TextField(),
     ...         email = TextField()
     ...     ))
+    ...     extra = DictField()
 
-    >>> post = Post(title='Foo bar', author=dict(name='John Doe',
-    ...                                          email='john@doe.com'))
+    >>> post = Post(
+    ...     title='Foo bar',
+    ...     author=dict(name='John Doe',
+    ...                 email='john@doe.com'),
+    ...     extra=dict(foo='bar'),
+    ... )
     >>> post.store(db) #doctest: +ELLIPSIS
     <Post ...>
     >>> post = Post.load(db, post.id)
@@ -523,17 +528,24 @@ class DictField(Field):
     u'John Doe'
     >>> post.author.email
     u'john@doe.com'
+    >>> post.extra
+    {'foo': 'bar'}
 
     >>> del server['python-tests']
     """
-    def __init__(self, schema, name=None, default=None):
+    def __init__(self, schema=None, name=None, default=None):
         Field.__init__(self, name=name, default=default or {})
         self.schema = schema
 
     def _to_python(self, value):
-        return self.schema.wrap(value)
+        if self.schema is None:
+            return value
+        else:
+            return self.schema.wrap(value)
 
     def _to_json(self, value):
+        if self.schema is None:
+            return value
         if not isinstance(value, Schema):
             value = self.schema(**value)
         return value.unwrap()
