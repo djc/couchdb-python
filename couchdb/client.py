@@ -380,13 +380,17 @@ class Database(object):
     def delete_attachment(self, doc, filename):
         """Delete the specified attachment.
         
+        Note that the provided `doc` is required to have a `_rev` field. Thus,
+        if the `doc` is based on a view row, the view row would need to include
+        the `_rev` field.
+
         :param doc: the dictionary or `Document` object representing the
                     document that the attachment belongs to
         :param filename: the name of the attachment file
         :since: 0.4.1
         """
         resp, data = self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
-        doc.update({'_rev': data['rev']})
+        doc['_rev'] = data['rev']
 
     def get_attachment(self, id_or_doc, filename, default=None):
         """Return an attachment from the specified doc id and filename.
@@ -414,6 +418,10 @@ class Database(object):
     def put_attachment(self, doc, content, filename=None, content_type=None):
         """Create or replace an attachment.
 
+        Note that the provided `doc` is required to have a `_rev` field. Thus,
+        if the `doc` is based on a view row, the view row would need to include
+        the `_rev` field.
+
         :param doc: the dictionary or `Document` object representing the
                     document that the attachment should be added to
         :param content: the content to upload, either a file-like object or
@@ -440,7 +448,7 @@ class Database(object):
                                                    headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
-        doc.update({'_rev': data['rev']})
+        doc['_rev'] = data['rev']
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):

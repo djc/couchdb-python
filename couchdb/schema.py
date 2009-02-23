@@ -149,6 +149,12 @@ class Schema(object):
     def __setitem__(self, name, value):
         self._data[name] = value
 
+    def get(self, name, default):
+        return self._data.get(name, default)
+
+    def setdefault(self, name, default):
+        return sef._data.setdefault(name, default)
+
     def unwrap(self):
         return self._data
 
