@@ -324,7 +324,7 @@ class Database(object):
         Use this method in preference over ``__del__`` to ensure you're
         deleting the revision that you had previously retrieved. In the case
         the document has been updated since it was retrieved, this method will
-        raise a `PreconditionFailed` exception.
+        raise a `ResourceConflict` exception.
 
         >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
@@ -337,12 +337,12 @@ class Database(object):
         >>> db.delete(doc)
         Traceback (most recent call last):
           ...
-        PreconditionFailed: ('conflict', 'Document update conflict.')
+        ResourceConflict: ('conflict', 'Document update conflict.')
 
         >>> del server['python-tests']
         
         :param doc: a dictionary or `Document` object holding the document data
-        :raise PreconditionFailed: if the document was updated in the database
+        :raise ResourceConflict: if the document was updated in the database
         :since: 0.4.1
         """
         self.resource.delete(doc['_id'], rev=doc['_rev'])

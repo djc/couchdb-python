@@ -9,14 +9,14 @@
 
 import os
 import unittest
-from couchdb import PreconditionFailed, ResourceNotFound, Server
+from couchdb import ResourceConflict, ResourceNotFound, Server
 
 
 class CouchTests(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = Server(uri)
+        self.server = Server(uri, cache='.test_cache')
         if 'python-tests' in self.server:
             del self.server['python-tests']
         self.db = self.server.create('python-tests')
@@ -93,11 +93,11 @@ class CouchTests(unittest.TestCase):
         doc1['a'] = 2
         doc2['a'] = 3
         self.db['foo'] = doc1
-        self.assertRaises(PreconditionFailed, self.db.__setitem__, 'foo', doc2)
+        self.assertRaises(ResourceConflict, self.db.__setitem__, 'foo', doc2)
 
         # try submitting without the revision info
         data = {'_id': 'foo', 'a': 3, 'b': 1}
-        self.assertRaises(PreconditionFailed, self.db.__setitem__, 'foo', data)
+        self.assertRaises(ResourceConflict, self.db.__setitem__, 'foo', data)
 
         del self.db['foo']
         self.db['foo'] = data
