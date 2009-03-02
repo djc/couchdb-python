@@ -24,7 +24,7 @@ False
 """
 
 import httplib2
-from mimetypes import guess_type
+import mimetypes
 from urllib import quote, urlencode
 import re
 import socket
@@ -442,7 +442,7 @@ class Database(object):
             else:
                 raise ValueError('no filename specified for attachment')
         if content_type is None:
-            content_type = ';'.join(filter(None, guess_type(filename)))
+            content_type = ';'.join(filter(None, mimetypes.guess_type(filename)))
 
         resp, data = self.resource(doc['_id']).put(filename, content=content,
                                                    headers={
