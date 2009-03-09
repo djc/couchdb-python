@@ -27,6 +27,10 @@ class DatabaseTestCase(unittest.TestCase):
         if 'python-tests' in self.server:
             del self.server['python-tests']
 
+    def test_create_large_doc(self):
+        self.db['foo'] = {'data': '0123456789' * 110 * 1024} # 10 MB
+        self.assertEqual('foo', self.db['foo']['_id'])
+
     def test_doc_id_quoting(self):
         self.db['foo/bar'] = {'foo': 'bar'}
         self.assertEqual('bar', self.db['foo/bar']['foo'])
@@ -150,6 +154,21 @@ class DatabaseTestCase(unittest.TestCase):
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
 
+    def test_view_function_objects(self):
+        for i in range(1, 4):
+            self.db.create({'i': i, 'j':2*i})
+        
+        map_fun = lambda doc: (yield doc['i'], doc['j'])
+        res = list(self.db.query(map_fun, language='python'))
+        self.assertEqual(3, len(res))
+        for idx, i in enumerate(range(1,4)):
+            self.assertEqual(i, res[idx].key)
+            self.assertEqual(2*i, res[idx].value)
+        
+        reduce_fun = lambda keys,values,rereduce: sum(values)
+        res = list(self.db.query(map_fun, reduce_fun, 'python'))
+        self.assertEqual(1, len(res))
+        self.assertEqual(12, res[0].value)
 
 def suite():
     suite = unittest.TestSuite()

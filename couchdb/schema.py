@@ -190,14 +190,14 @@ class View(object):
     ...     age = IntegerField()
     ...     by_name = View('people', '''\
     ...         function(doc) {
-    ...             emit(doc.name, doc.age);
+    ...             emit(doc.name, doc);
     ...         }''')
     >>> Person.by_name
     <ViewDefinition '_view/people/by_name'>
     
     >>> print Person.by_name.map_fun
     function(doc) {
-        emit(doc.name, doc.age);
+        emit(doc.name, doc);
     }
     
     That property can be used as a function, which will execute the view.
@@ -208,14 +208,35 @@ class View(object):
     >>> Person.by_name(db, count=3)
     <ViewResults <PermanentView '_view/people/by_name'> {'count': 3}>
     
-    Actual results produced are automatically wrapped in the `Document`
-    subclass the descriptor is bound to. In this example, it would return
-    instances of the `Person` class.
+    The results produced by the view are automatically wrapped in the
+    `Document` subclass the descriptor is bound to. In this example, it would
+    return instances of the `Person` class. But please note that this requires
+    the values of the view results to be dictionaries that can be mapped to the
+    schema defined by the containing `Document` class. Alternatively, the
+    ``include_docs`` query option can be used to inline the actual documents in
+    the view results, which will then be used instead of the values.
+    
+    If you use Python view functions, this class can also be used as a
+    decorator:
+    
+    >>> class Person(Document):
+    ...     name = TextField()
+    ...     age = IntegerField()
+    ...
+    ...     @View.define('people')
+    ...     def by_name(doc):
+    ...         yield doc['name'], doc
+    
+    >>> Person.by_name
+    <ViewDefinition '_view/people/by_name'>
+
+    >>> print Person.by_name.map_fun
+    def by_name(doc):
+        yield doc['name'], doc
     """
 
-    def __init__(self, design, map_fun, reduce_fun=None,
-                 name=None, language='javascript', wrapper=DEFAULT,
-                 **defaults):
+    def __init__(self, design, map_fun, reduce_fun=None, name=None,
+                 language='javascript', wrapper=DEFAULT, **defaults):
         """Initialize the view descriptor.
         
         :param design: the name of the design document
@@ -235,6 +256,15 @@ class View(object):
         self.language = language
         self.wrapper = wrapper
         self.defaults = defaults
+
+    @classmethod
+    def define(cls, design, name=None, language='python', wrapper=DEFAULT,
+               **defaults):
+        """Factory method for use as a decorator."""
+        def wrapper(fun):
+            return cls(design, fun, language=language, wrapper=wrapper,
+                       **defaults)
+        return wrapper
 
     def __get__(self, instance, cls=None):
         if self.wrapper is DEFAULT:
@@ -349,7 +379,7 @@ class Document(Schema):
         missing from the document. If you'd rather want to load the full
         document for every row, set the `eager` option to `True`, but note that
         this will initiate a new HTTP request for every document, unless the
-        `include_docs` option is explitly specified.
+        ``include_docs`` option is explitly specified.
         """
         def _wrapper(row):
             if eager:
@@ -372,7 +402,7 @@ class Document(Schema):
         missing from the document. If you'd rather want to load the full
         document for every row, set the `eager` option to `True`, but note that
         this will initiate a new HTTP request for every document, unless the
-        `include_docs` option is explitly specified.
+        ``include_docs`` option is explitly specified.
         """
         def _wrapper(row):
             if eager:

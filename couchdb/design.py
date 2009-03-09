@@ -9,9 +9,11 @@
 """Utility code for managing design documents."""
 
 from copy import deepcopy
+from inspect import getsource
 from itertools import groupby
 from operator import attrgetter
 from textwrap import dedent
+from types import FunctionType
 
 __all__ = ['ViewDefinition']
 __docformat__ = 'restructuredtext en'
@@ -46,6 +48,20 @@ class ViewDefinition(object):
         emit(doc._id, null);
     }
 
+    If you use a Python view server, you can also use Python functions instead
+    of code embedded in strings:
+    
+    >>> def my_map(doc):
+    ...     yield doc['somekey'], doc['somevalue']
+    >>> view = ViewDefinition('test2', 'somename', my_map, language='python')
+    >>> view.sync(db)
+    >>> design_doc = view.get_doc(db)
+    >>> design_doc                                          #doctest: +ELLIPSIS
+    <Document '_design/test2'@'...' {...}>
+    >>> print design_doc['views']['somename']['map']
+    def my_map(doc):
+        yield doc['somekey'], doc['somevalue']
+    
     Use the static `sync_many()` method to create or update a collection of
     views in the database in an atomic and efficient manner, even across
     different design documents.
@@ -73,9 +89,13 @@ class ViewDefinition(object):
             design = design[8:]
         self.design = design
         self.name = name
-        self.map_fun = dedent(map_fun.lstrip('\n\r'))
+        if isinstance(map_fun, FunctionType):
+            map_fun = _strip_decorators(getsource(map_fun).rstrip())
+        self.map_fun = dedent(map_fun.lstrip('\n'))
+        if isinstance(reduce_fun, FunctionType):
+            reduce_fun = _strip_decorators(getsource(reduce_fun).rstrip())
         if reduce_fun:
-            reduce_fun = dedent(reduce_fun.lstrip('\n\r'))
+            reduce_fun = dedent(reduce_fun.lstrip('\n'))
         self.reduce_fun = reduce_fun
         self.language = language
         self.wrapper = wrapper
@@ -172,3 +192,15 @@ class ViewDefinition(object):
                 docs.append(doc)
 
         db.update(docs)
+
+
+def _strip_decorators(code):
+    retval = []
+    beginning = True
+    for line in code.splitlines():
+        if beginning and not line.isspace():
+            if line.lstrip().startswith('@'):
+                continue
+            beginning = False
+        retval.append(line)
+    return '\n'.join(retval)
