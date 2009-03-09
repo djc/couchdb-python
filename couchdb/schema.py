@@ -206,7 +206,7 @@ class View(object):
     >>> db = Database('http://localhost:5984/python-tests')
     
     >>> Person.by_name(db, count=3)
-    <ViewResults <PermanentView '_view/people/by_name'> {'count': 3}>
+    <ViewResults <PermanentView '_design/people/_view/by_name'> {'count': 3}>
     
     The results produced by the view are automatically wrapped in the
     `Document` subclass the descriptor is bound to. In this example, it would

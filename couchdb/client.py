@@ -561,8 +561,10 @@ class Database(object):
         
         >>> del server['python-tests']
         
-        :param name: the name of the view, including the ``_view/design_docid``
-                     prefix for custom views
+        :param name: the name of the view; for custom views, use the format
+                     ``design_docid/viewname``, that is, the document ID of the
+                     design document and the name of the view, separated by a
+                     slash
         :param wrapper: an optional callable that should be used to wrap the
                         result rows
         :param options: optional query string parameters
@@ -570,7 +572,8 @@ class Database(object):
         :rtype: `ViewResults`
         """
         if not name.startswith('_'):
-            name = '_view/' + name
+            design, name = name.split('/', 1)
+            name = '/'.join(['_design', design, '_view', name])
         return PermanentView(uri(self.resource.uri, *name.split('/')), name,
                              wrapper=wrapper,
                              http=self.resource.http)(**options)

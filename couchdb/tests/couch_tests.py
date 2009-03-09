@@ -213,10 +213,10 @@ class CouchTests(unittest.TestCase):
             'no_docs': {'map': 'function(doc) {}'},
             'single_doc': {'map': 'function(doc) { if (doc._id == "1") emit(null, 1) }'}
         }}
-        for idx, row in enumerate(self.db.view('_view/test/all_docs')):
+        for idx, row in enumerate(self.db.view('test/all_docs')):
             self.assertEqual(idx, row.key)
-        self.assertEqual(0, len(list(self.db.view('_view/test/no_docs'))))
-        self.assertEqual(1, len(list(self.db.view('_view/test/single_doc'))))
+        self.assertEqual(0, len(list(self.db.view('test/no_docs'))))
+        self.assertEqual(1, len(list(self.db.view('test/single_doc'))))
 
     def test_collation(self):
         values = [
