@@ -537,9 +537,8 @@ class Database(object):
             else:
                 raise TypeError('expected dict, got %s' % type(doc))
         resp, data = self.resource.post('_bulk_docs', content={'docs': docs})
-        assert data['ok'] # FIXME: Should probably raise a proper exception
         def _update():
-            for idx, result in enumerate(data['new_revs']):
+            for idx, result in enumerate(data):
                 doc = documents[idx]
                 if isinstance(doc, dict):
                     doc.update({'_id': result['id'], '_rev': result['rev']})
