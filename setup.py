@@ -11,6 +11,7 @@ from distutils.cmd import Command
 import doctest
 from glob import glob
 import os
+import sys
 try:
     from setuptools import setup
 except ImportError:
@@ -126,7 +127,8 @@ interface for the CouchDB server.""",
     packages = ['couchdb', 'couchdb.tools'],
     test_suite = 'couchdb.tests.suite',
 
-    install_requires = ['httplib2'],
+    install_requires = ['httplib2'] + \
+        ['simplejson'] if sys.version_info < (2, 6) else [],
 
     entry_points = {
         'console_scripts': [
