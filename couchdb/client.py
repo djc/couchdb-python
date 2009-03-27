@@ -496,7 +496,7 @@ class Database(object):
                              reduce_fun, language=language, wrapper=wrapper,
                              http=self.resource.http)(**options)
 
-    def update(self, documents):
+    def update(self, documents, **options):
         """Perform a bulk update or insertion of the given documents using a
         single HTTP request.
         
@@ -536,15 +536,20 @@ class Database(object):
                 docs.append(dict(doc.items()))
             else:
                 raise TypeError('expected dict, got %s' % type(doc))
-        resp, data = self.resource.post('_bulk_docs', content={'docs': docs})
+        content = options
+        content.update(docs=docs)
+        resp, data = self.resource.post('_bulk_docs', content=content)
         def _update():
             for idx, result in enumerate(data):
-                doc = documents[idx]
-                if isinstance(doc, dict):
-                    doc.update({'_id': result['id'], '_rev': result['rev']})
-                    yield doc
-                else:
+                if 'error' in result:
                     yield result
+                else:
+                    doc = documents[idx]
+                    if isinstance(doc, dict):
+                        doc.update({'_id': result['id'], '_rev': result['rev']})
+                        yield doc
+                    else:
+                        yield result
         return _update()
 
     def view(self, name, wrapper=None, **options):
