@@ -18,6 +18,7 @@ except ImportError:
     from distutils.core import setup
 import sys
 
+
 class build_doc(Command):
     description = 'Builds the documentation'
     user_options = [
@@ -102,6 +103,11 @@ class test_doc(Command):
             doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
+requirements = ['httplib2']
+if sys.version_info < (2, 6):
+    requirements += ['simplejson']
+
+
 setup(
     name = 'CouchDB',
     version = '0.5',
@@ -127,8 +133,7 @@ interface for the CouchDB server.""",
     packages = ['couchdb', 'couchdb.tools'],
     test_suite = 'couchdb.tests.suite',
 
-    install_requires = ['httplib2'] + \
-        ['simplejson'] if sys.version_info < (2, 6) else [],
+    install_requires = requirements,
 
     entry_points = {
         'console_scripts': [
