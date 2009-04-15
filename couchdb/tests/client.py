@@ -14,6 +14,17 @@ import StringIO
 from couchdb import client
 
 
+class ServerTestCase(unittest.TestCase):
+
+    def setUp(self):
+        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
+        self.server = client.Server(uri)
+
+    def test_server_vars(self):
+        version = self.server.version
+        config = self.server.config
+
+
 class DatabaseTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -155,6 +166,9 @@ class DatabaseTestCase(unittest.TestCase):
             self.assertEqual(i, res[idx].key)
 
     def test_view_function_objects(self):
+        if 'python' not in self.server.config['query_servers']:
+            return
+
         for i in range(1, 4):
             self.db.create({'i': i, 'j':2*i})
 

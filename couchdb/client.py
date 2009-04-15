@@ -165,6 +165,19 @@ class Server(object):
         return Database(uri(self.resource.uri, name), validate_dbname(name),
                         http=self.resource.http)
 
+    def _get_config(self):
+        resp, data = self.resource.get('/_config')
+        return data
+    config = property(_get_config, doc="""\
+        The configuration of the CouchDB server.
+
+        The configuration is represented as a nested dictionary of sections and
+        options from the configuration files of the server, or the default
+        values for options that are not explicitly configured.
+
+        :type: `dict`
+        """)
+
     def _get_version(self):
         resp, data = self.resource.get()
         return data['version']
