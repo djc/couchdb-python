@@ -166,7 +166,7 @@ class Server(object):
                         http=self.resource.http)
 
     def _get_config(self):
-        resp, data = self.resource.get('/_config')
+        resp, data = self.resource.get('_config')
         return data
     config = property(_get_config, doc="""\
         The configuration of the CouchDB server.
@@ -333,6 +333,18 @@ class Database(object):
         """
         resp, data = self.resource.post(content=data)
         return data['id']
+
+    def compact(self):
+        """Compact the database.
+
+        This will try to prune all revisions from the database.
+
+        :return: a boolean to indicate whether the compaction was initiated
+                 successfully
+        :rtype: `bool`
+        """
+        resp, data = self.resource.post('_compact')
+        return data['ok']
 
     def delete(self, doc):
         """Delete the given document from the database.

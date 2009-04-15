@@ -2,8 +2,11 @@ Version 0.6
 http://couchdb-python.googlecode.com/svn/tags/0.6.0
 (???, from branches/0.6.x)
 
+ * Compatible with CouchDB 0.9.x.
  * `schema.DictField` instances no longer need to be bound to a `Schema`
    (issue 51).
+ * Added a `config` property to the `client.Server` class (issue 67).
+ * Added a `compact()` method to the `client.Database` class (issue 37).
 
 
 Version 0.5

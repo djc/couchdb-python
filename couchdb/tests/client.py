@@ -75,6 +75,11 @@ class DatabaseTestCase(unittest.TestCase):
         old_doc = self.db.get('foo', rev=old_rev)
         self.assertEqual(old_rev, old_doc['_rev'])
 
+        self.assertTrue(self.db.compact())
+        while self.db.info()['compact_running']:
+            pass
+        self.assertRaises(client.ServerError, self.db.get, 'foo', rev=old_rev)
+
     def test_attachment_crud(self):
         doc = {'bar': 42}
         self.db['foo'] = doc
