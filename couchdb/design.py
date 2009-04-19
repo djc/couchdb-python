@@ -116,7 +116,7 @@ class ViewDefinition(object):
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__,
-                            '/'.join(['_view', self.design, self.name]))
+                            '/'.join([self.design, '_view', self.name]))
 
     def get_doc(self, db):
         """Retrieve and return the design document corresponding to this view
