@@ -62,21 +62,21 @@ class ReplicationHelper(object):
         body = {'source': self.concat_uri(self.args.source_server, database)}
 
         # send replication request to target server
-        for target_server in self.args.target_servers: 
+        for target_server in self.args.target_servers:
             body['target'] = self.concat_uri(target_server, database)
             self.http.request(
-                self.concat_uri(self.args.source_server, '_replicate'), 
-                'POST', 
+                self.concat_uri(self.args.source_server, '_replicate'),
+                'POST',
                 body=json.dumps(body, ensure_ascii=False))
 
     def trigger_creation(self, database):
         """Creates database in all --target-servers"""
-        
+
         # send creation request to target server
-        for target_server in self.args.target_servers: 
+        for target_server in self.args.target_servers:
             self.http.request(
-                self.concat_uri(target_server, database), 
-                'PUT',) 
+                self.concat_uri(target_server, database),
+                'PUT',)
 
     def trigger_deletion(self, database):
         """Deletes database in all --target-servers"""
@@ -102,7 +102,6 @@ class ReplicationHelper(object):
                         self.trigger_creation(database)
                 except httplib.HTTPException:
                     sys.exit(0)
-
             self.databases = []
 
     def __call__(self):
@@ -117,7 +116,7 @@ class ReplicationHelper(object):
 
             try:
                 line = sys.stdin.readline()
-                
+
                 # poor man's validation. If we get garbage, we sys.exit
                 if not line.endswith('}\n'):
                     sys.exit(0)
@@ -127,8 +126,8 @@ class ReplicationHelper(object):
                 if note['type'] == 'delete' and not args.ignore_deletes:
                     continue
 
-                self.databases.append((note['type'], note['db'])) 
-                
+                self.databases.append((note['type'], note['db']))
+
                 # if there are more docs that we want to batch, flush
                 if len(self.databases) >= int(args.batch_threshold):
                     self.sync_databases()
