@@ -13,7 +13,7 @@ Daemon script that acts as CouchDB DbUpdateNotificationProcess and triggers
 replication on each incoming database update between the specified servers
 
 Setup
-Add this to your couch.ini:
+Add this to your local.ini, in the section [update_notification]:
 DbUpdateNotificationProcess=/path/to/this/script/replication-helper.py \
 --source-server=http://127.0.0.1 --target-server=http://127.0.0.1:5985
 
