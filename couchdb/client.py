@@ -408,9 +408,9 @@ class Database(object):
     def delete_attachment(self, doc, filename):
         """Delete the specified attachment.
         
-        Note that the provided `doc` is required to have a `_rev` field. Thus,
-        if the `doc` is based on a view row, the view row would need to include
-        the `_rev` field.
+        Note that the provided `doc` is required to have a ``_rev`` field.
+        Thus, if the `doc` is based on a view row, the view row would need to
+        include the ``_rev`` field.
 
         :param doc: the dictionary or `Document` object representing the
                     document that the attachment belongs to
@@ -446,9 +446,9 @@ class Database(object):
     def put_attachment(self, doc, content, filename=None, content_type=None):
         """Create or replace an attachment.
 
-        Note that the provided `doc` is required to have a `_rev` field. Thus,
+        Note that the provided `doc` is required to have a ``_rev`` field. Thus,
         if the `doc` is based on a view row, the view row would need to include
-        the `_rev` field.
+        the ``_rev`` field.
 
         :param doc: the dictionary or `Document` object representing the
                     document that the attachment should be added to
