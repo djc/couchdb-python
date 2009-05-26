@@ -193,7 +193,7 @@ class View(object):
     ...             emit(doc.name, doc);
     ...         }''')
     >>> Person.by_name
-    <ViewDefinition 'people/_view/by_name'>
+    <ViewDefinition '_design/people/_view/by_name'>
     
     >>> print Person.by_name.map_fun
     function(doc) {
@@ -228,7 +228,7 @@ class View(object):
     ...         yield doc['name'], doc
     
     >>> Person.by_name
-    <ViewDefinition 'people/_view/by_name'>
+    <ViewDefinition '_design/people/_view/by_name'>
 
     >>> print Person.by_name.map_fun
     def by_name(doc):

@@ -115,8 +115,9 @@ class ViewDefinition(object):
                        wrapper=self.wrapper, **merged_options)
 
     def __repr__(self):
-        return '<%s %r>' % (type(self).__name__,
-                            '/'.join([self.design, '_view', self.name]))
+        return '<%s %r>' % (type(self).__name__, '/'.join([
+            '_design', self.design, '_view', self.name
+        ]))
 
     def get_doc(self, db):
         """Retrieve and return the design document corresponding to this view
