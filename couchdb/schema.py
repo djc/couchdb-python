@@ -260,11 +260,13 @@ class View(object):
     @classmethod
     def define(cls, design, name=None, language='python', wrapper=DEFAULT,
                **defaults):
-        """Factory method for use as a decorator."""
-        def wrapper(fun):
+        """Factory method for use as a decorator (only suitable for Python
+        view code).
+        """
+        def view_wrapped(fun):
             return cls(design, fun, language=language, wrapper=wrapper,
                        **defaults)
-        return wrapper
+        return view_wrapped
 
     def __get__(self, instance, cls=None):
         if self.wrapper is DEFAULT:
