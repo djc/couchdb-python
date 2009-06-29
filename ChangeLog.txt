@@ -24,6 +24,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
    a `ResourceNotFound` exception as advertised (issue 41).
  * Added a `delete()` method to the `client.Server` class for consistency
    (issue 64).
+ * The `couchdb-dump` tool now operates in a streaming fashion, writing one
+   document at a time to the resulting MIME multipart file (issue 58).
 
 
 Version 0.5

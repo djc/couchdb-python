@@ -19,40 +19,47 @@ import sys
 
 from couchdb import __version__ as VERSION
 from couchdb.client import Database
+from couchdb.multipart import write_multipart
 
 
-def dump_db(dburl, username=None, password=None, boundary=None):
-    envelope = MIMEMultipart('mixed', boundary)
+def dump_db(dburl, username=None, password=None, boundary=None,
+            output=sys.stdout):
     db = Database(dburl)
     if username is not None and password is not None:
         db.resource.http.add_credentials(username, password)
+
+    envelope = write_multipart(output)
+    #envelope = MIMEMultipart('mixed', boundary)
+
     for docid in db:
         doc = db.get(docid, attachments=True)
         print>>sys.stderr, 'Dumping document %r' % doc.id
         attachments = doc.pop('_attachments', {})
-
-        part = MIMEBase('application', 'json')
-        part.set_payload(json.dumps(doc, sort_keys=True, indent=2))
+        jsondoc = json.dumps(doc, sort_keys=True, indent=2)
 
         if attachments:
-            inner = MIMEMultipart('mixed')
-            inner.attach(part)
+            inner = envelope.start({
+                'Content-ID': doc.id,
+                'ETag': '"%s"' % doc.rev
+            })
+            part = inner.add('application/json', jsondoc)
+
             for name, info in attachments.items():
                 content_type = info.get('content_type')
                 if content_type is None: # CouchDB < 0.8
                     content_type = info.get('content-type')
-                maintype, subtype = content_type.split('/', 1)
-                subpart = MIMEBase(maintype, subtype)
-                subpart['Content-ID'] = name
-                subpart.set_payload(b64decode(info['data']))
-                inner.attach(subpart)
-            part = inner
+                subpart = inner.add(content_type, b64decode(info['data']), {
+                    'Content-ID': name
+                })
+            inner.end()
 
-        part['Content-ID'] = doc.id
-        part['ETag'] = '"%s"' % doc.rev
+        else:
+            part = envelope.add('application/json', jsondoc, {
+                'Content-ID': doc.id,
+                'ETag': '"%s"' % doc.rev
+            }, )
 
-        envelope.attach(part)
-    return envelope.as_string()
+    envelope.end()
 
 
 def main():
@@ -67,8 +74,7 @@ def main():
     if len(args) != 1:
         return parser.error('incorrect number of arguments')
 
-    print dump_db(args[0], username=options.username,
-                  password=options.password)
+    dump_db(args[0], username=options.username, password=options.password)
 
 
 if __name__ == '__main__':
