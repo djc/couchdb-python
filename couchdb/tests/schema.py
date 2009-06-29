@@ -69,10 +69,10 @@ class DocumentTestCase(unittest.TestCase):
             title = schema.TextField()
         post1 = Post(title='Foo bar')
         post2 = Post(title='Foo baz')
-        results = list(self.db.update([post1, post2]))
+        results = self.db.update([post1, post2])
         self.assertEqual(2, len(results))
-        self.assertEqual(dict, type(results[0]))
-        self.assertEqual(dict, type(results[1]))
+        assert results[0][0] is True
+        assert results[1][0] is True
 
 
 class ListFieldTestCase(unittest.TestCase):
@@ -98,6 +98,7 @@ def suite():
     suite.addTest(unittest.makeSuite(DocumentTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ListFieldTestCase, 'test'))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')

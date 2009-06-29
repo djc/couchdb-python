@@ -533,23 +533,29 @@ class Database(object):
         ...     Document(type='City', name='Gotham City')
         ... ]):
         ...     print repr(doc) #doctest: +ELLIPSIS
-        <Document '...'@'...' {'type': 'Person', 'name': 'John Doe'}>
-        <Document '...'@'...' {'type': 'Person', 'name': 'Mary Jane'}>
-        <Document '...'@'...' {'type': 'City', 'name': 'Gotham City'}>
+        (True, '...', '...')
+        (True, '...', '...')
+        (True, '...', '...')
         
         >>> del server['python-tests']
         
+        The return value of this method is a list containing a tuple for every
+        element in the `documents` sequence. Each tuple is of the form
+        ``(success, docid, rev_or_exc)``, where ``success`` is a boolean
+        indicating whether the update succeeded, ``docid`` is the ID of the
+        document, and ``rev_or_exc`` is either the new document revision, or
+        an exception instance (e.g. `ResourceConflict`) if the update failed.
+        
         If an object in the documents list is not a dictionary, this method
         looks for an ``items()`` method that can be used to convert the object
-        to a dictionary. In this case, the returned generator will not update
-        and yield the original object, but rather yield a dictionary with
-        ``id`` and ``rev`` keys.
+        to a dictionary. Effectively this means you can also use this method
+        with `schema.Document` objects.
         
         :param documents: a sequence of dictionaries or `Document` objects, or
                           objects providing a ``items()`` method that can be
                           used to convert them to a dictionary
         :return: an iterable over the resulting documents
-        :rtype: ``generator``
+        :rtype: ``list``
         
         :since: version 0.2
         """
@@ -564,18 +570,22 @@ class Database(object):
         content = options
         content.update(docs=docs)
         resp, data = self.resource.post('_bulk_docs', content=content)
-        def _update():
-            for idx, result in enumerate(data):
-                if 'error' in result:
-                    yield result
+        results = []
+        for idx, result in enumerate(data):
+            if 'error' in result:
+                if result['error'] == 'conflict':
+                    exc_type = ResourceConflict
                 else:
-                    doc = documents[idx]
-                    if isinstance(doc, dict):
-                        doc.update({'_id': result['id'], '_rev': result['rev']})
-                        yield doc
-                    else:
-                        yield result
-        return _update()
+                    # XXX: Any other error types mappable to exceptions here?
+                    exc_type = ServerError
+                results.append((False, result['id'],
+                                exc_type(result['reason'])))
+            else:
+                doc = documents[idx]
+                if isinstance(doc, dict): # XXX: Is this a good idea??
+                    doc.update({'_id': result['id'], '_rev': result['rev']})
+                results.append((True, result['id'], result['rev']))
+        return results
 
     def view(self, name, wrapper=None, **options):
         """Execute a predefined view.

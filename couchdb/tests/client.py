@@ -190,32 +190,35 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(12, res[0].value)
 
     def test_bulk_update_conflict(self):
-        docs = list(self.db.update([
+        docs = [
             dict(type='Person', name='John Doe'),
             dict(type='Person', name='Mary Jane'),
             dict(type='City', name='Gotham City')
-        ]))
+        ]
+        self.db.update(docs)
 
         # update the first doc to provoke a conflict in the next bulk update
         doc = docs[0].copy()
         self.db[doc['_id']] = doc
 
-        results = list(self.db.update(docs))
-        self.assertEqual('conflict', results[0]['error'])
+        results = self.db.update(docs)
+        self.assertEqual(False, results[0][0])
+        assert isinstance(results[0][2], client.ResourceConflict)
 
     def test_bulk_update_all_or_nothing(self):
-        docs = list(self.db.update([
+        docs = [
             dict(type='Person', name='John Doe'),
             dict(type='Person', name='Mary Jane'),
             dict(type='City', name='Gotham City')
-        ]))
+        ]
+        self.db.update(docs)
 
         # update the first doc to provoke a conflict in the next bulk update
         doc = docs[0].copy()
         self.db[doc['_id']] = doc
 
-        results = list(self.db.update(docs, all_or_nothing=True))
-        assert 'error' not in results[0]
+        results = self.db.update(docs, all_or_nothing=True)
+        self.assertEqual(True, results[0][0])
 
         doc = self.db.get(doc['_id'], conflicts=True)
         assert '_conflicts' in doc
