@@ -78,6 +78,17 @@ class DocumentTestCase(unittest.TestCase):
 
 class ListFieldTestCase(unittest.TestCase):
 
+    def setUp(self):
+        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
+        self.server = client.Server(uri)
+        if 'python-tests' in self.server:
+            del self.server['python-tests']
+        self.db = self.server.create('python-tests')
+
+    def tearDown(self):
+        if 'python-tests' in self.server:
+            del self.server['python-tests']
+
     def test_to_json(self):
         # See <http://code.google.com/p/couchdb-python/issues/detail?id=14>
         class Post(schema.Document):
@@ -147,6 +158,20 @@ class ListFieldTestCase(unittest.TestCase):
         thing = Thing()
         thing.numbers.append(Decimal('1.0'))
         thing.numbers.remove(Decimal('1.0'))
+
+    def test_proxy_iter(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        self.db['test'] = {'numbers': ['1.0', '2.0']}
+        thing = Thing.load(self.db, 'test')
+        assert isinstance(thing.numbers[0], Decimal)
+
+    def test_proxy_iter_dict(self):
+        class Post(schema.Document):
+            comments = schema.ListField(schema.DictField)
+        self.db['test'] = {'comments': [{'author': 'Joe', 'content': 'Hey'}]}
+        post = Post.load(self.db, 'test')
+        assert isinstance(post.comments[0], dict)
 
 
 def suite():
