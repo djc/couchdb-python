@@ -20,12 +20,32 @@ class ServerTestCase(unittest.TestCase):
         uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
         self.server = client.Server(uri)
 
+    def tearDown(self):
+        if 'python-tests' in self.server:
+            del self.server['python-tests']
+
     def test_server_vars(self):
         version = self.server.version
         config = self.server.config
 
     def test_get_db_missing(self):
-        self.assertRaises(client.ResourceNotFound, lambda: self.server['foo'])
+        self.assertRaises(client.ResourceNotFound,
+                          lambda: self.server['python-tests'])
+
+    def test_create_db_conflict(self):
+        self.server.create('python-tests')
+        self.assertRaises(client.PreconditionFailed, self.server.create,
+                          'python-tests')
+
+    def test_delete_db(self):
+        self.server.create('python-tests')
+        assert 'python-tests' in self.server
+        self.server.delete('python-tests')
+        assert 'python-tests' not in self.server
+
+    def test_delete_db_missing(self):
+        self.assertRaises(client.ResourceNotFound, self.server.delete,
+                          'python-tests')
 
 
 class DatabaseTestCase(unittest.TestCase):
@@ -252,6 +272,7 @@ class DatabaseTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite

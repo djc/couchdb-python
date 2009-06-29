@@ -198,10 +198,19 @@ class Server(object):
         :param name: the name of the database
         :return: a `Database` object representing the created database
         :rtype: `Database`
-        :raise ResourceConflict: if a database with that name already exists
+        :raise PreconditionFailed: if a database with that name already exists
         """
         self.resource.put(validate_dbname(name))
         return self[name]
+
+    def delete(self, name):
+        """Delete the database with the specified name.
+        
+        :param name: the name of the database
+        :raise ResourceNotFound: if a database with that name does not exist
+        :since: 0.6
+        """
+        del self[name]
 
 
 class Database(object):
@@ -358,6 +367,7 @@ class Database(object):
                      should be overwritten.
         :return: the new revision of the destination document
         :rtype: `str`
+        :since: 0.6
         """
         if not isinstance(src, basestring):
             if not isinstance(src, dict):
@@ -383,7 +393,6 @@ class Database(object):
         resp, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})
         return data['rev']
-
 
     def delete(self, doc):
         """Delete the given document from the database.
