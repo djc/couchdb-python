@@ -381,14 +381,15 @@ class Database(object):
         if not isinstance(dest, basestring):
             if not isinstance(dest, dict):
                 if hasattr(dest, 'items'):
-                    dest = src.items()
+                    dest = dest.items()
                 else:
                     raise TypeError('expected dict or string, got %s' %
                                     type(dest))
             if '_rev' in dest:
-                dest = '%s?rev=%s' % (dest['_id'], dest['_rev'])
+                dest = '%s?%s' % (unicode_quote(dest['_id']),
+                                  unicode_urlencode({'rev': dest['_rev']}))
             else:
-                dest = dest['_id']
+                dest = unicode_quote(dest['_id'])
 
         resp, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})
