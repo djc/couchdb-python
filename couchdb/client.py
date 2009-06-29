@@ -346,6 +346,43 @@ class Database(object):
         resp, data = self.resource.post('_compact')
         return data['ok']
 
+    def copy(self, src, dest):
+        """Copy the given document to create a new document.
+
+        :param src: the ID of the document to copy, or a dictionary or
+                    `Document` object representing the source document.
+        :param dest: either the destination document ID as string, or a
+                     dictionary or `Document` instance of the document that
+                     should be overwritten.
+        :return: the new revision of the destination document
+        :rtype: `str`
+        """
+        if not isinstance(src, basestring):
+            if not isinstance(src, dict):
+                if hasattr(src, 'items'):
+                    src = src.items()
+                else:
+                    raise TypeError('expected dict or string, got %s' %
+                                    type(src))
+            src = src['_id']
+
+        if not isinstance(dest, basestring):
+            if not isinstance(dest, dict):
+                if hasattr(dest, 'items'):
+                    dest = src.items()
+                else:
+                    raise TypeError('expected dict or string, got %s' %
+                                    type(dest))
+            if '_rev' in dest:
+                dest = '%s?rev=%s' % (dest['_id'], dest['_rev'])
+            else:
+                dest = dest['_id']
+
+        resp, data = self.resource._request('COPY', src,
+                                            headers={'Destination': dest})
+        return data['rev']
+
+
     def delete(self, doc):
         """Delete the given document from the database.
 

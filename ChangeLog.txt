@@ -18,6 +18,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
  * Removed the `eager` option on the `query()` and `view()` methods of
    `schema.Document`. Use the `include_docs` option instead, which doesn't
    require an additional request per document.
+ * Added a `copy()` method to the `client.Database` class, which translates to
+   a HTTP COPY request (issue 74).
 
 
 Version 0.5

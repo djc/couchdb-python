@@ -223,6 +223,29 @@ class DatabaseTestCase(unittest.TestCase):
         doc = self.db.get(doc['_id'], conflicts=True)
         assert '_conflicts' in doc
 
+    def test_copy_doc(self):
+        self.db['foo'] = {'status': 'testing'}
+        result = self.db.copy('foo', 'bar')
+        self.assertEqual(result, self.db['bar'].rev)
+
+    def test_copy_doc_conflict(self):
+        self.db['bar'] = {'status': 'idle'}
+        self.db['foo'] = {'status': 'testing'}
+        self.assertRaises(client.ResourceConflict, self.db.copy, 'foo', 'bar')
+
+    def test_copy_doc_overwrite(self):
+        self.db['bar'] = {'status': 'idle'}
+        self.db['foo'] = {'status': 'testing'}
+        result = self.db.copy('foo', self.db['bar'])
+        doc = self.db['bar']
+        self.assertEqual(result, doc.rev)
+        self.assertEqual('testing', doc['status'])
+
+    def test_copy_doc_srcobj(self):
+        self.db['foo'] = {'status': 'testing'}
+        self.db.copy(self.db['foo'], 'bar')
+        self.assertEqual('testing', self.db['bar']['status'])
+
 
 def suite():
     suite = unittest.TestSuite()
