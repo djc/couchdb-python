@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2009 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -200,14 +200,16 @@ class DatabaseTestCase(unittest.TestCase):
         for i in range(1, 4):
             self.db.create({'i': i, 'j':2*i})
 
-        map_fun = lambda doc: (yield doc['i'], doc['j'])
+        def map_fun(doc):
+            yield doc['i'], doc['j']
         res = list(self.db.query(map_fun, language='python'))
         self.assertEqual(3, len(res))
         for idx, i in enumerate(range(1,4)):
             self.assertEqual(i, res[idx].key)
             self.assertEqual(2*i, res[idx].value)
 
-        reduce_fun = lambda keys,values,rereduce: sum(values)
+        def reduce_fun(doc):
+            return sum(values)
         res = list(self.db.query(map_fun, reduce_fun, 'python'))
         self.assertEqual(1, len(res))
         self.assertEqual(12, res[0].value)
