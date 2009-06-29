@@ -59,10 +59,12 @@ def read_multipart(fileobj, boundary=None):
                     sub_parts = read_multipart(fileobj, boundary=sub_boundary)
                     if boundary is not None:
                         yield headers, True, sub_parts
+                        headers.clear()
+                        del buf[:]
                     else:
                         for part in sub_parts:
                             yield part
-                    return
+                        return
 
         elif line == next_boundary:
             # We've reached the start of a new part, as indicated by the
@@ -75,6 +77,7 @@ def read_multipart(fileobj, boundary=None):
                 headers.clear()
                 del buf[:]
             in_headers = True
+
         elif line == last_boundary:
             # We're done with this multipart envelope
             break

@@ -49,7 +49,7 @@ def dump_db(dburl, username=None, password=None, boundary=None):
             part = inner
 
         part['Content-ID'] = doc.id
-        part['ETag'] = doc.rev
+        part['ETag'] = '"%s"' % doc.rev
 
         envelope.attach(part)
     return envelope.as_string()

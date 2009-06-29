@@ -22,20 +22,20 @@ Content-Type: multipart/mixed; boundary="===============1946781859=="
 --===============1946781859==
 Content-Type: application/json
 Content-ID: bar
-ETag: 2235038212
+ETag: "1-4229094393"
 
 {
-  "_id": "bar", 
-  "_rev": "2235038212"
+  "_id": "bar",
+  "_rev": "1-4229094393"
 }
 --===============1946781859==
 Content-Type: application/json
 Content-ID: foo
-ETag: 2779219239
+ETag: "1-2182689334"
 
 {
-  "_id": "foo", 
-  "_rev": "2779219239", 
+  "_id": "foo",
+  "_rev": "1-2182689334",
   "something": "cool"
 }
 --===============1946781859==--
@@ -47,14 +47,14 @@ ETag: 2779219239
             self.assertEqual('application/json', headers['content-type'])
             if num == 0:
                 self.assertEqual('bar', headers['content-id'])
-                self.assertEqual('2235038212', headers['etag'])
-                self.assertEqual('{\n  "_id": "bar", \n  '
-                                 '"_rev": "2235038212"\n}', payload)
+                self.assertEqual('"1-4229094393"', headers['etag'])
+                self.assertEqual('{\n  "_id": "bar",\n  '
+                                 '"_rev": "1-4229094393"\n}', payload)
             elif num == 1:
                 self.assertEqual('foo', headers['content-id'])
-                self.assertEqual('2779219239', headers['etag'])
-                self.assertEqual('{\n  "_id": "foo", \n  "_rev": "2779219239",'
-                                 ' \n  "something": "cool"\n}', payload)
+                self.assertEqual('"1-2182689334"', headers['etag'])
+                self.assertEqual('{\n  "_id": "foo",\n  "_rev": "1-2182689334",'
+                                 '\n  "something": "cool"\n}', payload)
             num += 1
         self.assertEqual(num, 2)
 
@@ -65,23 +65,23 @@ Content-Type: multipart/mixed; boundary="===============1946781859=="
 --===============1946781859==
 Content-Type: application/json
 Content-ID: bar
-ETag: 2235038212
+ETag: "1-4229094393"
 
 {
   "_id": "bar", 
-  "_rev": "2235038212"
+  "_rev": "1-4229094393"
 }
 --===============1946781859==
 Content-Type: multipart/mixed; boundary="===============0909101126=="
 Content-ID: foo
-ETag: 2779219239
+ETag: "1-919589747"
 
 --===============0909101126==
 Content-Type: application/json
 
 {
   "_id": "foo", 
-  "_rev": "2779219239", 
+  "_rev": "1-919589747", 
   "something": "cool"
 }
 --===============0909101126==
@@ -93,6 +93,15 @@ How are you doing?
 
 Regards, Chris
 --===============0909101126==--
+--===============1946781859==
+Content-Type: application/json
+Content-ID: baz
+ETag: "1-3482142493"
+
+{
+  "_id": "baz", 
+  "_rev": "1-3482142493"
+}
 --===============1946781859==--
 '''
         num = 0
@@ -102,13 +111,13 @@ Regards, Chris
                 self.assertEqual(is_multipart, False)
                 self.assertEqual('application/json', headers['content-type'])
                 self.assertEqual('bar', headers['content-id'])
-                self.assertEqual('2235038212', headers['etag'])
+                self.assertEqual('"1-4229094393"', headers['etag'])
                 self.assertEqual('{\n  "_id": "bar", \n  '
-                                 '"_rev": "2235038212"\n}', payload)
+                                 '"_rev": "1-4229094393"\n}', payload)
             elif num == 1:
                 self.assertEqual(is_multipart, True)
                 self.assertEqual('foo', headers['content-id'])
-                self.assertEqual('2779219239', headers['etag'])
+                self.assertEqual('"1-919589747"', headers['etag'])
 
                 partnum = 0
                 for headers, is_multipart, payload in payload:
@@ -117,7 +126,7 @@ Regards, Chris
                         self.assertEqual('application/json',
                                          headers['content-type'])
                         self.assertEqual('{\n  "_id": "foo", \n  "_rev": '
-                                         '"2779219239", \n  "something": '
+                                         '"1-919589747", \n  "something": '
                                          '"cool"\n}', payload)
                     elif partnum == 1:
                         self.assertEqual('text/plain', headers['content-type'])
@@ -127,9 +136,17 @@ Regards, Chris
 
                     partnum += 1
 
+            elif num == 2:
+                self.assertEqual(is_multipart, False)
+                self.assertEqual('application/json', headers['content-type'])
+                self.assertEqual('baz', headers['content-id'])
+                self.assertEqual('"1-3482142493"', headers['etag'])
+                self.assertEqual('{\n  "_id": "baz", \n  '
+                                 '"_rev": "1-3482142493"\n}', payload)
+
 
             num += 1
-        self.assertEqual(num, 2)
+        self.assertEqual(num, 3)
 
 
 def suite():
