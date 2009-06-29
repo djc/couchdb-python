@@ -92,6 +92,20 @@ class ListFieldTestCase(unittest.TestCase):
         self.assertEqual([{'content': 'Bla bla', 'author': 'myself'}],
                          post.comments)
 
+    def test_proxy_append(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
+        thing.numbers.append(Decimal('3.0'))
+        self.assertEqual(3, len(thing.numbers))
+        self.assertEqual(Decimal('3.0'), thing.numbers[2])
+
+    def test_proxy_append_kwargs(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing()
+        self.assertRaises(TypeError, thing.numbers.append, foo='bar')
+
     def test_proxy_contains(self):
         class Thing(schema.Document):
             numbers = schema.ListField(schema.DecimalField)
@@ -100,13 +114,39 @@ class ListFieldTestCase(unittest.TestCase):
         assert '1.0' not in thing.numbers
         assert Decimal('1.0') in thing.numbers
 
+    def test_proxy_count(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
+        self.assertEqual(1, thing.numbers.count(Decimal('1.0')))
+
     def test_proxy_index(self):
         class Thing(schema.Document):
             numbers = schema.ListField(schema.DecimalField)
         thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
-        assert isinstance(thing.numbers, schema.ListField.Proxy)
         self.assertEqual(0, thing.numbers.index(Decimal('1.0')))
         self.assertRaises(ValueError, thing.numbers.index, '3.0')
+
+    def test_proxy_insert(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
+        thing.numbers.insert(0, Decimal('0.0'))
+        self.assertEqual(3, len(thing.numbers))
+        self.assertEqual(Decimal('0.0'), thing.numbers[0])
+
+    def test_proxy_insert_kwargs(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing()
+        self.assertRaises(TypeError, thing.numbers.insert, 0, foo='bar')
+
+    def test_proxy_remove(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing()
+        thing.numbers.append(Decimal('1.0'))
+        thing.numbers.remove(Decimal('1.0'))
 
 
 def suite():

@@ -691,20 +691,34 @@ class ListField(Field):
             return bool(self.list)
 
         def append(self, *args, **kwargs):
-            if args:
-                assert len(args) == 1
+            if args or not isinstance(self.field, DictField):
+                if len(args) != 1:
+                    raise TypeError('append() takes exactly one argument '
+                                    '(%s given)' % len(args))
                 value = args[0]
             else:
                 value = kwargs
-            value = self.field._to_json(value)
-            self.list.append(value)
+            self.list.append(self.field._to_json(value))
+
+        def count(self, value):
+            return self.list.count(self.field._to_json(value))
 
         def extend(self, list):
             for item in list:
                 self.append(item)
 
         def index(self, value):
-            for idx, item in enumerate(self.list):
-                if self.field._to_python(item) == value:
-                    return idx
-            raise ValueError('x not in list')
+            return self.list.index(self.field._to_json(value))
+
+        def insert(self, idx, *args, **kwargs):
+            if args or not isinstance(self.field, DictField):
+                if len(args) != 1:
+                    raise TypeError('insert() takes exactly 2 arguments '
+                                    '(%s given)' % len(args))
+                value = args[0]
+            else:
+                value = kwargs
+            self.list.insert(idx, self.field._to_json(value))
+
+        def remove(self, value):
+            return self.list.remove(self.field._to_json(value))
