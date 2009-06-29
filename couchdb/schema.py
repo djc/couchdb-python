@@ -683,6 +683,12 @@ class ListField(Field):
         def __setitem__(self, index, value):
             self.list[index] = self.field._to_json(item)
 
+        def __contains__(self, value):
+            for item in self.list:
+                if self.field._to_python(item) == value:
+                    return True
+            return False
+
         def __iter__(self):
             for index in range(len(self)):
                 yield self[index]
@@ -705,3 +711,9 @@ class ListField(Field):
         def extend(self, list):
             for item in list:
                 self.append(item)
+
+        def index(self, value):
+            for idx, item in enumerate(self.list):
+                if self.field._to_python(item) == value:
+                    return idx
+            raise ValueError('x not in list')

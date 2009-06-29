@@ -6,6 +6,7 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+from decimal import Decimal
 import doctest
 import os
 import unittest
@@ -90,6 +91,22 @@ class ListFieldTestCase(unittest.TestCase):
         post.comments = post.comments
         self.assertEqual([{'content': 'Bla bla', 'author': 'myself'}],
                          post.comments)
+
+    def test_proxy_contains(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
+        assert isinstance(thing.numbers, schema.ListField.Proxy)
+        assert '1.0' not in thing.numbers
+        assert Decimal('1.0') in thing.numbers
+
+    def test_proxy_index(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
+        assert isinstance(thing.numbers, schema.ListField.Proxy)
+        self.assertEqual(0, thing.numbers.index(Decimal('1.0')))
+        self.assertRaises(ValueError, thing.numbers.index, '3.0')
 
 
 def suite():

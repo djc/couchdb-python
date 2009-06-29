@@ -10,6 +10,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
  * Changed the `update()` method of the `client.Database` class to simplify
    the handling of errors. The method now returns a list of `(success, docid,
    rev_or_exc)` tuples. See the docstring of that method for the details.
+ * `schema.ListField` proxy objects now support the `__contains__()` and
+   `index()` methods (issue 77).
 
 
 Version 0.5
