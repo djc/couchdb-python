@@ -162,8 +162,10 @@ class Server(object):
         :rtype: `Database`
         :raise ResourceNotFound: if no database with that name exists
         """
-        return Database(uri(self.resource.uri, name), validate_dbname(name),
-                        http=self.resource.http)
+        db = Database(uri(self.resource.uri, name), validate_dbname(name),
+                      http=self.resource.http)
+        db.resource.head() # actually make a request to the database
+        return db
 
     def _get_config(self):
         resp, data = self.resource.get('_config')

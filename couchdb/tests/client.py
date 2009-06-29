@@ -24,6 +24,9 @@ class ServerTestCase(unittest.TestCase):
         version = self.server.version
         config = self.server.config
 
+    def test_get_db_missing(self):
+        self.assertRaises(client.ResourceNotFound, lambda: self.server['foo'])
+
 
 class DatabaseTestCase(unittest.TestCase):
 

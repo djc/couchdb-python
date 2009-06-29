@@ -20,6 +20,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
    require an additional request per document.
  * Added a `copy()` method to the `client.Database` class, which translates to
    a HTTP COPY request (issue 74).
+ * Accessing a non-existing database through `Server.__getitem__` now throws
+   a `ResourceNotFound` exception as advertised (issue 41).
 
 
 Version 0.5
