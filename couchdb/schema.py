@@ -371,23 +371,18 @@ class Document(Schema):
             db[self.id] = self._data
         return self
 
-    def query(cls, db, map_fun, reduce_fun, language='javascript',
-              eager=False, **options):
+    def query(cls, db, map_fun, reduce_fun, language='javascript', **options):
         """Execute a CouchDB temporary view and map the result values back to
         objects of this schema.
         
         Note that by default, any properties of the document that are not
         included in the values of the view will be treated as if they were
-        missing from the document. If you'd rather want to load the full
-        document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document, unless the
-        ``include_docs`` option is explitly specified.
+        missing from the document. If you want to load the full document for
+        every row, set the ``include_docs`` option to ``True``.
         """
         def _wrapper(row):
-            if eager:
-                if row.doc is not None:
-                    return row.doc
-                return cls.load(db, row.id)
+            if row.doc is not None:
+                return cls.wrap(row.doc)
             data = row.value
             data['_id'] = row.id
             return cls.wrap(data)
@@ -395,22 +390,18 @@ class Document(Schema):
                         wrapper=_wrapper, **options)
     query = classmethod(query)
 
-    def view(cls, db, viewname, eager=False, **options):
+    def view(cls, db, viewname, **options):
         """Execute a CouchDB named view and map the result values back to
         objects of this schema.
         
         Note that by default, any properties of the document that are not
         included in the values of the view will be treated as if they were
-        missing from the document. If you'd rather want to load the full
-        document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document, unless the
-        ``include_docs`` option is explitly specified.
+        missing from the document. If you want to load the full document for
+        every row, set the ``include_docs`` option to ``True``.
         """
         def _wrapper(row):
-            if eager:
-                if row.doc is not None:
-                    return row.doc
-                return cls.load(db, row.id)
+            if row.doc is not None: # include_docs=True
+                return cls.wrap(row.doc)
             data = row.value
             data['_id'] = row.id
             return cls.wrap(data)

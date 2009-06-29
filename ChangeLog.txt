@@ -12,6 +12,12 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
    rev_or_exc)` tuples. See the docstring of that method for the details.
  * `schema.ListField` proxy objects now support the `__contains__()` and
    `index()` methods (issue 77).
+ * The results of the `query()` and `view()` methods in the `schema.Document`
+   class are now properly wrapped in objects of the class if the `include_docs`
+   option is set (issue 76).
+ * Removed the `eager` option on the `query()` and `view()` methods of
+   `schema.Document`. Use the `include_docs` option instead, which doesn't
+   require an additional request per document.
 
 
 Version 0.5
