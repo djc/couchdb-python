@@ -125,7 +125,7 @@ class MultipartWriter(object):
     def close(self):
         self.fileobj.write('--%s--\r\n' % self.boundary)
 
-    def _make_boundary():
+    def _make_boundary(self):
         try:
             from uuid import uuid4
             return uuid4().hex
