@@ -15,6 +15,9 @@ __all__ = ['read_multipart', 'write_multipart']
 __docformat__ = 'restructuredtext en'
 
 
+EOL = '\r\n'
+
+
 def read_multipart(fileobj, boundary=None):
     """Simple streaming MIME multipart parser.
     
@@ -39,18 +42,18 @@ def read_multipart(fileobj, boundary=None):
     buf = []
     outer = in_headers = boundary is None
 
-    next_boundary = boundary and '--' + boundary + '\n' or None
-    last_boundary = boundary and '--' + boundary + '--\n' or None
+    next_boundary = boundary and '--' + boundary + EOL or None
+    last_boundary = boundary and '--' + boundary + '--' + EOL or None
 
     def _current_part():
         payload = ''.join(buf)
-        if payload.endswith('\n'):
+        if payload.endswith(EOL):
             payload = payload[:-1]
         return headers, False, payload
 
     for line in fileobj:
         if in_headers:
-            if line != '\n':
+            if line != EOL:
                 name, value = line.split(':', 1)
                 headers[name.lower().strip()] = value.strip()
             else:
@@ -106,24 +109,31 @@ class MultipartWriter(object):
         self._write_headers(headers)
 
     def open(self, headers=None, subtype='mixed', boundary=None):
-        self.fileobj.write('--%s\r\n' % self.boundary)
+        self.fileobj.write('--')
+        self.fileobj.write(self.boundary)
+        self.fileobj.write(EOL)
         return MultipartWriter(self.fileobj, headers=headers, subtype=subtype,
                                boundary=boundary)
 
     def add(self, mimetype, content, headers=None):
-        self.fileobj.write('--%s\r\n' % self.boundary)
+        self.fileobj.write('--')
+        self.fileobj.write(self.boundary)
+        self.fileobj.write(EOL)
         if headers is None:
             headers = {}
         headers['Content-Type'] = mimetype
-        headers['Content-Length'] = len(content)
+        headers['Content-Length'] = str(len(content))
         self._write_headers(headers)
         if content:
             # XXX: throw an exception if a boundary appears in the content??
             self.fileobj.write(content)
-            self.fileobj.write('\r\n')
+            self.fileobj.write(EOL)
 
     def close(self):
-        self.fileobj.write('--%s--\r\n' % self.boundary)
+        self.fileobj.write('--')
+        self.fileobj.write(self.boundary)
+        self.fileobj.write('--')
+        self.fileobj.write(EOL)
 
     def _make_boundary(self):
         try:
@@ -138,8 +148,11 @@ class MultipartWriter(object):
     def _write_headers(self, headers):
         if headers:
             for name in sorted(headers.keys()):
-                self.fileobj.write('%s: %s\r\n' % (name, headers[name]))
-        self.fileobj.write('\r\n')
+                self.fileobj.write(name)
+                self.fileobj.write(': ')
+                self.fileobj.write(headers[name])
+                self.fileobj.write(EOL)
+        self.fileobj.write(EOL)
 
     def __enter__(self):
         return self
