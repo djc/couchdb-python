@@ -59,7 +59,8 @@ def dump_db(dburl, username=None, password=None, boundary=None,
                 'ETag': '"%s"' % doc.rev
             }, )
 
-    envelope.end()
+    # XXX Is something supposed to happen here?
+    #envelope.end()
 
 
 def main():
