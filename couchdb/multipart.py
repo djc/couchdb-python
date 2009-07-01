@@ -195,6 +195,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     <BLANKLINE>
     --==123456789==
     Content-Length: 12
+    Content-MD5: nHmX4a6el41B06x2uCpglQ==
     Content-Type: text/plain
     <BLANKLINE>
     Just testing
@@ -214,7 +215,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     >>> part.add('text/plain', 'Just testing')
     >>> part.close()
     >>> envelope.close()
-    >>> print buf.getvalue().replace('\r\n', '\n')
+    >>> print buf.getvalue().replace('\r\n', '\n') #:doctest +ELLIPSIS
     Content-Type: multipart/mixed; boundary="==123456789=="
     <BLANKLINE>
     --==123456789==
@@ -222,6 +223,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     <BLANKLINE>
     --==abcdefghi==
     Content-Length: 12
+    Content-MD5: nHmX4a6el41B06x2uCpglQ==
     Content-Type: text/plain
     <BLANKLINE>
     Just testing
