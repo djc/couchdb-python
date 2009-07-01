@@ -39,7 +39,7 @@ def run(input=sys.stdin, output=sys.stdout):
         output.write('\n')
         output.flush()
 
-    def reset():
+    def reset(config=None):
         del functions[:]
         return True
 
