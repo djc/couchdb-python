@@ -26,6 +26,10 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
    (issue 64).
  * The `couchdb-dump` tool now operates in a streaming fashion, writing one
    document at a time to the resulting MIME multipart file (issue 58).
+ * It is now possible to explicitly set the JSON module that should be used
+   for decoding/encoding JSON data. The currently available choices are
+   `simplejson`, `cjson`, and `json` (the standard library module). It is also
+   possible to use custom decoding/encoding functions.
 
 
 Version 0.5

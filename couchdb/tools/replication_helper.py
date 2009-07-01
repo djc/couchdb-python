@@ -33,11 +33,9 @@ import optparse
 import os
 import sys
 import time
-try:
-    import simplejson as json
-except ImportError:
-    import json # Python 2.6
+
 from couchdb import __version__ as VERSION
+from couchdb import json
 
 
 class ReplicationHelper(object):
@@ -67,7 +65,7 @@ class ReplicationHelper(object):
             self.http.request(
                 self.concat_uri(self.args.source_server, '_replicate'),
                 'POST',
-                body=json.dumps(body, ensure_ascii=False))
+                body=json.encode(body))
 
     def trigger_creation(self, database):
         """Creates database in all --target-servers"""
@@ -120,7 +118,7 @@ class ReplicationHelper(object):
                 # poor man's validation. If we get garbage, we sys.exit
                 if not line.endswith('}\n'):
                     sys.exit(0)
-                note = json.loads(line)
+                note = json.decode(line)
 
                 # we don't care for deletes
                 if note['type'] == 'delete' and not args.ignore_deletes:

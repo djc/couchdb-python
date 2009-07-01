@@ -11,13 +11,11 @@
 
 from codecs import BOM_UTF8
 import os
-try:
-    import simplejson as json
-except ImportError:
-    import json # Python 2.6
 import sys
 import traceback
 from types import FunctionType
+
+from couchdb import json
 
 __all__ = ['main', 'run']
 __docformat__ = 'restructuredtext en'
@@ -33,8 +31,8 @@ def run(input=sys.stdin, output=sys.stdout):
 
     def _log(message):
         if not isinstance(message, basestring):
-            message = json.dumps(message)
-        output.write(json.dumps({'log': message}))
+            message = json.encode(message)
+        output.write(json.encode({'log': message}))
         output.write('\n')
         output.flush()
 
@@ -72,7 +70,7 @@ def run(input=sys.stdin, output=sys.stdout):
                 results.append([[key, value] for key, value in function(doc)])
             except Exception, e:
                 results.append([])
-                output.write(json.dumps({'log': e.args[0]}))
+                output.write(json.encode({'log': e.args[0]}))
         return results
 
     def reduce(*cmd, **kwargs):
@@ -122,14 +120,14 @@ def run(input=sys.stdin, output=sys.stdout):
             if not line:
                 break
             try:
-                cmd = json.loads(line)
+                cmd = json.decode(line)
             except ValueError, e:
                 sys.stderr.write('error: %s\n' % e)
                 sys.stderr.flush()
                 return 1
             else:
                 retval = handlers[cmd[0]](*cmd[1:])
-                output.write(json.dumps(retval))
+                output.write(json.encode(retval))
                 output.write('\n')
                 output.flush()
     except KeyboardInterrupt:
@@ -151,6 +149,8 @@ Options:
 
   --version          display version information and exit
   -h, --help         display a short help message and exit
+  --json-module      set the JSON module to use ('simplejson', 'cjson',
+                     or 'json' are supported)
 
 Report bugs via the web at <http://code.google.com/p/couchdb-python>.
 """
@@ -162,7 +162,7 @@ def main():
     from couchdb import __version__ as VERSION
     try:
         option_list, argument_list = getopt.gnu_getopt(
-            sys.argv[1:], 'h', ['version', 'help'])
+            sys.argv[1:], 'h', ['version', 'help', 'json-module='])
         message = None
         for option, value in option_list:
             if option in ('--version'):
@@ -170,6 +170,8 @@ def main():
                                       version=VERSION)
             elif option in ('-h', '--help'):
                 message = _HELP % dict(name=os.path.basename(sys.argv[0]))
+            elif option in ('--json-module'):
+                json.use(module=value)
         if message:
             sys.stdout.write(message)
             sys.stdout.flush()

@@ -8,14 +8,19 @@
 
 """Support for streamed reading and writing of multipart MIME content."""
 
+from base64 import b64encode
 from cgi import parse_header
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import new as md5
 import sys
 
 __all__ = ['read_multipart', 'write_multipart']
 __docformat__ = 'restructuredtext en'
 
 
-EOL = '\r\n'
+CRLF = '\r\n'
 
 
 def read_multipart(fileobj, boundary=None):
@@ -42,18 +47,26 @@ def read_multipart(fileobj, boundary=None):
     buf = []
     outer = in_headers = boundary is None
 
-    next_boundary = boundary and '--' + boundary + EOL or None
-    last_boundary = boundary and '--' + boundary + '--' + EOL or None
+    next_boundary = boundary and '--' + boundary + '\n' or None
+    last_boundary = boundary and '--' + boundary + '--\n' or None
 
     def _current_part():
         payload = ''.join(buf)
-        if payload.endswith(EOL):
+        if payload.endswith('\r\n'):
+            payload = payload[:-2]
+        elif payload.endswith('\n'):
             payload = payload[:-1]
+        content_md5 = headers.get('content-md5')
+        if content_md5:
+            h = b64encode(md5(payload).digest())
+            if content_md5 != h:
+                raise ValueError('data integrity check failed')
         return headers, False, payload
 
     for line in fileobj:
         if in_headers:
-            if line != EOL:
+            line = line.replace(CRLF, '\n')
+            if line != '\n':
                 name, value = line.split(':', 1)
                 headers[name.lower().strip()] = value.strip()
             else:
@@ -71,7 +84,7 @@ def read_multipart(fileobj, boundary=None):
                             yield part
                         return
 
-        elif line == next_boundary:
+        elif line.replace(CRLF, '\n') == next_boundary:
             # We've reached the start of a new part, as indicated by the
             # boundary
             if headers:
@@ -83,7 +96,7 @@ def read_multipart(fileobj, boundary=None):
                 del buf[:]
             in_headers = True
 
-        elif line == last_boundary:
+        elif line.replace(CRLF, '\n') == last_boundary:
             # We're done with this multipart envelope
             break
 
@@ -111,39 +124,41 @@ class MultipartWriter(object):
     def open(self, headers=None, subtype='mixed', boundary=None):
         self.fileobj.write('--')
         self.fileobj.write(self.boundary)
-        self.fileobj.write(EOL)
+        self.fileobj.write(CRLF)
         return MultipartWriter(self.fileobj, headers=headers, subtype=subtype,
                                boundary=boundary)
 
     def add(self, mimetype, content, headers=None):
         self.fileobj.write('--')
         self.fileobj.write(self.boundary)
-        self.fileobj.write(EOL)
+        self.fileobj.write(CRLF)
         if headers is None:
             headers = {}
         headers['Content-Type'] = mimetype
-        headers['Content-Length'] = str(len(content))
+        if content:
+            headers['Content-Length'] = str(len(content))
+            headers['Content-MD5'] = b64encode(md5(content).digest())
         self._write_headers(headers)
         if content:
             # XXX: throw an exception if a boundary appears in the content??
             self.fileobj.write(content)
-            self.fileobj.write(EOL)
+            self.fileobj.write(CRLF)
 
     def close(self):
         self.fileobj.write('--')
         self.fileobj.write(self.boundary)
         self.fileobj.write('--')
-        self.fileobj.write(EOL)
+        self.fileobj.write(CRLF)
 
     def _make_boundary(self):
         try:
             from uuid import uuid4
-            return uuid4().hex
+            return '==' + uuid4().hex + '=='
         except ImportError:
             from random import randrange
             token = randrange(sys.maxint)
             format = '%%0%dd' % len(repr(sys.maxint - 1))
-            return ('=' * 15) + (fmt % token) + '=='
+            return '===============' + (fmt % token) + '=='
 
     def _write_headers(self, headers):
         if headers:
@@ -151,8 +166,8 @@ class MultipartWriter(object):
                 self.fileobj.write(name)
                 self.fileobj.write(': ')
                 self.fileobj.write(headers[name])
-                self.fileobj.write(EOL)
-        self.fileobj.write(EOL)
+                self.fileobj.write(CRLF)
+        self.fileobj.write(CRLF)
 
     def __enter__(self):
         return self

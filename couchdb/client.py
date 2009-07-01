@@ -31,10 +31,8 @@ from inspect import getsource
 from textwrap import dedent
 import re
 import socket
-try:
-    import simplejson as json
-except ImportError:
-    import json # Python 2.6
+
+from couchdb import json
 
 __all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
            'ServerError', 'Server', 'Database', 'Document', 'ViewResults',
@@ -701,7 +699,7 @@ class View(object):
         for name, value in options.items():
             if name in ('key', 'startkey', 'endkey') \
                     or not isinstance(value, basestring):
-                value = json.dumps(value, allow_nan=False, ensure_ascii=False)
+                value = json.encode(value)
             retval[name] = value
         return retval
 
@@ -757,8 +755,7 @@ class TemporaryView(View):
         if 'keys' in options:
             options = options.copy()
             body['keys'] = options.pop('keys')
-        content = json.dumps(body, allow_nan=False,
-                             ensure_ascii=False).encode('utf-8')
+        content = json.encode(body).encode('utf-8')
         resp, data = self.resource.post(content=content, headers={
             'Content-Type': 'application/json'
         }, **self._encode_options(options))
@@ -959,8 +956,7 @@ class Resource(object):
         body = None
         if content is not None:
             if not isinstance(content, basestring):
-                body = json.dumps(content, allow_nan=False,
-                                  ensure_ascii=False).encode('utf-8')
+                body = json.encode(content).encode('utf-8')
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content
@@ -979,7 +975,7 @@ class Resource(object):
         status_code = int(resp.status)
         if data and resp.get('content-type') == 'application/json':
             try:
-                data = json.loads(data)
+                data = json.decode(data)
             except ValueError:
                 pass
 

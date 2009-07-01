@@ -16,7 +16,7 @@ from couchdb import multipart
 class ReadMultiPartTestCase(unittest.TestCase):
 
     def test_flat(self):
-        text = '''MIME-Version: 1.0
+        text = '''\
 Content-Type: multipart/mixed; boundary="===============1946781859=="
 
 --===============1946781859==
@@ -59,7 +59,7 @@ ETag: "1-2182689334"
         self.assertEqual(num, 2)
 
     def test_nested(self):
-        text = '''MIME-Version: 1.0
+        text = '''\
 Content-Type: multipart/mixed; boundary="===============1946781859=="
 
 --===============1946781859==
