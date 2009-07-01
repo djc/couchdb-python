@@ -30,6 +30,9 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
    for decoding/encoding JSON data. The currently available choices are
    `simplejson`, `cjson`, and `json` (the standard library module). It is also
    possible to use custom decoding/encoding functions.
+ * Add logging to the Python view server. It can now be configured to log to a
+   given file or the standard error stream, and the log level can be set debug
+   to see all communication between CouchDB and the view server (issue 55).
 
 
 Version 0.5

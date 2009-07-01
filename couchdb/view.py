@@ -10,6 +10,7 @@
 """Implementation of a view server for functions written in Python."""
 
 from codecs import BOM_UTF8
+import logging
 import os
 import sys
 import traceback
@@ -19,6 +20,8 @@ from couchdb import json
 
 __all__ = ['main', 'run']
 __docformat__ = 'restructuredtext en'
+
+log = logging.getLogger('couchdb.view')
 
 
 def run(input=sys.stdin, output=sys.stdout):
@@ -69,8 +72,10 @@ def run(input=sys.stdin, output=sys.stdout):
             try:
                 results.append([[key, value] for key, value in function(doc)])
             except Exception, e:
+                log.error('runtime error in map function: %s', e,
+                          exc_info=True)
                 results.append([])
-                output.write(json.encode({'log': e.args[0]}))
+                _log(traceback.format_exc())
         return results
 
     def reduce(*cmd, **kwargs):
@@ -80,6 +85,8 @@ def run(input=sys.stdin, output=sys.stdout):
         try:
             exec code in {'log': _log}, globals_
         except Exception, e:
+            log.error('runtime error in reduce function: %s', e,
+                      exc_info=True)
             return {'error': {
                 'id': 'reduce_compilation_error',
                 'reason': e.args[0]
@@ -121,17 +128,21 @@ def run(input=sys.stdin, output=sys.stdout):
                 break
             try:
                 cmd = json.decode(line)
+                log.debug('Processing %r', cmd)
             except ValueError, e:
-                sys.stderr.write('error: %s\n' % e)
-                sys.stderr.flush()
+                log.error('Error: %s', e, exc_info=True)
                 return 1
             else:
                 retval = handlers[cmd[0]](*cmd[1:])
+                log.debug('Returning  %r', retval)
                 output.write(json.encode(retval))
                 output.write('\n')
                 output.flush()
     except KeyboardInterrupt:
         return 0
+    except Exception, e:
+        log.error('Error: %s', e, exc_info=True)
+        return 1
 
 
 _VERSION = """%(name)s - CouchDB Python %(version)s
@@ -147,10 +158,14 @@ The exit status is 0 for success or 1 for failure.
 
 Options:
 
-  --version          display version information and exit
-  -h, --help         display a short help message and exit
-  --json-module      set the JSON module to use ('simplejson', 'cjson',
-                     or 'json' are supported)
+  --version             display version information and exit
+  -h, --help            display a short help message and exit
+  --json-module=<name>  set the JSON module to use ('simplejson', 'cjson',
+                        or 'json' are supported)
+  --log-file=<file>     name of the file to write log messages to, or '-' to
+                        enable logging to the standard error stream
+  --debug               enable debug logging; requires --log-file to be
+                        specified
 
 Report bugs via the web at <http://code.google.com/p/couchdb-python>.
 """
@@ -160,9 +175,13 @@ def main():
     """Command-line entry point for running the view server."""
     import getopt
     from couchdb import __version__ as VERSION
+
     try:
         option_list, argument_list = getopt.gnu_getopt(
-            sys.argv[1:], 'h', ['version', 'help', 'json-module='])
+            sys.argv[1:], 'h',
+            ['version', 'help', 'json-module=', 'debug', 'log-file=']
+        )
+
         message = None
         for option, value in option_list:
             if option in ('--version'):
@@ -172,10 +191,25 @@ def main():
                 message = _HELP % dict(name=os.path.basename(sys.argv[0]))
             elif option in ('--json-module'):
                 json.use(module=value)
+            elif option in ('--debug'):
+                log.setLevel(logging.DEBUG)
+            elif option in ('--log-file'):
+                if value == '-':
+                    handler = logging.StreamHandler(sys.stderr)
+                    handler.setFormatter(logging.Formatter(
+                        ' -> [%(levelname)s] %(message)s'
+                    ))
+                else:
+                    handler = logging.FileHandler(value)
+                    handler.setFormatter(logging.Formatter(
+                        '[%(asctime)s] [%(levelname)s] %(message)s'
+                    ))
+                log.addHandler(handler)
         if message:
             sys.stdout.write(message)
             sys.stdout.flush()
             sys.exit(0)
+
     except getopt.GetoptError, error:
         message = '%s\n\nTry `%s --help` for more information.\n' % (
             str(error), os.path.basename(sys.argv[0])
@@ -183,6 +217,7 @@ def main():
         sys.stderr.write(message)
         sys.stderr.flush()
         sys.exit(1)
+
     sys.exit(run())
 
 
