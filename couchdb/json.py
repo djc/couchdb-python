@@ -79,8 +79,9 @@ def use(module=None, decode=None, encode=None):
     corresponding JSON string. Exceptions raised by decoding and encoding
     should be propagated up unaltered.
     
-    :param module: the name of the JSON library module to use.
-    :type module: str
+    :param module: the name of the JSON library module to use, or the module
+                   object itself
+    :type module: str or module
     :param decode: a function for decoding JSON strings
     :type decode: callable
     :param encode: a function for encoding objects as JSON strings
@@ -88,6 +89,8 @@ def use(module=None, decode=None, encode=None):
     """
     global _decode, _encode, _initialized, _using
     if module is not None:
+        if not isinstance(module, basestring):
+            module = module.__name__
         if module not in ('cjson', 'json', 'simplejson'):
             raise ValueError('Unsupported JSON module %s' % module)
         _using = module
