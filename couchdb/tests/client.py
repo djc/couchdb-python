@@ -208,7 +208,7 @@ class DatabaseTestCase(unittest.TestCase):
             self.assertEqual(i, res[idx].key)
             self.assertEqual(2*i, res[idx].value)
 
-        def reduce_fun(doc):
+        def reduce_fun(keys, values):
             return sum(values)
         res = list(self.db.query(map_fun, reduce_fun, 'python'))
         self.assertEqual(1, len(res))
