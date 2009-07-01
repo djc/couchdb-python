@@ -134,6 +134,13 @@ class MultipartWriter(object):
         self.fileobj.write(CRLF)
         if headers is None:
             headers = {}
+        if isinstance(content, unicode):
+            ctype, params = parse_header(mimetype)
+            if 'charset' in params:
+                content = content.encode(params['charset'])
+            else:
+                content = content.encode('utf-8')
+                mimetype = mimetype + ';charset=utf-8'
         headers['Content-Type'] = mimetype
         if content:
             headers['Content-Length'] = str(len(content))

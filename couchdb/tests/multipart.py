@@ -13,7 +13,7 @@ import unittest
 from couchdb import multipart
 
 
-class ReadMultiPartTestCase(unittest.TestCase):
+class ReadMultipartTestCase(unittest.TestCase):
 
     def test_flat(self):
         text = '''\
@@ -149,10 +149,36 @@ ETag: "1-3482142493"
         self.assertEqual(num, 3)
 
 
+class WriteMultipartTestCase(unittest.TestCase):
+
+    def test_unicode_content(self):
+        buf = StringIO()
+        envelope = multipart.write_multipart(buf, boundary='==123456789==')
+        envelope.add('text/plain', u'Iñtërnâtiônàlizætiøn')
+        envelope.close()
+        self.assertEqual('''Content-Type: multipart/mixed; boundary="==123456789=="
+
+--==123456789==
+Content-Length: 27
+Content-MD5: 5eYoIG5zsa5ps3/Gl2Kh4Q==
+Content-Type: text/plain;charset=utf-8
+
+Iñtërnâtiônàlizætiøn
+--==123456789==--
+''', buf.getvalue().replace('\r\n', '\n'))
+
+    def test_unicode_content_ascii(self):
+        buf = StringIO()
+        envelope = multipart.write_multipart(buf, boundary='==123456789==')
+        self.assertRaises(UnicodeEncodeError, envelope.add,
+                          'text/plain;charset=ascii', u'Iñtërnâtiônàlizætiøn')
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(multipart))
-    suite.addTest(unittest.makeSuite(ReadMultiPartTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ReadMultipartTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(WriteMultipartTestCase, 'test'))
     return suite
 
 
