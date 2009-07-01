@@ -1048,7 +1048,7 @@ def unicode_urlencode(data):
     return urlencode(params)
 
 
-VALID_DB_NAME = re.compile(r'^[a-z0-9_$()+-/]+$')
+VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')
 def validate_dbname(name):
     if not VALID_DB_NAME.match(name):
         raise ValueError('Invalid database name')
