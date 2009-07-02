@@ -170,6 +170,13 @@ def main():
         dest='ignore_deletes',
         help='whether to ignore "delete" notifications',
         default=True)
+    parser.add_option('--json-module',
+        action='store',
+        dest='json_module',
+        metavar='NAME',
+        help='the JSON module to use ("simplejson", "cjson", or "json" are '
+             'supported)',
+        default=True)
 
     options, arg = parser.parse_args()
 
@@ -178,7 +185,10 @@ def main():
         sys.exit(1)
 
     options.target_servers = options.target_servers.split(',')
-            
+
+    if options.json_module:
+        json.use(options.json_module)
+
     ReplicationHelper(options)()
 
 if __name__ == '__main__':
