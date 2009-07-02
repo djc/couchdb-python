@@ -7,22 +7,26 @@
 # you should have received as part of this distribution.
 
 """
-CouchDB DbUpdateNotification Script that triggers replication
+CouchDB ``update_notification`` script that triggers replication.
 
-Daemon script that acts as CouchDB DbUpdateNotificationProcess and triggers
-replication on each incoming database update between the specified servers
+Daemon script that can be used as a CouchDB ``update_notification`` process
+and triggers replication on each incoming database update between the
+specified servers.
 
-Setup
-Add this to your local.ini, in the section [update_notification]:
-DbUpdateNotificationProcess=/path/to/this/script/replication-helper.py \
---source-server=http://127.0.0.1 --target-server=http://127.0.0.1:5985
+Setup:
+Add this to your local.ini, in the section ``[update_notification]``::
 
-Format of messages it reads
-{"db":"replication_notification_test","type":"updated"}
+    replication = /path/to/couchdb-replicate \\
+      --source-server=http://127.0.0.1/ \\
+      --target-server=http://127.0.0.1:5985/
 
-Todo: 
+Format of the messages it reads::
+
+    {"db":"replication_notification_test","type":"updated"}
+
+TODO: 
  - Generic'-out the listener part and implement the resplication trigger as
-a delegate or subclass.
+   a delegate or subclass.
  - Check if sub-second sleep delays are possible
 """
 

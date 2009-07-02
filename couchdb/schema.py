@@ -158,6 +158,7 @@ class Schema(object):
     def unwrap(self):
         return self._data
 
+    @classmethod
     def build(cls, **d):
         fields = {}
         for attrname, attrval in d.items():
@@ -166,13 +167,12 @@ class Schema(object):
             fields[attrname] = attrval
         d['_fields'] = fields
         return type('AnonymousStruct', (cls,), d)
-    build = classmethod(build)
 
+    @classmethod
     def wrap(cls, data):
         instance = cls()
         instance._data = data
         return instance
-    wrap = classmethod(wrap)
 
     def _to_python(self, value):
         return self.wrap(value)
@@ -314,13 +314,17 @@ class Document(Schema):
         if self.id is not None:
             raise AttributeError('id can only be set on new documents')
         self._data['_id'] = value
-    id = property(_get_id, _set_id)
+    id = property(_get_id, _set_id, doc='The document ID')
 
+    @property
     def rev(self):
+        """The document revision.
+        
+        :type: basestring
+        """
         if hasattr(self._data, 'rev'): # When data is client.Document
             return self._data.rev
         return self._data.get('_rev')
-    rev = property(rev)
 
     def items(self):
         """Return the fields as a list of ``(name, value)`` tuples.
@@ -348,6 +352,7 @@ class Document(Schema):
                 retval.append((name, value))
         return retval
 
+    @classmethod
     def load(cls, db, id):
         """Load a specific document from the given database.
         
@@ -360,7 +365,6 @@ class Document(Schema):
         if doc is None:
             return None
         return cls.wrap(doc)
-    load = classmethod(load)
 
     def store(self, db):
         """Store the document in the given database."""
@@ -371,6 +375,7 @@ class Document(Schema):
             db[self.id] = self._data
         return self
 
+    @classmethod
     def query(cls, db, map_fun, reduce_fun, language='javascript', **options):
         """Execute a CouchDB temporary view and map the result values back to
         objects of this schema.
@@ -388,8 +393,8 @@ class Document(Schema):
             return cls.wrap(data)
         return db.query(map_fun, reduce_fun=reduce_fun, language=language,
                         wrapper=_wrapper, **options)
-    query = classmethod(query)
 
+    @classmethod
     def view(cls, db, viewname, **options):
         """Execute a CouchDB named view and map the result values back to
         objects of this schema.
@@ -406,7 +411,6 @@ class Document(Schema):
             data['_id'] = row.id
             return cls.wrap(data)
         return db.view(viewname, wrapper=_wrapper, **options)
-    view = classmethod(view)
 
 
 class TextField(Field):

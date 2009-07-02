@@ -7,6 +7,10 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+"""Utility for loading a snapshot of a CouchDB database from a multipart MIME
+file.
+"""
+
 from base64 import b64encode
 from email import message_from_file
 from optparse import OptionParser

@@ -7,6 +7,10 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+"""Utility for dumping a snapshot of a CouchDB database to a multipart MIME
+file.
+"""
+
 from base64 import b64decode
 from email.MIMEBase import MIMEBase
 from email.MIMEMultipart import MIMEMultipart
