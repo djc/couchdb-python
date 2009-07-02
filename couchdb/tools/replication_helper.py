@@ -179,8 +179,7 @@ def main():
         dest='json_module',
         metavar='NAME',
         help='the JSON module to use ("simplejson", "cjson", or "json" are '
-             'supported)',
-        default=True)
+             'supported)')
 
     options, arg = parser.parse_args()
 
