@@ -110,7 +110,7 @@ if sys.version_info < (2, 6):
 
 setup(
     name = 'CouchDB',
-    version = '0.6',
+    version = '0.7',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
