@@ -23,8 +23,8 @@ False
 >>> del server['python-tests']
 """
 
-import httplib2
 import mimetypes
+import os
 from urllib import quote, urlencode
 from types import FunctionType
 from inspect import getsource
@@ -32,39 +32,13 @@ from textwrap import dedent
 import re
 import socket
 
-from couchdb import json
+from couchdb import http, json
 
-__all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
-           'ServerError', 'Server', 'Database', 'Document', 'ViewResults',
-           'Row']
+__all__ = ['Server', 'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
 
 
-DEFAULT_BASE_URI = 'http://localhost:5984/'
-
-
-class PreconditionFailed(Exception):
-    """Exception raised when a 412 HTTP error is received in response to a
-    request.
-    """
-
-
-class ResourceNotFound(Exception):
-    """Exception raised when a 404 HTTP error is received in response to a
-    request.
-    """
-
-
-class ResourceConflict(Exception):
-    """Exception raised when a 409 HTTP error is received in response to a
-    request.
-    """
-
-
-class ServerError(Exception):
-    """Exception raised when an unexpected HTTP error is received in response
-    to a request.
-    """
+DEFAULT_BASE_URL = 'http://localhost:5984/'
 
 
 class Server(object):
@@ -94,7 +68,7 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri=DEFAULT_BASE_URI, cache=None, timeout=None):
+    def __init__(self, url=DEFAULT_BASE_URL, cache=None, timeout=None):
         """Initialize the server object.
 
         :param uri: the URI of the server (for example
@@ -105,9 +79,11 @@ class Server(object):
         :param timeout: socket timeout in number of seconds, or `None` for no
                         timeout
         """
-        http = httplib2.Http(cache=cache, timeout=timeout)
-        http.force_exception_to_status_code = False
-        self.resource = Resource(http, uri)
+        if isinstance(url, basestring):
+            session = http.Session(cache=cache, timeout=timeout)
+            self.resource = http.Resource(url, session)
+        else:
+            self.resource = url
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -119,17 +95,17 @@ class Server(object):
         try:
             self.resource.head(validate_dbname(name))
             return True
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return False
 
     def __iter__(self):
         """Iterate over the names of all databases."""
-        resp, data = self.resource.get('_all_dbs')
+        status, headers, data = self.resource.get('_all_dbs')
         return iter(data)
 
     def __len__(self):
         """Return the number of databases."""
-        resp, data = self.resource.get('_all_dbs')
+        status, headers, data = self.resource.get('_all_dbs')
         return len(data)
 
     def __nonzero__(self):
@@ -160,8 +136,7 @@ class Server(object):
         :rtype: `Database`
         :raise ResourceNotFound: if no database with that name exists
         """
-        db = Database(uri(self.resource.uri, name), validate_dbname(name),
-                      http=self.resource.http)
+        db = Database(self.resource(name), validate_dbname(name))
         db.resource.head() # actually make a request to the database
         return db
 
@@ -175,7 +150,7 @@ class Server(object):
 
         :type: `dict`
         """
-        resp, data = self.resource.get('_config')
+        status, headers, data = self.resource.get('_config')
         return data
 
     @property
@@ -186,7 +161,7 @@ class Server(object):
         to check for the availability of the server.
 
         :type: `unicode`"""
-        resp, data = self.resource.get()
+        status, headers, data = self.resource.get()
         return data['version']
 
     def create(self, name):
@@ -257,8 +232,11 @@ class Database(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri, name=None, http=None):
-        self.resource = Resource(http, uri)
+    def __init__(self, uri, name=None, session=None):
+        if isinstance(uri, basestring):
+            self.resource = http.Resource(uri, session)
+        else:
+            self.resource = uri
         self._name = name
 
     def __repr__(self):
@@ -274,7 +252,7 @@ class Database(object):
         try:
             self.resource.head(id)
             return True
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return False
 
     def __iter__(self):
@@ -283,7 +261,7 @@ class Database(object):
 
     def __len__(self):
         """Return the number of documents in the database."""
-        resp, data = self.resource.get()
+        _, _, data = self.resource.get()
         return data['doc_count']
 
     def __nonzero__(self):
@@ -299,8 +277,8 @@ class Database(object):
 
         :param id: the document ID
         """
-        resp, data = self.resource.head(id)
-        self.resource.delete(id, rev=resp['etag'].strip('"'))
+        status, headers, data = self.resource.head(id)
+        self.resource.delete(id, rev=headers['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -309,7 +287,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        resp, data = self.resource.get(id)
+        _, _, data = self.resource.get(id)
         return Document(data)
 
     def __setitem__(self, id, content):
@@ -320,7 +298,7 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        resp, data = self.resource.put(id, content=content)
+        status, headers, data = self.resource.put(id, body=content)
         content.update({'_id': data['id'], '_rev': data['rev']})
 
     @property
@@ -358,7 +336,7 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        resp, data = self.resource.post(content=data)
+        _, _, data = self.resource.post(body=data)
         return data['id']
 
     def compact(self):
@@ -370,7 +348,7 @@ class Database(object):
                  successfully
         :rtype: `bool`
         """
-        resp, data = self.resource.post('_compact')
+        _, _, data = self.resource.post('_compact')
         return data['ok']
 
     def copy(self, src, dest):
@@ -402,12 +380,12 @@ class Database(object):
                     raise TypeError('expected dict or string, got %s' %
                                     type(dest))
             if '_rev' in dest:
-                dest = '%s?%s' % (unicode_quote(dest['_id']),
-                                  unicode_urlencode({'rev': dest['_rev']}))
+                dest = '%s?%s' % (http.quote(dest['_id']),
+                                  http.urlencode({'rev': dest['_rev']}))
             else:
                 dest = unicode_quote(dest['_id'])
 
-        resp, data = self.resource._request('COPY', src,
+        _, _, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})
         return data['rev']
 
@@ -451,8 +429,8 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            resp, data = self.resource.get(id, **options)
-        except ResourceNotFound:
+            _, _, data = self.resource.get(id, **options)
+        except http.ResourceNotFound:
             return default
         else:
             return Document(data)
@@ -467,7 +445,7 @@ class Database(object):
         :rtype: ``dict``
         :since: 0.4
         """
-        resp, data = self.resource.get()
+        _, _, data = self.resource.get()
         self._name = data['db_name']
         return data
 
@@ -483,7 +461,8 @@ class Database(object):
         :param filename: the name of the attachment file
         :since: 0.4.1
         """
-        resp, data = self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
+        resource = self.resource(doc['_id'])
+        _, _, data = resource.delete(filename, rev=doc['_rev'])
         doc['_rev'] = data['rev']
 
     def get_attachment(self, id_or_doc, filename, default=None):
@@ -504,9 +483,9 @@ class Database(object):
         else:
             id = id_or_doc['_id']
         try:
-            resp, data = self.resource(id).get(filename)
+            _, _, data = self.resource(id).get(filename)
             return data
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return default
 
     def put_attachment(self, doc, content, filename=None, content_type=None):
@@ -528,18 +507,18 @@ class Database(object):
                              extension
         :since: 0.4.1
         """
-        if hasattr(content, 'read'):
-            content = content.read()
         if filename is None:
             if hasattr(content, 'name'):
-                filename = content.name
+                filename = os.path.basename(content.name)
             else:
                 raise ValueError('no filename specified for attachment')
         if content_type is None:
-            content_type = ';'.join(filter(None, mimetypes.guess_type(filename)))
+            content_type = ';'.join(
+                filter(None, mimetypes.guess_type(filename))
+            )
 
-        resp, data = self.resource(doc['_id']).put(filename, content=content,
-                                                   headers={
+        resource = self.resource(doc['_id'])
+        status, headers, data = resource.put(filename, body=content, headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
         doc['_rev'] = data['rev']
@@ -583,9 +562,9 @@ class Database(object):
         :return: the view reults
         :rtype: `ViewResults`
         """
-        return TemporaryView(uri(self.resource.uri, '_temp_view'), map_fun,
-                             reduce_fun, language=language, wrapper=wrapper,
-                             http=self.resource.http)(**options)
+        return TemporaryView(self.resource('_temp_view'), map_fun,
+                             reduce_fun, language=language,
+                             wrapper=wrapper)(**options)
 
     def update(self, documents, **options):
         """Perform a bulk update or insertion of the given documents using a
@@ -636,16 +615,16 @@ class Database(object):
 
         content = options
         content.update(docs=docs)
-        resp, data = self.resource.post('_bulk_docs', content=content)
+        _, _, data = self.resource.post('_bulk_docs', body=content)
 
         results = []
         for idx, result in enumerate(data):
             if 'error' in result:
                 if result['error'] == 'conflict':
-                    exc_type = ResourceConflict
+                    exc_type = http.ResourceConflict
                 else:
                     # XXX: Any other error types mappable to exceptions here?
-                    exc_type = ServerError
+                    exc_type = http.ServerError
                 results.append((False, result['id'],
                                 exc_type(result['reason'])))
             else:
@@ -682,9 +661,8 @@ class Database(object):
         if not name.startswith('_'):
             design, name = name.split('/', 1)
             name = '/'.join(['_design', design, '_view', name])
-        return PermanentView(uri(self.resource.uri, *name.split('/')), name,
-                             wrapper=wrapper,
-                             http=self.resource.http)(**options)
+        return PermanentView(self.resource(*name.split('/')), name,
+                             wrapper=wrapper)(**options)
 
 
 class Document(dict):
@@ -719,8 +697,11 @@ class Document(dict):
 class View(object):
     """Abstract representation of a view or query."""
 
-    def __init__(self, uri, wrapper=None, http=None):
-        self.resource = Resource(http, uri)
+    def __init__(self, uri, wrapper=None, session=None):
+        if isinstance(uri, basestring):
+            self.resource = http.Resource(uri, session)
+        else:
+            self.resource = uri
         self.wrapper = wrapper
 
     def __call__(self, **options):
@@ -745,8 +726,8 @@ class View(object):
 class PermanentView(View):
     """Representation of a permanent view on the server."""
 
-    def __init__(self, uri, name, wrapper=None, http=None):
-        View.__init__(self, uri, wrapper=wrapper, http=http)
+    def __init__(self, uri, name, wrapper=None, session=None):
+        View.__init__(self, uri, wrapper=wrapper, session=session)
         self.name = name
 
     def __repr__(self):
@@ -756,10 +737,10 @@ class PermanentView(View):
         if 'keys' in options:
             options = options.copy()
             keys = {'keys': options.pop('keys')}
-            resp, data = self.resource.post(content=keys,
+            _, _, data = self.resource.post(body=keys,
                                             **self._encode_options(options))
         else:
-            resp, data = self.resource.get(**self._encode_options(options))
+            _, _, data = self.resource.get(**self._encode_options(options))
         return data
 
 
@@ -767,8 +748,8 @@ class TemporaryView(View):
     """Representation of a temporary view."""
 
     def __init__(self, uri, map_fun, reduce_fun=None,
-                 language='javascript', wrapper=None, http=None):
-        View.__init__(self, uri, wrapper=wrapper, http=http)
+                 language='javascript', wrapper=None, session=None):
+        View.__init__(self, uri, wrapper=wrapper, session=session)
         if isinstance(map_fun, FunctionType):
             map_fun = getsource(map_fun).rstrip('\n\r')
         self.map_fun = dedent(map_fun.lstrip('\n\r'))
@@ -791,7 +772,7 @@ class TemporaryView(View):
             options = options.copy()
             body['keys'] = options.pop('keys')
         content = json.encode(body).encode('utf-8')
-        resp, data = self.resource.post(content=content, headers={
+        _, _, data = self.resource.post(body=content, headers={
             'Content-Type': 'application/json'
         }, **self._encode_options(options))
         return data
@@ -950,139 +931,6 @@ class Row(dict):
         doc = self.get('doc')
         if doc:
             return Document(doc)
-
-
-# Internals
-
-
-class Resource(object):
-
-    def __init__(self, http, uri):
-        if http is None:
-            http = httplib2.Http()
-            http.force_exception_to_status_code = False
-        self.http = http
-        self.uri = uri
-
-    def __call__(self, path):
-        return type(self)(self.http, uri(self.uri, path))
-
-    def delete(self, path=None, headers=None, **params):
-        return self._request('DELETE', path, headers=headers, **params)
-
-    def get(self, path=None, headers=None, **params):
-        return self._request('GET', path, headers=headers, **params)
-
-    def head(self, path=None, headers=None, **params):
-        return self._request('HEAD', path, headers=headers, **params)
-
-    def post(self, path=None, content=None, headers=None, **params):
-        return self._request('POST', path, content=content, headers=headers,
-                             **params)
-
-    def put(self, path=None, content=None, headers=None, **params):
-        return self._request('PUT', path, content=content, headers=headers,
-                             **params)
-
-    def _request(self, method, path=None, content=None, headers=None,
-                 **params):
-        from couchdb import __version__
-        headers = headers or {}
-        headers.setdefault('Accept', 'application/json')
-        headers.setdefault('User-Agent', 'couchdb-python %s' % __version__)
-        body = None
-        if content is not None:
-            if not isinstance(content, basestring):
-                body = json.encode(content).encode('utf-8')
-                headers.setdefault('Content-Type', 'application/json')
-            else:
-                body = content
-            headers.setdefault('Content-Length', str(len(body)))
-
-        def _make_request(retry=1):
-            try:
-                return self.http.request(uri(self.uri, path, **params), method,
-                                             body=body, headers=headers)
-            except socket.error, e:
-                if retry > 0 and e.args[0] == 54: # reset by peer
-                    return _make_request(retry - 1)
-                raise
-        resp, data = _make_request()
-
-        status_code = int(resp.status)
-        if data and resp.get('content-type') == 'application/json':
-            try:
-                data = json.decode(data)
-            except ValueError:
-                pass
-
-        if status_code >= 400:
-            if type(data) is dict:
-                error = (data.get('error'), data.get('reason'))
-            else:
-                error = data
-            if status_code == 404:
-                raise ResourceNotFound(error)
-            elif status_code == 409:
-                raise ResourceConflict(error)
-            elif status_code == 412:
-                raise PreconditionFailed(error)
-            else:
-                raise ServerError((status_code, error))
-
-        return resp, data
-
-
-def uri(base, *path, **query):
-    """Assemble a uri based on a base, any number of path segments, and query
-    string parameters.
-
-    >>> uri('http://example.org/', '/_all_dbs')
-    'http://example.org/_all_dbs'
-    """
-    if base and base.endswith('/'):
-        base = base[:-1]
-    retval = [base]
-
-    # build the path
-    path = '/'.join([''] +
-                    [unicode_quote(s.strip('/')) for s in path
-                     if s is not None])
-    if path:
-        retval.append(path)
-
-    # build the query string
-    params = []
-    for name, value in query.items():
-        if type(value) in (list, tuple):
-            params.extend([(name, i) for i in value if i is not None])
-        elif value is not None:
-            if value is True:
-                value = 'true'
-            elif value is False:
-                value = 'false'
-            params.append((name, value))
-    if params:
-        retval.extend(['?', unicode_urlencode(params)])
-
-    return ''.join(retval)
-
-
-def unicode_quote(string, safe=''):
-    if isinstance(string, unicode):
-        string = string.encode('utf-8')
-    return quote(string, safe)
-
-
-def unicode_urlencode(data):
-    if isinstance(data, dict):
-        data = data.items()
-    params = []
-    for name, value in data:
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
-        params.append((name, value))
-    return urlencode(params)
 
 
 VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')
