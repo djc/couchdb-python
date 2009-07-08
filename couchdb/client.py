@@ -232,11 +232,11 @@ class Database(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri, name=None, session=None):
-        if isinstance(uri, basestring):
-            self.resource = http.Resource(uri, session)
+    def __init__(self, url, name=None, session=None):
+        if isinstance(url, basestring):
+            self.resource = http.Resource(url, session)
         else:
-            self.resource = uri
+            self.resource = url
         self._name = name
 
     def __repr__(self):
@@ -697,11 +697,11 @@ class Document(dict):
 class View(object):
     """Abstract representation of a view or query."""
 
-    def __init__(self, uri, wrapper=None, session=None):
-        if isinstance(uri, basestring):
-            self.resource = http.Resource(uri, session)
+    def __init__(self, url, wrapper=None, session=None):
+        if isinstance(url, basestring):
+            self.resource = http.Resource(url, session)
         else:
-            self.resource = uri
+            self.resource = url
         self.wrapper = wrapper
 
     def __call__(self, **options):

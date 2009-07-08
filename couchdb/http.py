@@ -62,7 +62,7 @@ class ResponseBody(object):
     def read(self, size=None):
         bytes = self.resp.read(size)
         if size is None or len(bytes) < size:
-            self.callback()
+            self.close()
         return bytes
 
     def close(self):
@@ -111,7 +111,8 @@ class Session(object):
         finally:
             self.lock.release()
 
-    def request(self, method, url, body=None, headers=None, redirects=None):
+    def request(self, method, url, body=None, headers=None,
+                num_redirects=0):
         if url in self.perm_redirects:
             url = self.perm_redirects[url]
         method = method.upper()
@@ -120,9 +121,6 @@ class Session(object):
             headers = {}
         headers.setdefault('Accept', 'application/json')
         headers['User-Agent'] = self.user_agent
-
-        if redirects is None:
-            redirects = []
 
         if method in ('GET', 'HEAD'):
             cached_resp = self.cache.get(url)
@@ -144,14 +142,10 @@ class Session(object):
             else:
                 headers['Transfer-Encoding'] = 'chunked'
 
-        #print
-        #print method, url
-        #print headers
-
         conn = self._get_connection(url)
         relurl = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
 
-        def _try_request(retry=1):
+        def _try_request(retries=1):
             try:
                 conn.putrequest(method, relurl)
                 for header in headers:
@@ -160,25 +154,23 @@ class Session(object):
                 if body is not None:
                     if isinstance(body, str):
                         conn.send(body)
-                    else:
-                        # assume a file-like object and send in chunks
+                    else: # assume a file-like object and send in chunks
                         while 1:
                             chunk = body.read(8192)
                             if not chunk:
-                                conn.send('0\r\n\r\n')
                                 break
                             conn.send(('%x\r\n' % len(chunk)) + chunk + '\r\n')
+                        conn.send('0\r\n\r\n')
             except socket.error, e:
-                if retry > 0 and e.args[0] in (54,): # reset by peer
+                if retries > 0 and e.args[0] in (54,): # reset by peer
                     conn.close()
                     conn.connect()
-                    return _try_request(retry - 1)
+                    return _try_request(retries - 1)
                 raise
 
         _try_request()
         resp = conn.getresponse()
         status = resp.status
-        #print status
 
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
@@ -191,28 +183,35 @@ class Session(object):
                 method in ('GET', 'HEAD') and status in (301, 302, 307):
             resp.read()
             self._return_connection(url, conn)
-            if len(redirects) > self.max_redirects:
+            if num_redirects > self.max_redirects:
                 raise RedirectLimit('Redirection limit exceeded')
             location = resp.getheader('location')
             if status == 301:
                 self.perm_redirects[url] = location
             elif status == 303:
                 method = 'GET'
-            #print '%d redirecting to %r' % (status, location)
-            return self.request(method, location, body, headers)
+            return self.request(method, location, body, headers,
+                                num_redirects=num_redirects + 1)
 
         data = None
+
+        # Read the full response for empty responses so that the connection is
+        # in good state for the next request
         if method == 'HEAD' or resp.getheader('content-length') == '0' or \
                 status < 200 or status in (204, 304):
             resp.read()
             self._return_connection(url, conn)
-        elif method != 'HEAD':
-            if resp.getheader('content-type') == 'application/json':
-                data = json.decode(resp.read())
-                self._return_connection(url, conn)
-            else:
-                data = ResponseBody(resp,
-                                    lambda: self._return_connection(url, conn))
+
+        # Automatically decode JSON response bodies
+        elif resp.getheader('content-type') == 'application/json':
+            data = json.decode(resp.read())
+            self._return_connection(url, conn)
+
+        # Do not buffer the full response body, and instead return a minimal
+        # file-like object
+        else:
+            data = ResponseBody(resp,
+                                lambda: self._return_connection(url, conn))
 
         # Handle errors
         if status >= 400:
@@ -245,7 +244,7 @@ class Resource(object):
         self.session = session
 
     def __call__(self, *path):
-        return type(self)(URL(self.url, *path), self.session)
+        return type(self)(urljoin(self.url, *path), self.session)
 
     def delete(self, path=None, headers=None, **params):
         return self._request('DELETE', path, headers=headers, **params)
@@ -264,15 +263,32 @@ class Resource(object):
         return self._request('PUT', path, body=body, headers=headers, **params)
 
     def _request(self, method, path=None, body=None, headers=None, **params):
-        return self.session.request(method, URL(self.url, path, **params),
+        return self.session.request(method, urljoin(self.url, path, **params),
                                     body=body, headers=headers)
 
 
-def URL(base, *path, **query):
+def quote(string, safe=''):
+    if isinstance(string, unicode):
+        string = string.encode('utf-8')
+    return urllib.quote(string, safe)
+
+
+def urlencode(data):
+    if isinstance(data, dict):
+        data = data.items()
+    params = []
+    for name, value in data:
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        params.append((name, value))
+    return urllib.urlencode(params)
+
+
+def urljoin(base, *path, **query):
     """Assemble a URL based on a base, any number of path segments, and query
     string parameters.
 
-    >>> URL('http://example.org/', '/_all_dbs')
+    >>> urljoin('http://example.org/', '/_all_dbs')
     'http://example.org/_all_dbs'
     """
     if base and base.endswith('/'):
@@ -301,20 +317,3 @@ def URL(base, *path, **query):
         retval.extend(['?', urlencode(params)])
 
     return ''.join(retval)
-
-
-def quote(string, safe=''):
-    if isinstance(string, unicode):
-        string = string.encode('utf-8')
-    return urllib.quote(string, safe)
-
-
-def urlencode(data):
-    if isinstance(data, dict):
-        data = data.items()
-    params = []
-    for name, value in data:
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
-        params.append((name, value))
-    return urllib.urlencode(params)
