@@ -7,7 +7,13 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+"""Simple HTTP client implementation based on the httplib module in the
+standard library.
+"""
+
+from base64 import b64encode
 from httplib import HTTPConnection, HTTPSConnection
+import re
 import socket
 try:
     from threading import Lock
@@ -47,6 +53,12 @@ class ServerError(HTTPError):
     """
 
 
+class Unauthorized(HTTPError):
+    """Exception raised when the server requires authentication credentials
+    but either none are provided, or they are incorrect.
+    """
+
+
 class RedirectLimit(Exception):
     """Exception raised when a request is redirected more often than allowed
     by the maximum number of redirections.
@@ -83,35 +95,7 @@ class Session(object):
         self.conns = {} # HTTP connections keyed by (scheme, host)
         self.lock = Lock()
 
-    def _get_connection(self, url):
-        scheme, host = urlsplit(url, 'http', False)[:2]
-        self.lock.acquire()
-        try:
-            conns = self.conns.setdefault((scheme, host), [])
-            if conns:
-                conn = conns.pop(-1)
-            else:
-                if scheme == 'http':
-                    cls = HTTPConnection
-                elif self.scheme == 'https':
-                    cls = HTTPSConnection
-                else:
-                    raise ValueError('%s is not a valid scheme' % scheme)
-                conn = cls(host)
-        finally:
-            self.lock.release()
-
-        return conn
-
-    def _return_connection(self, url, conn):
-        scheme, host = urlsplit(url, 'http', False)[:2]
-        self.lock.acquire()
-        try:
-            self.conns.setdefault((scheme, host), []).append(conn)
-        finally:
-            self.lock.release()
-
-    def request(self, method, url, body=None, headers=None,
+    def request(self, method, url, body=None, headers=None, credentials=None,
                 num_redirects=0):
         if url in self.perm_redirects:
             url = self.perm_redirects[url]
@@ -172,6 +156,16 @@ class Session(object):
         resp = conn.getresponse()
         status = resp.status
 
+        # Handle authentication challenge
+        if status == 401:
+            resp.read()
+            auth_header = resp.getheader('www-authenticate', '')
+            if auth_header:
+                if self._authenticate(auth_header, headers, credentials):
+                    _try_request()
+                    resp = conn.getresponse()
+                    status = resp.status
+
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
             resp.read()
@@ -222,7 +216,9 @@ class Session(object):
                 self._return_connection(url, conn)
             else:
                 error = ''
-            if status == 404:
+            if status == 401:
+                raise Unauthorized(error)
+            elif status == 404:
                 raise ResourceNotFound(error)
             elif status == 409:
                 raise ResourceConflict(error)
@@ -236,11 +232,49 @@ class Session(object):
 
         return status, resp.msg, data
 
+    def _authenticate(self, info, headers, credentials):
+        match = re.match(r'''(\w*)\s+realm=['"]([^'"]+)['"]''', info)
+        if match:
+            scheme, realm = match.groups()
+            if scheme.lower() == 'basic':
+                headers['Authorization'] = 'Basic %s' % b64encode(
+                    '%s:%s' % credentials
+                )
+                return True
+
+    def _get_connection(self, url):
+        scheme, host = urlsplit(url, 'http', False)[:2]
+        self.lock.acquire()
+        try:
+            conns = self.conns.setdefault((scheme, host), [])
+            if conns:
+                conn = conns.pop(-1)
+            else:
+                if scheme == 'http':
+                    cls = HTTPConnection
+                elif self.scheme == 'https':
+                    cls = HTTPSConnection
+                else:
+                    raise ValueError('%s is not a supported scheme' % scheme)
+                conn = cls(host)
+        finally:
+            self.lock.release()
+
+        return conn
+
+    def _return_connection(self, url, conn):
+        scheme, host = urlsplit(url, 'http', False)[:2]
+        self.lock.acquire()
+        try:
+            self.conns.setdefault((scheme, host), []).append(conn)
+        finally:
+            self.lock.release()
+
 
 class Resource(object):
 
     def __init__(self, url, session):
-        self.url = url
+        self.url, self.credentials = extract_credentials(url)
         self.session = session
 
     def __call__(self, *path):
@@ -264,7 +298,30 @@ class Resource(object):
 
     def _request(self, method, path=None, body=None, headers=None, **params):
         return self.session.request(method, urljoin(self.url, path, **params),
-                                    body=body, headers=headers)
+                                    body=body, headers=headers,
+                                    credentials=self.credentials)
+
+
+def extract_credentials(url):
+    """Extract authentication (user name and password) credentials from the
+    given URL.
+    
+    >>> extract_credentials('http://localhost:5984/_config/')
+    ('http://localhost:5984/_config/', (None, None))
+    >>> extract_credentials('http://joe:secret@localhost:5984/_config/')
+    ('http://localhost:5984/_config/', ('joe', 'secret'))
+    """
+    parts = urlsplit(url)
+    netloc = parts[1]
+    if '@' in netloc:
+        creds, netloc = netloc.split('@')
+        username, password = creds.split(':')
+        parts = list(parts)
+        parts[1] = netloc
+    else:
+        username = None
+        password = None
+    return urlunsplit(parts), (username, password)
 
 
 def quote(string, safe=''):

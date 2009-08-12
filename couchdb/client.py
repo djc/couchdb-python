@@ -83,7 +83,7 @@ class Server(object):
             session = http.Session(cache=cache, timeout=timeout)
             self.resource = http.Resource(url, session)
         else:
-            self.resource = url
+            self.resource = url # treat as a Resource object
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
