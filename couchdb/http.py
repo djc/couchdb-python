@@ -7,7 +7,7 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-"""Simple HTTP client implementation based on the httplib module in the
+"""Simple HTTP client implementation based on the ``httplib`` module in the
 standard library.
 """
 
@@ -16,6 +16,11 @@ from httplib import HTTPConnection, HTTPSConnection
 import re
 import socket
 try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
+import sys
+try:
     from threading import Lock
 except ImportError:
     from dummy_threading import Lock
@@ -23,6 +28,11 @@ import urllib
 from urlparse import urlsplit, urlunsplit
 
 from couchdb import json
+
+__all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
+           'ServerError', 'Unauthorized', 'RedirectLimit', 'Session',
+           'Resource']
+__docformat__ = 'restructuredtext en'
 
 
 class HTTPError(Exception):
@@ -65,6 +75,9 @@ class RedirectLimit(Exception):
     """
 
 
+CHUNK_SIZE = 1024 * 8
+
+
 class ResponseBody(object):
 
     def __init__(self, resp, callback):
@@ -78,6 +91,8 @@ class ResponseBody(object):
         return bytes
 
     def close(self):
+        while not self.resp.isclosed():
+            self.read(CHUNK_SIZE)
         self.callback()
 
 
@@ -106,6 +121,7 @@ class Session(object):
         headers.setdefault('Accept', 'application/json')
         headers['User-Agent'] = self.user_agent
 
+        cached_resp = None
         if method in ('GET', 'HEAD'):
             cached_resp = self.cache.get(url)
             if cached_resp is not None:
@@ -126,31 +142,38 @@ class Session(object):
             else:
                 headers['Transfer-Encoding'] = 'chunked'
 
+        path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
         conn = self._get_connection(url)
-        relurl = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
+        if conn.sock is None:
+            conn.connect()
 
         def _try_request(retries=1):
             try:
-                conn.putrequest(method, relurl)
+                conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
                     conn.putheader(header, headers[header])
                 conn.endheaders()
                 if body is not None:
                     if isinstance(body, str):
-                        conn.send(body)
+                        conn.sock.sendall(body)
                     else: # assume a file-like object and send in chunks
                         while 1:
-                            chunk = body.read(8192)
+                            chunk = body.read(CHUNK_SIZE)
                             if not chunk:
                                 break
-                            conn.send(('%x\r\n' % len(chunk)) + chunk + '\r\n')
-                        conn.send('0\r\n\r\n')
+                            conn.sock.sendall(('%x\r\n' % len(chunk)) +
+                                              chunk + '\r\n')
+                        conn.sock.sendall('0\r\n\r\n')
             except socket.error, e:
-                if retries > 0 and e.args[0] in (54,): # reset by peer
+                ecode = e.args[0]
+                if retries > 0 and ecode == 54: # reset by peer
                     conn.close()
                     conn.connect()
                     return _try_request(retries - 1)
-                raise
+                elif ecode == 32: # broken pipe
+                    pass
+                else:
+                    raise
 
         _try_request()
         resp = conn.getresponse()
@@ -171,6 +194,8 @@ class Session(object):
             resp.read()
             self._return_connection(url, conn)
             return cached_resp
+        elif cached_resp:
+            del self.cache[url]
 
         # Handle redirects
         if status == 303 or \
@@ -201,8 +226,12 @@ class Session(object):
             data = json.decode(resp.read())
             self._return_connection(url, conn)
 
-        # Do not buffer the full response body, and instead return a minimal
-        # file-like object
+        # Buffer small non-JSON response bodies
+        elif int(resp.getheader('content-length', sys.maxint)) < CHUNK_SIZE:
+            data = resp.read()
+
+        # For large or chunked response bodies, do not buffer the full body,
+        # and instead return a minimal file-like object
         else:
             data = ResponseBody(resp,
                                 lambda: self._return_connection(url, conn))
@@ -227,7 +256,9 @@ class Session(object):
             else:
                 raise ServerError((status, error))
 
-        if method in ('GET', 'HEAD') and 'etag' in resp.msg:
+        # Store cachable responses
+        if method in ('GET', 'HEAD') and 'etag' in resp.msg and \
+                not isinstance(data, ResponseBody):
             self.cache[url] = (status, resp.msg, data)
 
         return status, resp.msg, data
