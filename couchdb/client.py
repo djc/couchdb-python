@@ -68,7 +68,8 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, url=DEFAULT_BASE_URL, cache=None, timeout=None):
+    def __init__(self, url=DEFAULT_BASE_URL, cache=None, timeout=None,
+                 full_commit=True):
         """Initialize the server object.
 
         :param uri: the URI of the server (for example
@@ -84,6 +85,8 @@ class Server(object):
             self.resource = http.Resource(url, session)
         else:
             self.resource = url # treat as a Resource object
+        if not full_commit:
+            self.resource.headers['X-Couch-Full-Commit'] = 'false'
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -338,6 +341,14 @@ class Database(object):
         """
         _, _, data = self.resource.post(body=data)
         return data['id']
+
+    def commit(self):
+        """If the server is configured to delay commits, or previous requests
+        used the special ``X-Couch-Full-Commit: false`` header to disable
+        immediate commits, this method can be used to ensure that any
+        non-committed changes are committed to physical storage.
+        """
+        self.resource.post('_ensure_full_commit')
 
     def compact(self):
         """Compact the database.

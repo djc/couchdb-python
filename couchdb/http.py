@@ -164,6 +164,7 @@ class Session(object):
                             conn.sock.sendall(('%x\r\n' % len(chunk)) +
                                               chunk + '\r\n')
                         conn.sock.sendall('0\r\n\r\n')
+                return conn.getresponse()
             except socket.error, e:
                 ecode = e.args[0]
                 if retries > 0 and ecode == 54: # reset by peer
@@ -175,8 +176,7 @@ class Session(object):
                 else:
                     raise
 
-        _try_request()
-        resp = conn.getresponse()
+        resp = _try_request()
         status = resp.status
 
         # Handle authentication challenge
@@ -185,15 +185,17 @@ class Session(object):
             auth_header = resp.getheader('www-authenticate', '')
             if auth_header:
                 if self._authenticate(auth_header, headers, credentials):
-                    _try_request()
-                    resp = conn.getresponse()
+                    resp = _try_request()
                     status = resp.status
 
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
             resp.read()
             self._return_connection(url, conn)
-            return cached_resp
+            status, msg, data, decoded = cached_resp
+            if data is not None and not decoded:
+                data = StringIO(data)
+            return status, msg, data
         elif cached_resp:
             del self.cache[url]
 
@@ -213,6 +215,8 @@ class Session(object):
                                 num_redirects=num_redirects + 1)
 
         data = None
+        decoded = False
+        streamed = False
 
         # Read the full response for empty responses so that the connection is
         # in good state for the next request
@@ -224,17 +228,20 @@ class Session(object):
         # Automatically decode JSON response bodies
         elif resp.getheader('content-type') == 'application/json':
             data = json.decode(resp.read())
+            decoded = True
             self._return_connection(url, conn)
 
         # Buffer small non-JSON response bodies
         elif int(resp.getheader('content-length', sys.maxint)) < CHUNK_SIZE:
             data = resp.read()
+            self._return_connection(url, conn)
 
         # For large or chunked response bodies, do not buffer the full body,
         # and instead return a minimal file-like object
         else:
             data = ResponseBody(resp,
                                 lambda: self._return_connection(url, conn))
+            streamed = True
 
         # Handle errors
         if status >= 400:
@@ -257,13 +264,16 @@ class Session(object):
                 raise ServerError((status, error))
 
         # Store cachable responses
-        if method in ('GET', 'HEAD') and 'etag' in resp.msg and \
-                not isinstance(data, ResponseBody):
-            self.cache[url] = (status, resp.msg, data)
+        if not streamed and method in ('GET', 'HEAD') and 'etag' in resp.msg:
+            self.cache[url] = (status, resp.msg, data, decoded)
+
+        if not decoded and not streamed and data is not None:
+            data = StringIO(data)
 
         return status, resp.msg, data
 
     def _authenticate(self, info, headers, credentials):
+        # Naive Basic authentication support
         match = re.match(r'''(\w*)\s+realm=['"]([^'"]+)['"]''', info)
         if match:
             scheme, realm = match.groups()
@@ -290,7 +300,6 @@ class Session(object):
                 conn = cls(host)
         finally:
             self.lock.release()
-
         return conn
 
     def _return_connection(self, url, conn):
@@ -304,12 +313,18 @@ class Session(object):
 
 class Resource(object):
 
-    def __init__(self, url, session):
+    def __init__(self, url, session, headers=None):
         self.url, self.credentials = extract_credentials(url)
+        if session is None:
+            session = Session()
         self.session = session
+        self.headers = headers or {}
 
     def __call__(self, *path):
-        return type(self)(urljoin(self.url, *path), self.session)
+        obj = type(self)(urljoin(self.url, *path), self.session)
+        obj.credentials = self.credentials
+        obj.headers = self.headers.copy()
+        return obj
 
     def delete(self, path=None, headers=None, **params):
         return self._request('DELETE', path, headers=headers, **params)
@@ -328,8 +343,10 @@ class Resource(object):
         return self._request('PUT', path, body=body, headers=headers, **params)
 
     def _request(self, method, path=None, body=None, headers=None, **params):
+        all_headers = self.headers.copy()
+        all_headers.update(headers or {})
         return self.session.request(method, urljoin(self.url, path, **params),
-                                    body=body, headers=headers,
+                                    body=body, headers=all_headers,
                                     credentials=self.credentials)
 
 

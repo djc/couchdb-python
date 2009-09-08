@@ -8,8 +8,8 @@
 
 import doctest
 import os
+from StringIO import StringIO
 import unittest
-import StringIO
 
 from couchdb import client, http
 
@@ -18,7 +18,7 @@ class ServerTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
-        self.server = client.Server(uri)
+        self.server = client.Server(uri, full_commit=False)
 
     def tearDown(self):
         if 'python-tests' in self.server:
@@ -52,7 +52,7 @@ class DatabaseTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
-        self.server = client.Server(uri)
+        self.server = client.Server(uri, full_commit=False)
         if 'python-tests' in self.server:
             del self.server['python-tests']
         self.db = self.server.create('python-tests')
@@ -61,127 +61,127 @@ class DatabaseTestCase(unittest.TestCase):
         if 'python-tests' in self.server:
             del self.server['python-tests']
 
-#    def test_create_large_doc(self):
-#        self.db['foo'] = {'data': '0123456789' * 110 * 1024} # 10 MB
-#        self.assertEqual('foo', self.db['foo']['_id'])
-#
-#    def test_doc_id_quoting(self):
-#        self.db['foo/bar'] = {'foo': 'bar'}
-#        self.assertEqual('bar', self.db['foo/bar']['foo'])
-#        del self.db['foo/bar']
-#        self.assertEqual(None, self.db.get('foo/bar'))
-#
-#    def test_unicode(self):
-#        self.db[u'føø'] = {u'bår': u'Iñtërnâtiônàlizætiøn', 'baz': 'ASCII'}
-#        self.assertEqual(u'Iñtërnâtiônàlizætiøn', self.db[u'føø'][u'bår'])
-#        self.assertEqual(u'ASCII', self.db[u'føø'][u'baz'])
-#
-#    def test_disallow_nan(self):
-#        try:
-#            self.db['foo'] = {u'number': float('nan')}
-#            self.fail('Expected ValueError')
-#        except ValueError, e:
-#            pass
-#
-#    def test_doc_revs(self):
-#        doc = {'bar': 42}
-#        self.db['foo'] = doc
-#        old_rev = doc['_rev']
-#        doc['bar'] = 43
-#        self.db['foo'] = doc
-#        new_rev = doc['_rev']
-#
-#        new_doc = self.db.get('foo')
-#        self.assertEqual(new_rev, new_doc['_rev'])
-#        new_doc = self.db.get('foo', rev=new_rev)
-#        self.assertEqual(new_rev, new_doc['_rev'])
-#        old_doc = self.db.get('foo', rev=old_rev)
-#        self.assertEqual(old_rev, old_doc['_rev'])
-#
-#        self.assertTrue(self.db.compact())
-#        while self.db.info()['compact_running']:
-#            pass
-#        self.assertRaises(http.ServerError, self.db.get, 'foo', rev=old_rev)
-#
-#    def test_attachment_crud(self):
-#        doc = {'bar': 42}
-#        self.db['foo'] = doc
-#        old_rev = doc['_rev']
-#
-#        self.db.put_attachment(doc, 'Foo bar', 'foo.txt', 'text/plain')
-#        self.assertNotEquals(old_rev, doc['_rev'])
-#
-#        doc = self.db['foo']
-#        attachment = doc['_attachments']['foo.txt']
-#        self.assertEqual(len('Foo bar'), attachment['length'])
-#        self.assertEqual('text/plain', attachment['content_type'])
-#
-#        self.assertEqual('Foo bar',
-#                         self.db.get_attachment(doc, 'foo.txt').read())
-#        self.assertEqual('Foo bar',
-#                         self.db.get_attachment('foo', 'foo.txt').read())
-#
-#        old_rev = doc['_rev']
-#        self.db.delete_attachment(doc, 'foo.txt')
-#        self.assertNotEquals(old_rev, doc['_rev'])
-#        self.assertEqual(None, self.db['foo'].get('_attachments'))
-#
-#    def test_attachment_crud_with_files(self):
-#        doc = {'bar': 42}
-#        self.db['foo'] = doc
-#        old_rev = doc['_rev']
-#        f = StringIO.StringIO('Foo bar baz')
-#
-#        self.db.put_attachment(doc, f, 'foo.txt')
-#        self.assertNotEquals(old_rev, doc['_rev'])
-#
-#        doc = self.db['foo']
-#        attachment = doc['_attachments']['foo.txt']
-#        self.assertEqual(len('Foo bar baz'), attachment['length'])
-#        self.assertEqual('text/plain', attachment['content_type'])
-#
-#        self.assertEqual('Foo bar baz',
-#                         self.db.get_attachment(doc, 'foo.txt').read())
-#        self.assertEqual('Foo bar baz',
-#                         self.db.get_attachment('foo', 'foo.txt').read())
-#
-#        old_rev = doc['_rev']
-#        self.db.delete_attachment(doc, 'foo.txt')
-#        self.assertNotEquals(old_rev, doc['_rev'])
-#        self.assertEqual(None, self.db['foo'].get('_attachments'))
-#
-#    def test_empty_attachment(self):
-#        doc = {}
-#        self.db['foo'] = doc
-#        old_rev = doc['_rev']
-#
-#        self.db.put_attachment(doc, '', 'empty.txt')
-#        self.assertNotEquals(old_rev, doc['_rev'])
-#
-#        doc = self.db['foo']
-#        attachment = doc['_attachments']['empty.txt']
-#        self.assertEqual(0, attachment['length'])
-#
-#    def test_include_docs(self):
-#        doc = {'foo': 42, 'bar': 40}
-#        self.db['foo'] = doc
-#
-#        rows = list(self.db.query(
-#            'function(doc) { emit(doc._id, null); }',
-#            include_docs=True
-#        ))
-#        self.assertEqual(1, len(rows))
-#        self.assertEqual(doc, rows[0].doc)
-#
-#    def test_query_multi_get(self):
-#        for i in range(1, 6):
-#            self.db.create({'i': i})
-#        res = list(self.db.query('function(doc) { emit(doc.i, null); }',
-#                                 keys=range(1, 6, 2)))
-#        self.assertEqual(3, len(res))
-#        for idx, i in enumerate(range(1, 6, 2)):
-#            self.assertEqual(i, res[idx].key)
-#
+    def test_create_large_doc(self):
+        self.db['foo'] = {'data': '0123456789' * 110 * 1024} # 10 MB
+        self.assertEqual('foo', self.db['foo']['_id'])
+
+    def test_doc_id_quoting(self):
+        self.db['foo/bar'] = {'foo': 'bar'}
+        self.assertEqual('bar', self.db['foo/bar']['foo'])
+        del self.db['foo/bar']
+        self.assertEqual(None, self.db.get('foo/bar'))
+
+    def test_unicode(self):
+        self.db[u'føø'] = {u'bår': u'Iñtërnâtiônàlizætiøn', 'baz': 'ASCII'}
+        self.assertEqual(u'Iñtërnâtiônàlizætiøn', self.db[u'føø'][u'bår'])
+        self.assertEqual(u'ASCII', self.db[u'føø'][u'baz'])
+
+    def test_disallow_nan(self):
+        try:
+            self.db['foo'] = {u'number': float('nan')}
+            self.fail('Expected ValueError')
+        except ValueError, e:
+            pass
+
+    def test_doc_revs(self):
+        doc = {'bar': 42}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+        doc['bar'] = 43
+        self.db['foo'] = doc
+        new_rev = doc['_rev']
+
+        new_doc = self.db.get('foo')
+        self.assertEqual(new_rev, new_doc['_rev'])
+        new_doc = self.db.get('foo', rev=new_rev)
+        self.assertEqual(new_rev, new_doc['_rev'])
+        old_doc = self.db.get('foo', rev=old_rev)
+        self.assertEqual(old_rev, old_doc['_rev'])
+
+        self.assertTrue(self.db.compact())
+        while self.db.info()['compact_running']:
+            pass
+        self.assertRaises(http.ServerError, self.db.get, 'foo', rev=old_rev)
+
+    def test_attachment_crud(self):
+        doc = {'bar': 42}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+
+        self.db.put_attachment(doc, 'Foo bar', 'foo.txt', 'text/plain')
+        self.assertNotEquals(old_rev, doc['_rev'])
+
+        doc = self.db['foo']
+        attachment = doc['_attachments']['foo.txt']
+        self.assertEqual(len('Foo bar'), attachment['length'])
+        self.assertEqual('text/plain', attachment['content_type'])
+
+        self.assertEqual('Foo bar',
+                         self.db.get_attachment(doc, 'foo.txt').read())
+        self.assertEqual('Foo bar',
+                         self.db.get_attachment('foo', 'foo.txt').read())
+
+        old_rev = doc['_rev']
+        self.db.delete_attachment(doc, 'foo.txt')
+        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertEqual(None, self.db['foo'].get('_attachments'))
+
+    def test_attachment_crud_with_files(self):
+        doc = {'bar': 42}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+        fileobj = StringIO('Foo bar baz')
+
+        self.db.put_attachment(doc, fileobj, 'foo.txt')
+        self.assertNotEquals(old_rev, doc['_rev'])
+
+        doc = self.db['foo']
+        attachment = doc['_attachments']['foo.txt']
+        self.assertEqual(len('Foo bar baz'), attachment['length'])
+        self.assertEqual('text/plain', attachment['content_type'])
+
+        self.assertEqual('Foo bar baz',
+                         self.db.get_attachment(doc, 'foo.txt').read())
+        self.assertEqual('Foo bar baz',
+                         self.db.get_attachment('foo', 'foo.txt').read())
+
+        old_rev = doc['_rev']
+        self.db.delete_attachment(doc, 'foo.txt')
+        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertEqual(None, self.db['foo'].get('_attachments'))
+
+    def test_empty_attachment(self):
+        doc = {}
+        self.db['foo'] = doc
+        old_rev = doc['_rev']
+
+        self.db.put_attachment(doc, '', 'empty.txt')
+        self.assertNotEquals(old_rev, doc['_rev'])
+
+        doc = self.db['foo']
+        attachment = doc['_attachments']['empty.txt']
+        self.assertEqual(0, attachment['length'])
+
+    def test_include_docs(self):
+        doc = {'foo': 42, 'bar': 40}
+        self.db['foo'] = doc
+
+        rows = list(self.db.query(
+            'function(doc) { emit(doc._id, null); }',
+            include_docs=True
+        ))
+        self.assertEqual(1, len(rows))
+        self.assertEqual(doc, rows[0].doc)
+
+    def test_query_multi_get(self):
+        for i in range(1, 6):
+            self.db.create({'i': i})
+        res = list(self.db.query('function(doc) { emit(doc.i, null); }',
+                                 keys=range(1, 6, 2)))
+        self.assertEqual(3, len(res))
+        for idx, i in enumerate(range(1, 6, 2)):
+            self.assertEqual(i, res[idx].key)
+
     def test_view_multi_get(self):
         for i in range(1, 6):
             self.db.create({'i': i})

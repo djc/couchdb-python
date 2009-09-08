@@ -18,7 +18,7 @@ class DocumentTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri)
+        self.server = client.Server(uri, full_commit=False)
         if 'python-tests' in self.server:
             del self.server['python-tests']
         self.db = self.server.create('python-tests')
@@ -80,7 +80,7 @@ class ListFieldTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri)
+        self.server = client.Server(uri, full_commit=False)
         if 'python-tests' in self.server:
             del self.server['python-tests']
         self.db = self.server.create('python-tests')
