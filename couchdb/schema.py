@@ -153,7 +153,7 @@ class Schema(object):
         return self._data.get(name, default)
 
     def setdefault(self, name, default):
-        return sef._data.setdefault(name, default)
+        return self._data.setdefault(name, default)
 
     def unwrap(self):
         return self._data
@@ -676,7 +676,7 @@ class ListField(Field):
             return self.field._to_python(self.list[index])
 
         def __setitem__(self, index, value):
-            self.list[index] = self.field._to_json(item)
+            self.list[index] = self.field._to_json(value)
 
         def __contains__(self, value):
             for item in self.list:

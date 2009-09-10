@@ -165,7 +165,7 @@ class MultipartWriter(object):
             from random import randrange
             token = randrange(sys.maxint)
             format = '%%0%dd' % len(repr(sys.maxint - 1))
-            return '===============' + (fmt % token) + '=='
+            return '===============' + (format % token) + '=='
 
     def _write_headers(self, headers):
         if headers:
