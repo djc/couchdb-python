@@ -20,8 +20,10 @@ class CouchTests(unittest.TestCase):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
         self.cache_dir = tempfile.mkdtemp(prefix='couchdb')
         self.server = Server(uri, cache=self.cache_dir)
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):

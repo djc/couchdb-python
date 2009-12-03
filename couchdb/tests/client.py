@@ -55,8 +55,10 @@ class DatabaseTestCase(unittest.TestCase):
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
         self.server = client.Server(uri)
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
