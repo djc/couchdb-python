@@ -21,8 +21,10 @@ class ServerTestCase(unittest.TestCase):
         self.server = client.Server(uri)
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
 
     def test_server_vars(self):
         version = self.server.version
@@ -58,8 +60,10 @@ class DatabaseTestCase(unittest.TestCase):
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
 
     def test_create_large_doc(self):
         self.db['foo'] = {'data': '0123456789' * 110 * 1024} # 10 MB

@@ -24,8 +24,10 @@ class DocumentTestCase(unittest.TestCase):
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
 
     def test_automatic_id(self):
         class Post(schema.Document):
@@ -86,8 +88,10 @@ class ListFieldTestCase(unittest.TestCase):
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
 
     def test_to_json(self):
         # See <http://code.google.com/p/couchdb-python/issues/detail?id=14>

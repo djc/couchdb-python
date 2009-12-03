@@ -25,8 +25,10 @@ class CouchTests(unittest.TestCase):
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
         shutil.rmtree(self.cache_dir)
 
     def _create_test_docs(self, num):
