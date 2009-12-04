@@ -22,14 +22,14 @@ class CouchTests(unittest.TestCase):
         self.server = Server(uri, cache=self.cache_dir)
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except ResourceNotFound:
             pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except ResourceNotFound:
             pass
         shutil.rmtree(self.cache_dir)
 
