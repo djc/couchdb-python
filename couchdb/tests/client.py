@@ -25,6 +25,10 @@ class ServerTestCase(unittest.TestCase):
             self.server.delete('python-tests')
         except client.ResourceNotFound:
             pass
+        try:
+            self.server.delete('python-tests-a')
+        except client.ResourceNotFound:
+            pass
 
     def test_server_vars(self):
         version = self.server.version
@@ -49,6 +53,20 @@ class ServerTestCase(unittest.TestCase):
         self.assertRaises(client.ResourceNotFound, self.server.delete,
                           'python-tests')
 
+    def test_replicate(self):
+        a = self.server.create('python-tests')
+        id = a.create({'test': 'a'})
+        b = self.server.create('python-tests-a')
+        result = self.server.replicate('python-tests', 'python-tests-a')
+        self.assertEquals(result['ok'], True)
+        self.assertEquals(b[id]['test'], 'a')
+
+        doc = b[id]
+        doc['test'] = 'b'
+        b.update([doc])
+        self.server.replicate(client.DEFAULT_BASE_URI + 'python-tests-a',
+                              'python-tests')
+        self.assertEquals(b[id]['test'], 'b')
 
 class DatabaseTestCase(unittest.TestCase):
 

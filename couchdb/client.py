@@ -209,6 +209,16 @@ class Server(object):
         """
         del self[name]
 
+    def replicate(self, source, target):
+        """Replicate changes from the source database to the target database.
+
+        :param source: URL of the source database
+        :param target: URL of the target database
+        """
+        data = {'source': source, 'target': target}
+        resp, data = self.resource.post('/_replicate', data)
+        return data
+
 
 class Database(object):
     """Representation of a database on a CouchDB server.
