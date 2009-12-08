@@ -209,13 +209,15 @@ class Server(object):
         """
         del self[name]
 
-    def replicate(self, source, target):
+    def replicate(self, source, target, **options):
         """Replicate changes from the source database to the target database.
 
         :param source: URL of the source database
         :param target: URL of the target database
+        :param options: optional replication args, e.g. continuous=True
         """
         data = {'source': source, 'target': target}
+        data.update(options)
         resp, data = self.resource.post('/_replicate', data)
         return data
 

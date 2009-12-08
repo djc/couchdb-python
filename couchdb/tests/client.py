@@ -68,6 +68,13 @@ class ServerTestCase(unittest.TestCase):
                               'python-tests')
         self.assertEquals(b[id]['test'], 'b')
 
+    def test_replicate_continuous(self):
+        a = self.server.create('python-tests')
+        b = self.server.create('python-tests-a')
+        result = self.server.replicate('python-tests', 'python-tests-a', continuous=True)
+        self.assertEquals(result['ok'], True)
+        self.assertTrue('_local_id' in result)
+
 class DatabaseTestCase(unittest.TestCase):
 
     def setUp(self):
