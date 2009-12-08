@@ -29,7 +29,7 @@ def dump_db(dburl, username=None, password=None, boundary=None,
     if username is not None and password is not None:
         db.resource.http.add_credentials(username, password)
 
-    envelope = write_multipart(output)
+    envelope = write_multipart(output, boundary=boundary)
 
     for docid in db:
         doc = db.get(docid, attachments=True)
