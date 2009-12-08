@@ -264,6 +264,7 @@ class DatabaseTestCase(unittest.TestCase):
 
         # update the first doc to provoke a conflict in the next bulk update
         doc = docs[0].copy()
+        doc['name'] = 'Jane Doe'
         self.db[doc['_id']] = doc
 
         results = self.db.update(docs, all_or_nothing=True)
