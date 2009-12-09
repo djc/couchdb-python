@@ -34,6 +34,7 @@ class ServerTestCase(unittest.TestCase):
         version = self.server.version
         config = self.server.config
         stats = self.server.stats
+        tasks = self.server.tasks
 
     def test_get_db_missing(self):
         self.assertRaises(client.ResourceNotFound,

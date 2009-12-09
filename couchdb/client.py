@@ -195,6 +195,12 @@ class Server(object):
         resp, data = self.resource.get('_stats')
         return data
 
+    @property
+    def tasks(self):
+        """A list of tasks currently active on the server."""
+        resp, data = self.resource.get('_active_tasks')
+        return data
+
     def create(self, name):
         """Create a new database with the given name.
 
