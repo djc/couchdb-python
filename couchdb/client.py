@@ -189,6 +189,12 @@ class Server(object):
         resp, data = self.resource.get()
         return data['version']
 
+    @property
+    def stats(self):
+        """Database statistics."""
+        resp, data = self.resource.get('_stats')
+        return data
+
     def create(self, name):
         """Create a new database with the given name.
 
