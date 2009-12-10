@@ -706,7 +706,7 @@ class ListField(Field):
             self.list.append(self.field._to_json(value))
 
         def count(self, value):
-            return self.list.count(self.field._to_json(value))
+            return [i for i in self].count(value)
 
         def extend(self, list):
             for item in list:

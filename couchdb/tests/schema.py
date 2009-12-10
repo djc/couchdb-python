@@ -147,6 +147,7 @@ class ListFieldTestCase(unittest.TestCase):
             numbers = schema.ListField(schema.DecimalField)
         thing = Thing(numbers=[Decimal('1.0'), Decimal('2.0')])
         self.assertEqual(1, thing.numbers.count(Decimal('1.0')))
+        self.assertEqual(0, thing.numbers.count('1.0'))
 
     def test_proxy_index(self):
         class Thing(schema.Document):
