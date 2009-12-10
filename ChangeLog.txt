@@ -9,6 +9,7 @@ http://couchdb-python.googlecode.com/hg/?r=default
  * Honor the boundary argument in the dump script code (issue 100).
  * Added a `stats()` method to the `client.Server` class.
  * Added a `tasks()` method to the `client.Server` class.
+ * Allow slashes in path components passed to the uri function (issue 96).
 
 
 Version 0.6

@@ -228,7 +228,7 @@ class Server(object):
         """
         data = {'source': source, 'target': target}
         data.update(options)
-        resp, data = self.resource.post('/_replicate', data)
+        resp, data = self.resource.post('_replicate', data)
         return data
 
 
@@ -1059,17 +1059,32 @@ def uri(base, *path, **query):
     """Assemble a uri based on a base, any number of path segments, and query
     string parameters.
 
-    >>> uri('http://example.org/', '/_all_dbs')
+    >>> uri('http://example.org', '_all_dbs')
     'http://example.org/_all_dbs'
+
+    A trailing slash on the uri base is handled gracefully:
+
+    >>> uri('http://example.org/', '_all_dbs')
+    'http://example.org/_all_dbs'
+
+    And multiple positional arguments become path parts:
+
+    >>> uri('http://example.org/', 'foo', 'bar')
+    'http://example.org/foo/bar'
+
+    All slashes within a path part are escaped:
+
+    >>> uri('http://example.org/', 'foo/bar')
+    'http://example.org/foo%2Fbar'
+    >>> uri('http://example.org/', 'foo', '/bar/')
+    'http://example.org/foo/%2Fbar%2F'
     """
     if base and base.endswith('/'):
         base = base[:-1]
     retval = [base]
 
     # build the path
-    path = '/'.join([''] +
-                    [unicode_quote(s.strip('/')) for s in path
-                     if s is not None])
+    path = '/'.join([''] + [unicode_quote(s) for s in path if s is not None])
     if path:
         retval.append(path)
 
