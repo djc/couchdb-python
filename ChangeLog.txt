@@ -1,3 +1,16 @@
+Version 0.7
+http://couchdb-python.googlecode.com/hg/?r=default
+(???, from branches/0.7.x)
+
+ * Compatible with CouchDB 0.9.x and 0.10.x.
+ * Removed debugging statement from `json` module (issue 82).
+ * Fixed a few bugs resulting from typos.
+ * Added a `replicate()` method to the `client.Server` class (issue 61).
+ * Honor the boundary argument in the dump script code (issue 100).
+ * Added a `stats()` method to the `client.Server` class.
+ * Added a `tasks()` method to the `client.Server` class.
+
+
 Version 0.6
 http://couchdb-python.googlecode.com/hg/?r=0.6.0
 (Jul 2, 2009, from 0.6.x)
