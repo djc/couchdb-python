@@ -134,7 +134,14 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertTrue(self.db.compact())
         while self.db.info()['compact_running']:
             pass
-        self.assertRaises(client.ServerError, self.db.get, 'foo', rev=old_rev)
+
+        # 0.10 responds with 404, 0.9 responds with 500, same content
+        doc = 'fail'
+        try:
+            doc = self.db.get('foo', rev=old_rev)
+        except client.ServerError:
+            doc = None
+        assert doc is None
 
     def test_attachment_crud(self):
         doc = {'bar': 42}
