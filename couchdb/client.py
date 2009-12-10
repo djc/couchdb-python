@@ -189,13 +189,11 @@ class Server(object):
         resp, data = self.resource.get()
         return data['version']
 
-    @property
     def stats(self):
         """Database statistics."""
         resp, data = self.resource.get('_stats')
         return data
 
-    @property
     def tasks(self):
         """A list of tasks currently active on the server."""
         resp, data = self.resource.get('_active_tasks')
