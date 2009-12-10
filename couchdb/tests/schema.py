@@ -31,6 +31,15 @@ class DocumentTestCase(unittest.TestCase):
         except client.ResourceNotFound:
             pass
 
+    def test_mutable_fields(self):
+        class Test(schema.Document):
+            d = schema.DictField()
+        a = Test()
+        b = Test()
+        a.d['x'] = True
+        self.assertTrue(a.d.get('x'))
+        self.assertFalse(b.d.get('x'))
+
     def test_automatic_id(self):
         class Post(schema.Document):
             title = schema.TextField()

@@ -10,6 +10,8 @@ http://couchdb-python.googlecode.com/hg/?r=default
  * Added a `stats()` method to the `client.Server` class.
  * Added a `tasks()` method to the `client.Server` class.
  * Allow slashes in path components passed to the uri function (issue 96).
+ * `DictField`s now have their own backing dictionary for each instance
+   of their `schema.Document` (issue 101).
 
 
 Version 0.6

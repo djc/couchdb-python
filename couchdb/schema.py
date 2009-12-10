@@ -567,7 +567,8 @@ class DictField(Field):
     >>> del server['python-tests']
     """
     def __init__(self, schema=None, name=None, default=None):
-        Field.__init__(self, name=name, default=default or {})
+        default = default or {}
+        Field.__init__(self, name=name, default=lambda: default.copy())
         self.schema = schema
 
     def _to_python(self, value):
