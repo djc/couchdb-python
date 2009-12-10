@@ -1,6 +1,6 @@
 Version 0.6
-http://couchdb-python.googlecode.com/svn/tags/0.6.0
-(Jul 2, 2009, from branches/0.6.x)
+http://couchdb-python.googlecode.com/hg/?r=0.6.0
+(Jul 2, 2009, from 0.6.x)
 
  * Compatible with CouchDB 0.9.x.
  * `schema.DictField` instances no longer need to be bound to a `Schema`
@@ -36,8 +36,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.6.0
 
 
 Version 0.5
-http://couchdb-python.googlecode.com/svn/tags/0.5.0
-(Nov 28, 2008, from branches/0.5.x)
+http://couchdb-python.googlecode.com/hg/?r=0.5.0
+(Nov 28, 2008, from 0.5.x)
 
  * `schema.Document` objects can now be used in the documents list passed to
    `client.Database.update()`.
@@ -70,8 +70,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.5.0
 
 
 Version 0.4
-http://couchdb-python.googlecode.com/svn/tags/0.4.0
-(Jun 28, 2008, from branches/0.4.x)
+http://couchdb-python.googlecode.com/hg/?r=0.4.0
+(Jun 28, 2008, from 0.4.x)
 
  * Updated for compatibility with CouchDB 0.8.0
  * Added command-line scripts for importing/exporting databases.
@@ -81,8 +81,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.0
 
 
 Version 0.3
-http://couchdb-python.googlecode.com/svn/tags/0.3.0
-(Feb 6, 2008, from branches/0.3.x)
+http://couchdb-python.googlecode.com/hg/?r=0.3.0
+(Feb 6, 2008, from 0.3.x)
 
  * The `schema.Document` class now has a `view()` method that can be used to
    execute a CouchDB view and map the result rows back to objects of that
@@ -94,8 +94,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.3.0
 
 
 Version 0.2
-http://couchdb-python.googlecode.com/svn/tags/0.2.0
-(Nov 21, 2007, from branches/0.2.x)
+http://couchdb-python.googlecode.com/hg/?r=0.2.0
+(Nov 21, 2007, from 0.2.x)
 
  * Added __len__ and __iter__ to the `schema.Schema` class to iterate
    over and get the number of items in a document or compound field.
@@ -122,7 +122,7 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
 
 
 Version 0.1
-http://couchdb-python.googlecode.com/svn/tags/0.1.0
-(Sep 23, 2007, from branches/0.1.x)
+http://couchdb-python.googlecode.com/hg/?r=0.1.0
+(Sep 23, 2007, from 0.1.x)
 
  * First public release.
