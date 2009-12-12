@@ -19,13 +19,17 @@ class CouchTests(unittest.TestCase):
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
         self.server = Server(uri, full_commit=False)
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except ResourceNotFound:
+            pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except ResourceNotFound:
+            pass
 
     def _create_test_docs(self, num):
         for i in range(num):

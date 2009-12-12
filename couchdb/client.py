@@ -167,6 +167,16 @@ class Server(object):
         status, headers, data = self.resource.get()
         return data['version']
 
+    def stats(self):
+        """Database statistics."""
+        status, headers, data = self.resource.get('_stats')
+        return data
+
+    def tasks(self):
+        """A list of tasks currently active on the server."""
+        status, headers, data = self.resource.get('_active_tasks')
+        return data
+
     def create(self, name):
         """Create a new database with the given name.
 
@@ -186,6 +196,18 @@ class Server(object):
         :since: 0.6
         """
         del self[name]
+
+    def replicate(self, source, target, **options):
+        """Replicate changes from the source database to the target database.
+
+        :param source: URL of the source database
+        :param target: URL of the target database
+        :param options: optional replication args, e.g. continuous=True
+        """
+        data = {'source': source, 'target': target}
+        data.update(options)
+        status, headers, data = self.resource.post('_replicate', data)
+        return data
 
 
 class Database(object):
@@ -445,6 +467,26 @@ class Database(object):
             return default
         else:
             return Document(data)
+
+    def revisions(self, id, **options):
+        """Return all available revisions of the given document.
+
+        :param id: the document ID
+        :return: an iterator over Document objects, each a different revision,
+                 in reverse chronological order, if any were found
+        """
+        try:
+            status, headers, data = self.resource.get(id, revs=True)
+        except ResourceNotFound:
+            return
+
+        startrev = data['_revisions']['start']
+        for index, rev in enumerate(data['_revisions']['ids']):
+            options['rev'] = '%d-%s' % (startrev - index, rev)
+            revision = self.get(id, **options)
+            if revision is None:
+                return
+            yield revision
 
     def info(self):
         """Return information about the database as a dictionary.

@@ -390,20 +390,35 @@ def urlencode(data):
 
 
 def urljoin(base, *path, **query):
-    """Assemble a URL based on a base, any number of path segments, and query
+    """Assemble a uri based on a base, any number of path segments, and query
     string parameters.
 
-    >>> urljoin('http://example.org/', '/_all_dbs')
+    >>> urljoin('http://example.org', '_all_dbs')
     'http://example.org/_all_dbs'
+
+    A trailing slash on the uri base is handled gracefully:
+
+    >>> urljoin('http://example.org/', '_all_dbs')
+    'http://example.org/_all_dbs'
+
+    And multiple positional arguments become path parts:
+
+    >>> urljoin('http://example.org/', 'foo', 'bar')
+    'http://example.org/foo/bar'
+
+    All slashes within a path part are escaped:
+
+    >>> urljoin('http://example.org/', 'foo/bar')
+    'http://example.org/foo%2Fbar'
+    >>> urljoin('http://example.org/', 'foo', '/bar/')
+    'http://example.org/foo/%2Fbar%2F'
     """
     if base and base.endswith('/'):
         base = base[:-1]
     retval = [base]
 
     # build the path
-    path = '/'.join([''] +
-                    [quote(s.strip('/')) for s in path
-                     if s is not None])
+    path = '/'.join([''] + [quote(s) for s in path if s is not None])
     if path:
         retval.append(path)
 
@@ -422,3 +437,4 @@ def urljoin(base, *path, **query):
         retval.extend(['?', urlencode(params)])
 
     return ''.join(retval)
+
