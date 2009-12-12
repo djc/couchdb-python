@@ -679,6 +679,15 @@ class ListField(Field):
         def __setitem__(self, index, value):
             self.list[index] = self.field._to_json(value)
 
+        def __delslice__(self, i, j):
+            del self.list[i:j]
+
+        def __getslice__(self, i, j):
+            return ListField.Proxy(self.list[i:j], self.field)
+
+        def __setslice__(self, i, j, seq):
+            self.list[i:j] = (self.field._to_json(v) for v in seq)
+
         def __contains__(self, value):
             for item in self.list:
                 if self.field._to_python(item) == value:
@@ -727,3 +736,6 @@ class ListField(Field):
 
         def remove(self, value):
             return self.list.remove(self.field._to_json(value))
+
+        def pop(self, *args):
+            return self.field._to_python(self.list.pop(*args))

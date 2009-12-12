@@ -14,6 +14,8 @@ http://couchdb-python.googlecode.com/hg/?r=default
    instance of their `schema.Document` (issue 101).
  * `schema.ListField` proxy objects now have a more consistent (though somewhat
    slower) `count()` method (issue 91).
+ * `schema.ListField` objects now have correct behavior for slicing operations
+   and the `pop()` method (issue 92).
 
 
 Version 0.6
