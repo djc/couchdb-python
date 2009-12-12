@@ -479,6 +479,26 @@ class Database(object):
         else:
             return Document(data)
 
+    def revisions(self, id, **options):
+        """Return all available revisions of the given document.
+
+        :param id: the document ID
+        :return: an iterator over Document objects, each a different revision,
+                 in reverse chronological order, if any were found
+        """
+        try:
+            resp, data = self.resource.get(id, revs=True)
+        except ResourceNotFound:
+            return
+
+        startrev = data['_revisions']['start']
+        for index, rev in enumerate(data['_revisions']['ids']):
+            options['rev'] = '%d-%s' % (startrev - index, rev)
+            revision = self.get(id, **options)
+            if revision is None:
+                return
+            yield revision
+
     def info(self):
         """Return information about the database as a dictionary.
 

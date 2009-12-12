@@ -16,6 +16,7 @@ http://couchdb-python.googlecode.com/hg/?r=default
    slower) `count()` method (issue 91).
  * `schema.ListField` objects now have correct behavior for slicing operations
    and the `pop()` method (issue 92).
+ * Added a `revisions()` method to the Database class (issue 99).
 
 
 Version 0.6

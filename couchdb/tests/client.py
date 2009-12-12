@@ -131,6 +131,10 @@ class DatabaseTestCase(unittest.TestCase):
         old_doc = self.db.get('foo', rev=old_rev)
         self.assertEqual(old_rev, old_doc['_rev'])
 
+        revs = [i for i in self.db.revisions('foo')]
+        self.assertEqual(revs[0]['_rev'], new_rev)
+        self.assertEqual(revs[1]['_rev'], old_rev)
+
         self.assertTrue(self.db.compact())
         while self.db.info()['compact_running']:
             pass
