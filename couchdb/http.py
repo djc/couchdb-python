@@ -12,7 +12,7 @@ standard library.
 """
 
 from base64 import b64encode
-from httplib import HTTPConnection, HTTPSConnection
+from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
 import re
 import socket
 try:
@@ -165,6 +165,16 @@ class Session(object):
                                               chunk + '\r\n')
                         conn.sock.sendall('0\r\n\r\n')
                 return conn.getresponse()
+            except BadStatusLine, e:
+                # httplib raises a BadStatusLine when it cannot read the status
+                # line saying, "Presumably, the server closed the connection
+                # before sending a valid response."
+                if retries > 0 and e.line == '':
+                    conn.close()
+                    conn.connect()
+                    return _try_request(retries - 1)
+                else:
+                    raise
             except socket.error, e:
                 ecode = e.args[0]
                 if retries > 0 and ecode == 54: # reset by peer
