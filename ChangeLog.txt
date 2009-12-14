@@ -1,6 +1,6 @@
 Version 0.6.1
-http://couchdb-python.googlecode.com/hg/?r=0.6.x
-(???, from branches/0.6.x)
+http://couchdb-python.googlecode.com/hg/?r=0.6.1
+(Dec 14, 2009, from branches/0.6.x)
 
  * Compatible with CouchDB 0.9.x and 0.10.x.
  * Removed debugging statement from `json` module (issue 82).
