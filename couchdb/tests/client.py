@@ -75,7 +75,9 @@ class ServerTestCase(unittest.TestCase):
         b = self.server.create('python-tests-a')
         result = self.server.replicate('python-tests', 'python-tests-a', continuous=True)
         self.assertEquals(result['ok'], True)
-        self.assertTrue('_local_id' in result)
+        version = tuple(int(i) for i in self.server.version.split('.'))
+        if version >= (0, 10):
+            self.assertTrue('_local_id' in result)
 
 class DatabaseTestCase(unittest.TestCase):
 
