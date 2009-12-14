@@ -1,2 +1,4 @@
+include COPYING
+include ChangeLog.txt
 include doc/api/*.*
 include doc/*.html
