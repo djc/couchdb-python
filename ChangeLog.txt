@@ -1,4 +1,4 @@
-Version 0.7
+Version 0.7.0
 http://couchdb-python.googlecode.com/hg/?r=default
 (???, from branches/0.7.x)
 
@@ -17,6 +17,7 @@ http://couchdb-python.googlecode.com/hg/?r=default
  * `schema.ListField` objects now have correct behavior for slicing operations
    and the `pop()` method (issue 92).
  * Added a `revisions()` method to the Database class (issue 99).
+ * Make sure we always return UTF-8 from the view server (issue 81).
 
 
 Version 0.6
