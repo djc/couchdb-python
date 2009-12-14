@@ -189,6 +189,16 @@ class Server(object):
         resp, data = self.resource.get()
         return data['version']
 
+    def stats(self):
+        """Database statistics."""
+        resp, data = self.resource.get('_stats')
+        return data
+
+    def tasks(self):
+        """A list of tasks currently active on the server."""
+        resp, data = self.resource.get('_active_tasks')
+        return data
+
     def create(self, name):
         """Create a new database with the given name.
 
@@ -208,6 +218,18 @@ class Server(object):
         :since: 0.6
         """
         del self[name]
+
+    def replicate(self, source, target, **options):
+        """Replicate changes from the source database to the target database.
+
+        :param source: URL of the source database
+        :param target: URL of the target database
+        :param options: optional replication args, e.g. continuous=True
+        """
+        data = {'source': source, 'target': target}
+        data.update(options)
+        resp, data = self.resource.post('_replicate', data)
+        return data
 
 
 class Database(object):
@@ -456,6 +478,26 @@ class Database(object):
             return default
         else:
             return Document(data)
+
+    def revisions(self, id, **options):
+        """Return all available revisions of the given document.
+
+        :param id: the document ID
+        :return: an iterator over Document objects, each a different revision,
+                 in reverse chronological order, if any were found
+        """
+        try:
+            resp, data = self.resource.get(id, revs=True)
+        except ResourceNotFound:
+            return
+
+        startrev = data['_revisions']['start']
+        for index, rev in enumerate(data['_revisions']['ids']):
+            options['rev'] = '%d-%s' % (startrev - index, rev)
+            revision = self.get(id, **options)
+            if revision is None:
+                return
+            yield revision
 
     def info(self):
         """Return information about the database as a dictionary.
@@ -1037,17 +1079,32 @@ def uri(base, *path, **query):
     """Assemble a uri based on a base, any number of path segments, and query
     string parameters.
 
-    >>> uri('http://example.org/', '/_all_dbs')
+    >>> uri('http://example.org', '_all_dbs')
     'http://example.org/_all_dbs'
+
+    A trailing slash on the uri base is handled gracefully:
+
+    >>> uri('http://example.org/', '_all_dbs')
+    'http://example.org/_all_dbs'
+
+    And multiple positional arguments become path parts:
+
+    >>> uri('http://example.org/', 'foo', 'bar')
+    'http://example.org/foo/bar'
+
+    All slashes within a path part are escaped:
+
+    >>> uri('http://example.org/', 'foo/bar')
+    'http://example.org/foo%2Fbar'
+    >>> uri('http://example.org/', 'foo', '/bar/')
+    'http://example.org/foo/%2Fbar%2F'
     """
     if base and base.endswith('/'):
         base = base[:-1]
     retval = [base]
 
     # build the path
-    path = '/'.join([''] +
-                    [unicode_quote(s.strip('/')) for s in path
-                     if s is not None])
+    path = '/'.join([''] + [unicode_quote(s) for s in path if s is not None])
     if path:
         retval.append(path)
 

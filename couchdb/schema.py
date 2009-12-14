@@ -153,7 +153,7 @@ class Schema(object):
         return self._data.get(name, default)
 
     def setdefault(self, name, default):
-        return sef._data.setdefault(name, default)
+        return self._data.setdefault(name, default)
 
     def unwrap(self):
         return self._data
@@ -567,7 +567,8 @@ class DictField(Field):
     >>> del server['python-tests']
     """
     def __init__(self, schema=None, name=None, default=None):
-        Field.__init__(self, name=name, default=default or {})
+        default = default or {}
+        Field.__init__(self, name=name, default=lambda: default.copy())
         self.schema = schema
 
     def _to_python(self, value):
@@ -676,7 +677,16 @@ class ListField(Field):
             return self.field._to_python(self.list[index])
 
         def __setitem__(self, index, value):
-            self.list[index] = self.field._to_json(item)
+            self.list[index] = self.field._to_json(value)
+
+        def __delslice__(self, i, j):
+            del self.list[i:j]
+
+        def __getslice__(self, i, j):
+            return ListField.Proxy(self.list[i:j], self.field)
+
+        def __setslice__(self, i, j, seq):
+            self.list[i:j] = (self.field._to_json(v) for v in seq)
 
         def __contains__(self, value):
             for item in self.list:
@@ -705,7 +715,7 @@ class ListField(Field):
             self.list.append(self.field._to_json(value))
 
         def count(self, value):
-            return self.list.count(self.field._to_json(value))
+            return [i for i in self].count(value)
 
         def extend(self, list):
             for item in list:
@@ -726,3 +736,6 @@ class ListField(Field):
 
         def remove(self, value):
             return self.list.remove(self.field._to_json(value))
+
+        def pop(self, *args):
+            return self.field._to_python(self.list.pop(*args))
