@@ -3,3 +3,5 @@ syntax: glob
 build/*
 dist/*
 *.egg*
+doc/api/*
+doc/index.html
