@@ -130,7 +130,7 @@ interface for the CouchDB server.""",
         'Topic :: Database :: Front-Ends',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    packages = ['couchdb', 'couchdb.tools'],
+    packages = ['couchdb', 'couchdb.tools', 'couchdb.tests'],
     test_suite = 'couchdb.tests.suite',
 
     install_requires = requirements,
