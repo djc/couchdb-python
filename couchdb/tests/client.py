@@ -318,6 +318,12 @@ class DatabaseTestCase(unittest.TestCase):
         self.db.copy(self.db['foo'], 'bar')
         self.assertEqual('testing', self.db['bar']['status'])
 
+    def test_changes(self):
+        self.db['foo'] = {'bar': True}
+        self.assertEqual(self.db.changes(since=0)['last_seq'], 1)
+        self.assertRaises(NotImplementedError,
+                          lambda: self.db.changes(feed='continuous'))
+
 
 def suite():
     suite = unittest.TestSuite()

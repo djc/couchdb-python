@@ -728,6 +728,12 @@ class Database(object):
                              wrapper=wrapper,
                              http=self.resource.http)(**options)
 
+    def changes(self, **opts):
+        if 'feed' in opts and opts['feed'] == 'continuous':
+            raise NotImplementedError
+        resp, data = self.resource.get('_changes', **opts)
+        return data
+
 
 class Document(dict):
     """Representation of a document in the database.
