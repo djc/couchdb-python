@@ -4,6 +4,8 @@ http://couchdb-python.googlecode.com/hg/?r=default
 
  * Prevent `schema.ListField` objects from sharing the same default (issue 107).
  * Added a `changes()` method to the `client.Database` class (issue 103).
+ * Added an optional argument to the 'Database.compact` method to enable
+   view compaction (the rest of issue 37).
 
 Version 0.6.1
 http://couchdb-python.googlecode.com/hg/?r=0.6.1

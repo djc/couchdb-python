@@ -383,16 +383,21 @@ class Database(object):
         resp, data = self.resource.post(content=data)
         return data['id']
 
-    def compact(self):
-        """Compact the database.
+    def compact(self, ddoc=None):
+        """Compact the database or a design document's index.
 
-        This will try to prune all revisions from the database.
+        Without an argument, this will try to prune all old revisions from the
+        database. With an argument, it will compact the index cache for all
+        views in the design document specified.
 
         :return: a boolean to indicate whether the compaction was initiated
                  successfully
         :rtype: `bool`
         """
-        resp, data = self.resource.post('_compact')
+        if ddoc:
+            resp, data = self.resource.post('_compact', ddoc)
+        else:
+            resp, data = self.resource.post('_compact')
         return data['ok']
 
     def copy(self, src, dest):

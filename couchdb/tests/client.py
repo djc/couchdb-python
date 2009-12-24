@@ -239,6 +239,19 @@ class DatabaseTestCase(unittest.TestCase):
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
 
+    def test_view_compaction(self):
+        for i in range(1, 6):
+            self.db.create({'i': i})
+        self.db['_design/test'] = {
+            'language': 'javascript',
+            'views': {
+                'multi_key': {'map': 'function(doc) { emit(doc.i, null); }'}
+            }
+        }
+
+        res = self.db.view('test/multi_key')
+        self.assertTrue(self.db.compact('test'))
+
     def test_view_function_objects(self):
         if 'python' not in self.server.config['query_servers']:
             return
