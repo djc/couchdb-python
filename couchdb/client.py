@@ -734,6 +734,11 @@ class Database(object):
                              http=self.resource.http)(**options)
 
     def changes(self, **opts):
+        """Retrieve a changes feed from the database.
+
+        Takes since, feed, heartbeat and timeout options. The continuous feed
+        mode isn't supported yet, but normal and longpoll should work.
+        """
         if 'feed' in opts and opts['feed'] == 'continuous':
             raise NotImplementedError
         resp, data = self.resource.get('_changes', **opts)
