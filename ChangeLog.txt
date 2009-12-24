@@ -2,6 +2,7 @@ Version 0.7.0
 http://couchdb-python.googlecode.com/hg/?r=default
 (???, from branches/0.7.x)
 
+ * Prevent `schema.ListField` objects from sharing the same default (issue 107).
 
 Version 0.6.1
 http://couchdb-python.googlecode.com/hg/?r=0.6.1

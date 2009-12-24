@@ -56,6 +56,8 @@ True
 >>> del server['python-tests']
 """
 
+import copy
+
 from calendar import timegm
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -622,7 +624,8 @@ class ListField(Field):
     """
 
     def __init__(self, field, name=None, default=None):
-        Field.__init__(self, name=name, default=default or [])
+        default = default or []
+        Field.__init__(self, name=name, default=lambda: copy.copy(default))
         if type(field) is type:
             if issubclass(field, Field):
                 field = field()
