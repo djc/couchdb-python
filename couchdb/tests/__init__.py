@@ -8,7 +8,7 @@
 
 import unittest
 
-from couchdb.tests import client, couch_tests, design, multipart, schema, view
+from couchdb.tests import client, couch_tests, design, multipart, mapping, view
 
 
 def suite():
@@ -16,7 +16,7 @@ def suite():
     suite.addTest(client.suite())
     suite.addTest(design.suite())
     suite.addTest(multipart.suite())
-    suite.addTest(schema.suite())
+    suite.addTest(mapping.suite())
     suite.addTest(view.suite())
     suite.addTest(couch_tests.suite())
     return suite

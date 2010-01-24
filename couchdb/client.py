@@ -662,7 +662,7 @@ class Database(object):
         If an object in the documents list is not a dictionary, this method
         looks for an ``items()`` method that can be used to convert the object
         to a dictionary. Effectively this means you can also use this method
-        with `schema.Document` objects.
+        with `mapping.Document` objects.
 
         :param documents: a sequence of dictionaries or `Document` objects, or
                           objects providing a ``items()`` method that can be
