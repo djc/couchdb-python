@@ -5,6 +5,8 @@ http://couchdb-python.googlecode.com/hg/?r=default
  * Breaking change: `couchdb.schema` has been renamed to `couchdb.mapping`.
    This better reflects what is actually provided. Classes inside
    `couchdb.mapping` have been similarly renamed (e.g. `Schema` -> `Mapping`).
+ * Breaking change: the `client.Server` properties `version` and `config`
+   have become methods in order to improve API consistency.
  * Prevent `schema.ListField` objects from sharing the same default (issue 107).
  * Added a `changes()` method to the `client.Database` class (issue 103).
  * Added an optional argument to the 'Database.compact` method to enable

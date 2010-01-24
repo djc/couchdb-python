@@ -165,7 +165,6 @@ class Server(object):
         db.resource.head() # actually make a request to the database
         return db
 
-    @property
     def config(self):
         """The configuration of the CouchDB server.
 
@@ -178,7 +177,6 @@ class Server(object):
         resp, data = self.resource.get('_config')
         return data
 
-    @property
     def version(self):
         """The version string of the CouchDB server.
 
