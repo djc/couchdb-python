@@ -75,7 +75,9 @@ class ServerTestCase(unittest.TestCase):
         b = self.server.create('python-tests-a')
         result = self.server.replicate('python-tests', 'python-tests-a', continuous=True)
         self.assertEquals(result['ok'], True)
-        self.assertTrue('_local_id' in result)
+        version = tuple(int(i) for i in self.server.version.split('.')[:2])
+        if version >= (0, 10):
+            self.assertTrue('_local_id' in result)
 
 class DatabaseTestCase(unittest.TestCase):
 
@@ -319,6 +321,12 @@ class DatabaseTestCase(unittest.TestCase):
         self.db['foo'] = {'status': 'testing'}
         self.db.copy(self.db['foo'], 'bar')
         self.assertEqual('testing', self.db['bar']['status'])
+
+    def test_changes(self):
+        self.db['foo'] = {'bar': True}
+        self.assertEqual(self.db.changes(since=0)['last_seq'], 1)
+        self.assertRaises(NotImplementedError,
+                          lambda: self.db.changes(feed='continuous'))
 
 
 def suite():

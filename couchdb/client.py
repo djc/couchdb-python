@@ -717,6 +717,12 @@ class Database(object):
         return PermanentView(self.resource(*name.split('/')), name,
                              wrapper=wrapper)(**options)
 
+    def changes(self, **opts):
+        if 'feed' in opts and opts['feed'] == 'continuous':
+            raise NotImplementedError
+        _, _, data = self.resource.get('_changes', **opts)
+        return data
+
 
 class Document(dict):
     """Representation of a document in the database.

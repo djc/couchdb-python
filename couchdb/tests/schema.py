@@ -215,6 +215,14 @@ class ListFieldTestCase(unittest.TestCase):
         del thing.numbers[3:]
         self.assertEquals(len(thing.numbers), 3)
 
+    def test_mutable_fields(self):
+        class Thing(schema.Document):
+            numbers = schema.ListField(schema.DecimalField)
+        thing = Thing.wrap({'_id': 'foo', '_rev': 1}) # no numbers
+        thing.numbers.append('1.0')
+        thing2 = Thing(id='thing2')
+        self.assertEqual([i for i in thing2.numbers], [])
+
 
 def suite():
     suite = unittest.TestSuite()
