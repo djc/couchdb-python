@@ -325,8 +325,9 @@ class DatabaseTestCase(unittest.TestCase):
     def test_changes(self):
         self.db['foo'] = {'bar': True}
         self.assertEqual(self.db.changes(since=0)['last_seq'], 1)
-        self.assertRaises(NotImplementedError,
-                          lambda: self.db.changes(feed='continuous'))
+        first = self.db.changes(feed='continuous').next()
+        self.assertEqual(first['seq'], 1)
+        self.assertEqual(first['id'], 'foo')
 
 
 def suite():

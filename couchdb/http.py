@@ -84,6 +84,10 @@ class ResponseBody(object):
         self.resp = resp
         self.callback = callback
 
+    def __iter__(self):
+        while True:
+            yield self.resp.fp.readline()
+
     def read(self, size=None):
         bytes = self.resp.read(size)
         if size is None or len(bytes) < size:
@@ -236,7 +240,8 @@ class Session(object):
             self._return_connection(url, conn)
 
         # Automatically decode JSON response bodies
-        elif resp.getheader('content-type') == 'application/json':
+        elif resp.getheader('content-type') == 'application/json' and \
+        	'feed=continuous' not in url:
             data = json.decode(resp.read())
             decoded = True
             self._return_connection(url, conn)

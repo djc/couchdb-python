@@ -717,9 +717,15 @@ class Database(object):
         return PermanentView(self.resource(*name.split('/')), name,
                              wrapper=wrapper)(**options)
 
+    def _changes(self, **opts):
+        _, _, data = self.resource.get('_changes', **opts)
+        for ln in data:
+            if ln[0] == '{':
+                yield json.decode(ln)
+
     def changes(self, **opts):
         if 'feed' in opts and opts['feed'] == 'continuous':
-            raise NotImplementedError
+            return self._changes(**opts)
         _, _, data = self.resource.get('_changes', **opts)
         return data
 
