@@ -241,7 +241,7 @@ class Session(object):
 
         # Automatically decode JSON response bodies
         elif resp.getheader('content-type') == 'application/json' and \
-        	'feed=continuous' not in url:
+        	'feed=continuous' not in url: # ugly hack, see COUCHDB-604
             data = json.decode(resp.read())
             decoded = True
             self._return_connection(url, conn)
