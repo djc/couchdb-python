@@ -12,23 +12,23 @@ import os
 import unittest
 
 from couchdb import client, mapping
-
+from couchdb.http import ResourceNotFound
 
 class DocumentTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri)
+        self.server = client.Server(uri, full_commit=False)
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except ResourceNotFound:
             pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except ResourceNotFound:
             pass
 
     def test_mutable_fields(self):
@@ -93,10 +93,10 @@ class ListFieldTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri)
+        self.server = client.Server(uri, full_commit=False)
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except ResourceNotFound:
             pass
         self.db = self.server.create('python-tests')
 

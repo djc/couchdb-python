@@ -103,7 +103,7 @@ class test_doc(Command):
             doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
-requirements = ['httplib2']
+requirements = []
 if sys.version_info < (2, 6):
     requirements += ['simplejson']
 

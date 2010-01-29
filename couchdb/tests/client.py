@@ -8,26 +8,26 @@
 
 import doctest
 import os
+from StringIO import StringIO
 import unittest
-import StringIO
 
-from couchdb import client
+from couchdb import client, http
 
 
 class ServerTestCase(unittest.TestCase):
 
     def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
-        self.server = client.Server(uri)
+        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
+        self.server = client.Server(uri, full_commit=False)
 
     def tearDown(self):
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except http.ResourceNotFound:
             pass
         try:
             self.server.delete('python-tests-a')
-        except client.ResourceNotFound:
+        except http.ResourceNotFound:
             pass
 
     def test_server_vars(self):
@@ -37,12 +37,12 @@ class ServerTestCase(unittest.TestCase):
         tasks = self.server.tasks()
 
     def test_get_db_missing(self):
-        self.assertRaises(client.ResourceNotFound,
+        self.assertRaises(http.ResourceNotFound,
                           lambda: self.server['python-tests'])
 
     def test_create_db_conflict(self):
         self.server.create('python-tests')
-        self.assertRaises(client.PreconditionFailed, self.server.create,
+        self.assertRaises(http.PreconditionFailed, self.server.create,
                           'python-tests')
 
     def test_delete_db(self):
@@ -52,7 +52,7 @@ class ServerTestCase(unittest.TestCase):
         assert 'python-tests' not in self.server
 
     def test_delete_db_missing(self):
-        self.assertRaises(client.ResourceNotFound, self.server.delete,
+        self.assertRaises(http.ResourceNotFound, self.server.delete,
                           'python-tests')
 
     def test_replicate(self):
@@ -66,7 +66,7 @@ class ServerTestCase(unittest.TestCase):
         doc = b[id]
         doc['test'] = 'b'
         b.update([doc])
-        self.server.replicate(client.DEFAULT_BASE_URI + 'python-tests-a',
+        self.server.replicate(client.DEFAULT_BASE_URL + 'python-tests-a',
                               'python-tests')
         self.assertEquals(b[id]['test'], 'b')
 
@@ -82,18 +82,18 @@ class ServerTestCase(unittest.TestCase):
 class DatabaseTestCase(unittest.TestCase):
 
     def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
-        self.server = client.Server(uri)
+        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
+        self.server = client.Server(uri, full_commit=False)
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except http.ResourceNotFound:
             pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
         try:
             self.server.delete('python-tests')
-        except client.ResourceNotFound:
+        except http.ResourceNotFound:
             pass
 
     def test_create_large_doc(self):
@@ -145,7 +145,7 @@ class DatabaseTestCase(unittest.TestCase):
         doc = 'fail'
         try:
             doc = self.db.get('foo', rev=old_rev)
-        except client.ServerError:
+        except http.ServerError:
             doc = None
         assert doc is None
 
@@ -153,7 +153,7 @@ class DatabaseTestCase(unittest.TestCase):
         doc = {'bar': 42}
         self.db['foo'] = doc
         old_rev = doc['_rev']
-        
+
         self.db.put_attachment(doc, 'Foo bar', 'foo.txt', 'text/plain')
         self.assertNotEquals(old_rev, doc['_rev'])
 
@@ -162,8 +162,10 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(len('Foo bar'), attachment['length'])
         self.assertEqual('text/plain', attachment['content_type'])
 
-        self.assertEqual('Foo bar', self.db.get_attachment(doc, 'foo.txt'))
-        self.assertEqual('Foo bar', self.db.get_attachment('foo', 'foo.txt'))
+        self.assertEqual('Foo bar',
+                         self.db.get_attachment(doc, 'foo.txt').read())
+        self.assertEqual('Foo bar',
+                         self.db.get_attachment('foo', 'foo.txt').read())
 
         old_rev = doc['_rev']
         self.db.delete_attachment(doc, 'foo.txt')
@@ -174,9 +176,9 @@ class DatabaseTestCase(unittest.TestCase):
         doc = {'bar': 42}
         self.db['foo'] = doc
         old_rev = doc['_rev']
-        f = StringIO.StringIO('Foo bar baz')
+        fileobj = StringIO('Foo bar baz')
 
-        self.db.put_attachment(doc, f, 'foo.txt')
+        self.db.put_attachment(doc, fileobj, 'foo.txt')
         self.assertNotEquals(old_rev, doc['_rev'])
 
         doc = self.db['foo']
@@ -184,8 +186,10 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(len('Foo bar baz'), attachment['length'])
         self.assertEqual('text/plain', attachment['content_type'])
 
-        self.assertEqual('Foo bar baz', self.db.get_attachment(doc, 'foo.txt'))
-        self.assertEqual('Foo bar baz', self.db.get_attachment('foo', 'foo.txt'))
+        self.assertEqual('Foo bar baz',
+                         self.db.get_attachment(doc, 'foo.txt').read())
+        self.assertEqual('Foo bar baz',
+                         self.db.get_attachment('foo', 'foo.txt').read())
 
         old_rev = doc['_rev']
         self.db.delete_attachment(doc, 'foo.txt')
@@ -287,7 +291,7 @@ class DatabaseTestCase(unittest.TestCase):
 
         results = self.db.update(docs)
         self.assertEqual(False, results[0][0])
-        assert isinstance(results[0][2], client.ResourceConflict)
+        assert isinstance(results[0][2], http.ResourceConflict)
 
     def test_bulk_update_all_or_nothing(self):
         docs = [
@@ -316,7 +320,7 @@ class DatabaseTestCase(unittest.TestCase):
     def test_copy_doc_conflict(self):
         self.db['bar'] = {'status': 'idle'}
         self.db['foo'] = {'status': 'testing'}
-        self.assertRaises(client.ResourceConflict, self.db.copy, 'foo', 'bar')
+        self.assertRaises(http.ResourceConflict, self.db.copy, 'foo', 'bar')
 
     def test_copy_doc_overwrite(self):
         self.db['bar'] = {'status': 'idle'}
@@ -334,8 +338,9 @@ class DatabaseTestCase(unittest.TestCase):
     def test_changes(self):
         self.db['foo'] = {'bar': True}
         self.assertEqual(self.db.changes(since=0)['last_seq'], 1)
-        self.assertRaises(NotImplementedError,
-                          lambda: self.db.changes(feed='continuous'))
+        first = self.db.changes(feed='continuous').next()
+        self.assertEqual(first['seq'], 1)
+        self.assertEqual(first['id'], 'foo')
 
 
 def suite():
