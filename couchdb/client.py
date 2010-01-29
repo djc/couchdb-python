@@ -393,7 +393,7 @@ class Database(object):
         :rtype: `bool`
         """
         if ddoc:
-            resp, data = self.resource.post('_compact', ddoc)
+            resp, data = self.resource('_compact').post(ddoc)
         else:
             resp, data = self.resource.post('_compact')
         return data['ok']
