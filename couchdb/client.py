@@ -731,6 +731,15 @@ class Database(object):
             yield json.decode(ln)
             if ln.startswith('{"last_seq"'):
                 break
+        # XXX Dirty evil hack, and horribly dependent on CouchDB's
+        # implementation. Really needs fixing but I think that means
+        # reimplementing chunked reading.
+        # We need to finish consuming the response so it can be returned to the
+        # connection pool. The response is chunked and the current chunk's
+        # terminating CRLF is on the next line. So, read it (to finish the
+        # chunk) and then read whatever is remaining to "close" the response.
+        iter(data).next()
+        data.read()
 
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
