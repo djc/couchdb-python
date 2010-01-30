@@ -723,8 +723,14 @@ class Database(object):
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
         for ln in data:
-            if ln[0] == '{':
-                yield json.decode(ln)
+            # Skip anything that's not a JSON object, e.g. heartbeat line,
+            # chunk header (see XXX below), etc.
+            if ln[0] != '{':
+                continue
+            # Yield the update up to and inluding the last_seq line.
+            yield json.decode(ln)
+            if ln.startswith('{"last_seq"'):
+                break
 
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
