@@ -729,10 +729,9 @@ class Database(object):
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
 
-        Takes since, feed, heartbeat and timeout options. The continuous feed
-        mode isn't supported yet, but normal and longpoll should work.
+        Takes since, feed, heartbeat and timeout options.
         """
-        if 'feed' in opts and opts['feed'] == 'continuous':
+        if opts.get('feed') == 'continuous':
             return self._changes(**opts)
         _, _, data = self.resource.get('_changes', **opts)
         return data
