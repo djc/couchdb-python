@@ -85,8 +85,15 @@ class ResponseBody(object):
         self.callback = callback
 
     def __iter__(self):
+        # bypasses httplib chunked mechanism
         while True:
-            yield self.resp.fp.readline()
+            chunksz = int(self.resp.fp.readline().strip(), 16)
+            if not chunksz:
+                self.resp.close()
+                break
+            chunk = self.resp.fp.read(chunksz)
+            crlf = self.resp.fp.read(2)
+            yield chunk
 
     def read(self, size=None):
         bytes = self.resp.read(size)
