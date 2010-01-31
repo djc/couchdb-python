@@ -723,23 +723,14 @@ class Database(object):
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
         for ln in data:
-            # Skip anything that's not a JSON object, e.g. heartbeat line,
-            # chunk header (see XXX below), etc.
+            # Skip non-JSON lines (heartbeats).
             if ln[0] != '{':
                 continue
             # Yield the update up to and inluding the last_seq line.
-            yield json.decode(ln)
-            if ln.startswith('{"last_seq"'):
+            doc = json.decode(ln)
+            yield doc
+            if 'last_seq' in doc:
                 break
-        # XXX Dirty evil hack, and horribly dependent on CouchDB's
-        # implementation. Really needs fixing but I think that means
-        # reimplementing chunked reading.
-        # We need to finish consuming the response so it can be returned to the
-        # connection pool. The response is chunked and the current chunk's
-        # terminating CRLF is on the next line. So, read it (to finish the
-        # chunk) and then read whatever is remaining to "close" the response.
-        iter(data).next()
-        data.read()
 
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
