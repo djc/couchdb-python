@@ -12,6 +12,7 @@ from StringIO import StringIO
 import unittest
 
 from couchdb import client, http
+http.CACHE_SIZE = 2, 3
 
 
 class ServerTestCase(unittest.TestCase):

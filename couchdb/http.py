@@ -12,6 +12,7 @@ standard library.
 """
 
 from base64 import b64encode
+from datetime import datetime
 from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
 import re
 import socket
@@ -76,6 +77,10 @@ class RedirectLimit(Exception):
 
 
 CHUNK_SIZE = 1024 * 8
+CACHE_SIZE = 10, 75 # some random values to limit memory use
+
+def cache_sort(i):
+    return datetime.strptime(i[1][1]['Date'][5:-4], '%m %b %Y %H:%M:%S')
 
 
 class ResponseBody(object):
@@ -289,11 +294,17 @@ class Session(object):
         # Store cachable responses
         if not streamed and method in ('GET', 'HEAD') and 'etag' in resp.msg:
             self.cache[url] = (status, resp.msg, data, decoded)
+            if len(self.cache) > CACHE_SIZE[1]:
+                self._clean_cache()
 
         if not decoded and not streamed and data is not None:
             data = StringIO(data)
 
         return status, resp.msg, data
+
+    def _clean_cache(self):
+        ls = sorted(self.cache.iteritems(), key=cache_sort)
+        self.cache = dict(ls[:CACHE_SIZE[0]])
 
     def _authenticate(self, info, headers, credentials):
         # Naive Basic authentication support
