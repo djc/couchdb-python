@@ -304,7 +304,7 @@ class Session(object):
 
     def _clean_cache(self):
         ls = sorted(self.cache.iteritems(), key=cache_sort)
-        self.cache = dict(ls[:CACHE_SIZE[0]])
+        self.cache = dict(ls[-CACHE_SIZE[0]:])
 
     def _authenticate(self, info, headers, credentials):
         # Naive Basic authentication support
