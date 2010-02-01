@@ -480,7 +480,7 @@ class Database(object):
         """
         try:
             status, headers, data = self.resource.get(id, revs=True)
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return
 
         startrev = data['_revisions']['start']

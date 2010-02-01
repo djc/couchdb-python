@@ -136,6 +136,8 @@ class DatabaseTestCase(unittest.TestCase):
         revs = [i for i in self.db.revisions('foo')]
         self.assertEqual(revs[0]['_rev'], new_rev)
         self.assertEqual(revs[1]['_rev'], old_rev)
+        gen = self.db.revisions('crap')
+        self.assertRaises(StopIteration, lambda: gen.next())
 
         self.assertTrue(self.db.compact())
         while self.db.info()['compact_running']:
