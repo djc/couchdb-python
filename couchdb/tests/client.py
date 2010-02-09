@@ -345,6 +345,21 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(first['seq'], 1)
         self.assertEqual(first['id'], 'foo')
 
+    def test_changes_releases_conn(self):
+        # Consume an entire changes feed to read the whole response, then check
+        # that the HTTP connection made it to the pool.
+        list(self.db.changes(feed='continuous', timeout=0))
+        self.assertTrue(self.db.resource.session.conns[('http', 'localhost:5984')])
+
+    def test_changes_releases_conn_when_lastseq(self):
+        # Consume a changes feed, stopping at the 'last_seq' item, i.e. don't
+        # let the generator run any further, then check the connection made it
+        # to the pool.
+        for obj in self.db.changes(feed='continuous', timeout=0):
+            if 'last_seq' in obj:
+                break
+        self.assertTrue(self.db.resource.session.conns[('http', 'localhost:5984')])
+
 
 def suite():
     suite = unittest.TestSuite()
