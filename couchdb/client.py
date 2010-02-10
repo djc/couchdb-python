@@ -722,7 +722,7 @@ class Database(object):
 
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
-        for ln in data:
+        for ln in data._iterchunks():
             # Skip non-JSON lines (heartbeats).
             if ln[0] != '{':
                 continue

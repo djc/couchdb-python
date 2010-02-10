@@ -89,18 +89,6 @@ class ResponseBody(object):
         self.resp = resp
         self.callback = callback
 
-    def __iter__(self):
-        # bypasses httplib chunked mechanism
-        while True:
-            chunksz = int(self.resp.fp.readline().strip(), 16)
-            if not chunksz:
-                self.resp.close()
-                self.callback()
-                break
-            chunk = self.resp.fp.read(chunksz)
-            crlf = self.resp.fp.read(2)
-            yield chunk
-
     def read(self, size=None):
         bytes = self.resp.read(size)
         if size is None or len(bytes) < size:
@@ -111,6 +99,20 @@ class ResponseBody(object):
         while not self.resp.isclosed():
             self.read(CHUNK_SIZE)
         self.callback()
+
+    def _iterchunks(self):
+        """
+        Yield chunks from the response body as they arrive.
+        """
+        while True:
+            chunksz = int(self.resp.fp.readline().strip(), 16)
+            if not chunksz:
+                self.resp.close()
+                self.callback()
+                break
+            chunk = self.resp.fp.read(chunksz)
+            crlf = self.resp.fp.read(2)
+            yield chunk
 
 
 class Session(object):
