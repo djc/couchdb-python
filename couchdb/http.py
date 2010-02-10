@@ -107,6 +107,7 @@ class ResponseBody(object):
         while True:
             chunksz = int(self.resp.fp.readline().strip(), 16)
             if not chunksz:
+                crlf = self.resp.fp.read(2)
                 self.resp.close()
                 self.callback()
                 break

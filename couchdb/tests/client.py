@@ -360,6 +360,13 @@ class DatabaseTestCase(unittest.TestCase):
                 break
         self.assertTrue(self.db.resource.session.conns[('http', 'localhost:5984')])
 
+    def test_changes_conn_usable(self):
+        # Consume a changes feed to get a used connection in the pool.
+        list(self.db.changes(feed='continuous', timeout=0))
+        # Try using the connection again to make sure the connection was left
+        # in a good state from the previous request.
+        self.assertTrue(self.db.info()['doc_count'] == 0)
+
 
 def suite():
     suite = unittest.TestSuite()
