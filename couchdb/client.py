@@ -722,15 +722,21 @@ class Database(object):
 
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
-        for ln in data._iterchunks():
+        chunks = data._iterchunks()
+        for ln in chunks:
             # Skip non-JSON lines (heartbeats).
             if ln[0] != '{':
                 continue
-            # Yield the update up to and inluding the last_seq line.
+            # Parse the line as JSON.
             doc = json.decode(ln)
-            yield doc
+            # If this is the last_seq then consume the rest of the response
+            # before yielding the doc to ensure the response is closed and the
+            # connection returned to the pool.
             if 'last_seq' in doc:
-                break
+                for ln in chunks:
+                    pass
+            # Yield to caller
+            yield doc
 
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
