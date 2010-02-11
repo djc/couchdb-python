@@ -67,7 +67,8 @@ from couchdb.design import ViewDefinition
 
 __all__ = ['Mapping', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
-           'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField']
+           'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField',
+           'ViewField']
 __docformat__ = 'restructuredtext en'
 
 DEFAULT = object()
@@ -183,14 +184,14 @@ class Mapping(object):
         return self.unwrap()
 
 
-class View(object):
+class ViewField(object):
     r"""Descriptor that can be used to bind a view definition to a property of
     a `Document` class.
     
     >>> class Person(Document):
     ...     name = TextField()
     ...     age = IntegerField()
-    ...     by_name = View('people', '''\
+    ...     by_name = ViewField('people', '''\
     ...         function(doc) {
     ...             emit(doc.name, doc);
     ...         }''')
@@ -225,7 +226,7 @@ class View(object):
     ...     name = TextField()
     ...     age = IntegerField()
     ...
-    ...     @View.define('people')
+    ...     @ViewField.define('people')
     ...     def by_name(doc):
     ...         yield doc['name'], doc
     
@@ -289,7 +290,7 @@ class DocumentMeta(MappingMeta):
 
     def __new__(cls, name, bases, d):
         for attrname, attrval in d.items():
-            if isinstance(attrval, View):
+            if isinstance(attrval, ViewField):
                 if not attrval.name:
                     attrval.name = attrname
         return MappingMeta.__new__(cls, name, bases, d)
