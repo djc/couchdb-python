@@ -722,20 +722,14 @@ class Database(object):
 
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
-        chunks = data._iterchunks()
-        for ln in chunks:
-            # Skip non-JSON lines (heartbeats).
-            if ln[0] != '{':
+        lines = iter(data)
+        for ln in lines:
+            if ln[0] != '{': # skip heartbeats
                 continue
-            # Parse the line as JSON.
             doc = json.decode(ln)
-            # If this is the last_seq then consume the rest of the response
-            # before yielding the doc to ensure the response is closed and the
-            # connection returned to the pool.
-            if 'last_seq' in doc:
-                for ln in chunks:
+            if 'last_seq' in doc: # consume the rest of the response if this
+                for ln in lines:  # was the last line, allows conn reuse
                     pass
-            # Yield to caller
             yield doc
 
     def changes(self, **opts):

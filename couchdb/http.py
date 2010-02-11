@@ -100,10 +100,8 @@ class ResponseBody(object):
             self.read(CHUNK_SIZE)
         self.callback()
 
-    def _iterchunks(self):
-        """
-        Yield chunks from the response body as they arrive.
-        """
+    def __iter__(self):
+        assert self.resp.msg.get('transfer-encoding') == 'chunked'
         while True:
             chunksz = int(self.resp.fp.readline().strip(), 16)
             if not chunksz:
@@ -112,8 +110,9 @@ class ResponseBody(object):
                 self.callback()
                 break
             chunk = self.resp.fp.read(chunksz)
+            for ln in chunk.splitlines():
+                yield ln
             crlf = self.resp.fp.read(2)
-            yield chunk
 
 
 class Session(object):
