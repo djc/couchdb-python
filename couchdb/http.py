@@ -80,7 +80,7 @@ CHUNK_SIZE = 1024 * 8
 CACHE_SIZE = 10, 75 # some random values to limit memory use
 
 def cache_sort(i):
-    return datetime.strptime(i[1][1]['Date'][5:-4], '%m %b %Y %H:%M:%S')
+    return datetime.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S')
 
 
 class ResponseBody(object):
