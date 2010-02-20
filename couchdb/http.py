@@ -322,7 +322,7 @@ class Session(object):
             else:
                 if scheme == 'http':
                     cls = HTTPConnection
-                elif self.scheme == 'https':
+                elif scheme == 'https':
                     cls = HTTPSConnection
                 else:
                     raise ValueError('%s is not a supported scheme' % scheme)
