@@ -33,9 +33,13 @@ class ServerTestCase(unittest.TestCase):
 
     def test_server_vars(self):
         version = self.server.version()
+        self.assertTrue(isinstance(version, basestring))
         config = self.server.config()
+        self.assertTrue(isinstance(config, dict))
         stats = self.server.stats()
+        self.assertTrue(isinstance(stats, dict))
         tasks = self.server.tasks()
+        self.assertTrue(isinstance(tasks, list))
 
     def test_get_db_missing(self):
         self.assertRaises(http.ResourceNotFound,
@@ -79,6 +83,19 @@ class ServerTestCase(unittest.TestCase):
         version = tuple(int(i) for i in self.server.version().split('.')[:2])
         if version >= (0, 10):
             self.assertTrue('_local_id' in result)
+
+    def test_iter(self):
+        self.server.create('python-tests')
+        self.server.create('python-tests-a')
+        dbs = list(self.server)
+        self.assertTrue('python-tests' in dbs)
+        self.assertTrue('python-tests-a' in dbs)
+
+    def test_len(self):
+        self.server.create('python-tests')
+        self.server.create('python-tests-a')
+        self.assertTrue(len(self.server) >= 2)
+
 
 class DatabaseTestCase(unittest.TestCase):
 
@@ -210,6 +227,12 @@ class DatabaseTestCase(unittest.TestCase):
         doc = self.db['foo']
         attachment = doc['_attachments']['empty.txt']
         self.assertEqual(0, attachment['length'])
+
+    def test_json_attachment(self):
+        doc = {}
+        self.db['foo'] = doc
+        self.db.put_attachment(doc, '{}', 'test.json', 'application/json')
+        self.assertEquals(self.db.get_attachment(doc, 'test.json').read(), '{}')
 
     def test_include_docs(self):
         doc = {'foo': 42, 'bar': 40}

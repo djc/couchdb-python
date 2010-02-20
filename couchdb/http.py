@@ -221,8 +221,8 @@ class Session(object):
         if status == 304 and method in ('GET', 'HEAD'):
             resp.read()
             self._return_connection(url, conn)
-            status, msg, data, decoded = cached_resp
-            if data is not None and not decoded:
+            status, msg, data = cached_resp
+            if data is not None:
                 data = StringIO(data)
             return status, msg, data
         elif cached_resp:
@@ -244,7 +244,6 @@ class Session(object):
                                 num_redirects=num_redirects + 1)
 
         data = None
-        decoded = False
         streamed = False
 
         # Read the full response for empty responses so that the connection is
@@ -252,13 +251,6 @@ class Session(object):
         if method == 'HEAD' or resp.getheader('content-length') == '0' or \
                 status < 200 or status in (204, 304):
             resp.read()
-            self._return_connection(url, conn)
-
-        # Automatically decode JSON response bodies
-        elif resp.getheader('content-type') == 'application/json' and \
-        	'feed=continuous' not in url: # ugly hack, see COUCHDB-604
-            data = json.decode(resp.read())
-            decoded = True
             self._return_connection(url, conn)
 
         # Buffer small non-JSON response bodies
@@ -276,6 +268,7 @@ class Session(object):
         # Handle errors
         if status >= 400:
             if data is not None:
+                data = json.decode(data)
                 error = data.get('error'), data.get('reason')
             elif method != 'HEAD':
                 error = resp.read()
@@ -295,11 +288,11 @@ class Session(object):
 
         # Store cachable responses
         if not streamed and method in ('GET', 'HEAD') and 'etag' in resp.msg:
-            self.cache[url] = (status, resp.msg, data, decoded)
+            self.cache[url] = (status, resp.msg, data)
             if len(self.cache) > CACHE_SIZE[1]:
                 self._clean_cache()
 
-        if not decoded and not streamed and data is not None:
+        if not streamed and data is not None:
             data = StringIO(data)
 
         return status, resp.msg, data
@@ -377,6 +370,30 @@ class Resource(object):
 
     def put(self, path=None, body=None, headers=None, **params):
         return self._request('PUT', path, body=body, headers=headers, **params)
+
+    def delete_json(self, *a, **k):
+        status, headers, data = self.delete(*a, **k)
+        if headers.get('content-type') == 'application/json':
+            data = json.decode(data.read())
+        return status, headers, data
+
+    def get_json(self, *a, **k):
+        status, headers, data = self.get(*a, **k)
+        if headers.get('content-type') == 'application/json':
+            data = json.decode(data.read())
+        return status, headers, data
+
+    def post_json(self, *a, **k):
+        status, headers, data = self.post(*a, **k)
+        if headers.get('content-type') == 'application/json':
+            data = json.decode(data.read())
+        return status, headers, data
+
+    def put_json(self, *a, **k):
+        status, headers, data = self.put(*a, **k)
+        if headers.get('content-type') == 'application/json':
+            data = json.decode(data.read())
+        return status, headers, data
 
     def _request(self, method, path=None, body=None, headers=None, **params):
         all_headers = self.headers.copy()

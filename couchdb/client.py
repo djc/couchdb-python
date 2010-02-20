@@ -103,12 +103,12 @@ class Server(object):
 
     def __iter__(self):
         """Iterate over the names of all databases."""
-        status, headers, data = self.resource.get('_all_dbs')
+        status, headers, data = self.resource.get_json('_all_dbs')
         return iter(data)
 
     def __len__(self):
         """Return the number of databases."""
-        status, headers, data = self.resource.get('_all_dbs')
+        status, headers, data = self.resource.get_json('_all_dbs')
         return len(data)
 
     def __nonzero__(self):
@@ -128,7 +128,7 @@ class Server(object):
         :param name: the name of the database
         :raise ResourceNotFound: if no database with that name exists
         """
-        self.resource.delete(validate_dbname(name))
+        self.resource.delete_json(validate_dbname(name))
 
     def __getitem__(self, name):
         """Return a `Database` object representing the database with the
@@ -152,7 +152,7 @@ class Server(object):
 
         :type: `dict`
         """
-        status, headers, data = self.resource.get('_config')
+        status, headers, data = self.resource.get_json('_config')
         return data
 
     def version(self):
@@ -162,17 +162,17 @@ class Server(object):
         to check for the availability of the server.
 
         :type: `unicode`"""
-        status, headers, data = self.resource.get()
+        status, headers, data = self.resource.get_json()
         return data['version']
 
     def stats(self):
         """Database statistics."""
-        status, headers, data = self.resource.get('_stats')
+        status, headers, data = self.resource.get_json('_stats')
         return data
 
     def tasks(self):
         """A list of tasks currently active on the server."""
-        status, headers, data = self.resource.get('_active_tasks')
+        status, headers, data = self.resource.get_json('_active_tasks')
         return data
 
     def create(self, name):
@@ -183,7 +183,7 @@ class Server(object):
         :rtype: `Database`
         :raise PreconditionFailed: if a database with that name already exists
         """
-        self.resource.put(validate_dbname(name))
+        self.resource.put_json(validate_dbname(name))
         return self[name]
 
     def delete(self, name):
@@ -204,7 +204,7 @@ class Server(object):
         """
         data = {'source': source, 'target': target}
         data.update(options)
-        status, headers, data = self.resource.post('_replicate', data)
+        status, headers, data = self.resource.post_json('_replicate', data)
         return data
 
 
@@ -284,7 +284,7 @@ class Database(object):
 
     def __len__(self):
         """Return the number of documents in the database."""
-        _, _, data = self.resource.get()
+        _, _, data = self.resource.get_json()
         return data['doc_count']
 
     def __nonzero__(self):
@@ -301,7 +301,7 @@ class Database(object):
         :param id: the document ID
         """
         status, headers, data = self.resource.head(id)
-        self.resource.delete(id, rev=headers['etag'].strip('"'))
+        self.resource.delete_json(id, rev=headers['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -310,7 +310,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        _, _, data = self.resource.get(id)
+        _, _, data = self.resource.get_json(id)
         return Document(data)
 
     def __setitem__(self, id, content):
@@ -321,7 +321,7 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        status, headers, data = self.resource.put(id, body=content)
+        status, headers, data = self.resource.put_json(id, body=content)
         content.update({'_id': data['id'], '_rev': data['rev']})
 
     @property
@@ -359,7 +359,7 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        _, _, data = self.resource.post(body=data)
+        _, _, data = self.resource.post_json(body=data)
         return data['id']
 
     def commit(self):
@@ -368,7 +368,7 @@ class Database(object):
         immediate commits, this method can be used to ensure that any
         non-committed changes are committed to physical storage.
         """
-        self.resource.post('_ensure_full_commit')
+        self.resource.post_json('_ensure_full_commit')
 
     def compact(self, ddoc=None):
         """Compact the database or a design document's index.
@@ -382,9 +382,9 @@ class Database(object):
         :rtype: `bool`
         """
         if ddoc:
-            _, _, data = self.resource('_compact').post(ddoc)
+            _, _, data = self.resource('_compact').post_json(ddoc)
         else:
-            _, _, data = self.resource.post('_compact')
+            _, _, data = self.resource.post_json('_compact')
         return data['ok']
 
     def copy(self, src, dest):
@@ -423,6 +423,7 @@ class Database(object):
 
         _, _, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})
+        data = json.decode(data.read())
         return data['rev']
 
     def delete(self, doc):
@@ -452,7 +453,7 @@ class Database(object):
         :raise ResourceConflict: if the document was updated in the database
         :since: 0.4.1
         """
-        self.resource.delete(doc['_id'], rev=doc['_rev'])
+        self.resource.delete_json(doc['_id'], rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
         """Return the document with the specified ID.
@@ -465,7 +466,7 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            _, _, data = self.resource.get(id, **options)
+            _, _, data = self.resource.get_json(id, **options)
         except http.ResourceNotFound:
             return default
         else:
@@ -479,7 +480,7 @@ class Database(object):
                  in reverse chronological order, if any were found
         """
         try:
-            status, headers, data = self.resource.get(id, revs=True)
+            status, headers, data = self.resource.get_json(id, revs=True)
         except http.ResourceNotFound:
             return
 
@@ -501,7 +502,7 @@ class Database(object):
         :rtype: ``dict``
         :since: 0.4
         """
-        _, _, data = self.resource.get()
+        _, _, data = self.resource.get_json()
         self._name = data['db_name']
         return data
 
@@ -518,7 +519,7 @@ class Database(object):
         :since: 0.4.1
         """
         resource = self.resource(doc['_id'])
-        _, _, data = resource.delete(filename, rev=doc['_rev'])
+        _, _, data = resource.delete_json(filename, rev=doc['_rev'])
         doc['_rev'] = data['rev']
 
     def get_attachment(self, id_or_doc, filename, default=None):
@@ -574,7 +575,7 @@ class Database(object):
             )
 
         resource = self.resource(doc['_id'])
-        status, headers, data = resource.put(filename, body=content, headers={
+        status, headers, data = resource.put_json(filename, body=content, headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
         doc['_rev'] = data['rev']
@@ -671,7 +672,7 @@ class Database(object):
 
         content = options
         content.update(docs=docs)
-        _, _, data = self.resource.post('_bulk_docs', body=content)
+        _, _, data = self.resource.post_json('_bulk_docs', body=content)
 
         results = []
         for idx, result in enumerate(data):
@@ -739,7 +740,7 @@ class Database(object):
         """
         if opts.get('feed') == 'continuous':
             return self._changes(**opts)
-        _, _, data = self.resource.get('_changes', **opts)
+        _, _, data = self.resource.get_json('_changes', **opts)
         return data
 
 
@@ -815,10 +816,10 @@ class PermanentView(View):
         if 'keys' in options:
             options = options.copy()
             keys = {'keys': options.pop('keys')}
-            _, _, data = self.resource.post(body=keys,
-                                            **self._encode_options(options))
+            _, _, data = self.resource.post_json(body=keys,
+                                                 **self._encode_options(options))
         else:
-            _, _, data = self.resource.get(**self._encode_options(options))
+            _, _, data = self.resource.get_json(**self._encode_options(options))
         return data
 
 
@@ -850,7 +851,7 @@ class TemporaryView(View):
             options = options.copy()
             body['keys'] = options.pop('keys')
         content = json.encode(body).encode('utf-8')
-        _, _, data = self.resource.post(body=content, headers={
+        _, _, data = self.resource.post_json(body=content, headers={
             'Content-Type': 'application/json'
         }, **self._encode_options(options))
         return data
