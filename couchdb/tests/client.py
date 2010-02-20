@@ -31,6 +31,9 @@ class ServerTestCase(unittest.TestCase):
         except http.ResourceNotFound:
             pass
 
+    def test_repr(self):
+        repr(self.server)
+
     def test_server_vars(self):
         version = self.server.version()
         self.assertTrue(isinstance(version, basestring))

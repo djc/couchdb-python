@@ -120,7 +120,7 @@ class Server(object):
             return False
 
     def __repr__(self):
-        return '<%s %r>' % (type(self).__name__, self.resource.uri)
+        return '<%s %r>' % (type(self).__name__, self.resource.url)
 
     def __delitem__(self, name):
         """Remove the database with the specified name.
