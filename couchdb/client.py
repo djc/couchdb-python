@@ -725,7 +725,7 @@ class Database(object):
         _, _, data = self.resource.get('_changes', **opts)
         lines = iter(data)
         for ln in lines:
-            if ln[0] != '{': # skip heartbeats
+            if not ln: # skip heartbeats
                 continue
             doc = json.decode(ln)
             if 'last_seq' in doc: # consume the rest of the response if this

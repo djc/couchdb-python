@@ -9,6 +9,8 @@
 import doctest
 import os
 from StringIO import StringIO
+import time
+import threading
 import unittest
 
 from couchdb import client, http
@@ -392,6 +394,14 @@ class DatabaseTestCase(unittest.TestCase):
         # Try using the connection again to make sure the connection was left
         # in a good state from the previous request.
         self.assertTrue(self.db.info()['doc_count'] == 0)
+
+    def test_changes_heartbeat(self):
+        def wakeup():
+            time.sleep(.3)
+            self.db.create({})
+        threading.Thread(target=wakeup).start()
+        for change in self.db.changes(feed='continuous', heartbeat=100):
+            break
 
 
 def suite():
