@@ -234,7 +234,9 @@ class CouchTests(unittest.TestCase):
             self.db[str(idx + 1)] = {'foo': value}
 
         query = """function(doc) {
-            emit(doc.foo, null);
+            if(doc.foo !== undefined) {
+                emit(doc.foo, null);
+            }
         }"""
         rows = iter(self.db.query(query))
         self.assertEqual(None, rows.next().value)
