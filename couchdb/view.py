@@ -122,7 +122,8 @@ def run(input=sys.stdin, output=sys.stdout):
         return [True, [results]]
 
     def rereduce(*cmd):
-        return reduce(*cmd, rereduce=True)
+        # Note: weird kwargs is for Python 2.5 compat
+        return reduce(*cmd, **{'rereduce': True})
 
     handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc,
                 'reduce': reduce, 'rereduce': rereduce}
