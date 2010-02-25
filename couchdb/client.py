@@ -417,7 +417,7 @@ class Database(object):
                 dest = '%s?%s' % (http.quote(dest['_id']),
                                   http.urlencode({'rev': dest['_rev']}))
             else:
-                dest = unicode_quote(dest['_id'])
+                dest = http.quote(dest['_id'])
 
         _, _, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})

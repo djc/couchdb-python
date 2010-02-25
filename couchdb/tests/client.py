@@ -366,6 +366,11 @@ class DatabaseTestCase(unittest.TestCase):
         self.db.copy(self.db['foo'], 'bar')
         self.assertEqual('testing', self.db['bar']['status'])
 
+    def test_copy_doc_destobj_norev(self):
+        self.db['foo'] = {'status': 'testing'}
+        self.db.copy('foo', {'_id': 'bar'})
+        self.assertEqual('testing', self.db['bar']['status'])
+
     def test_changes(self):
         self.db['foo'] = {'bar': True}
         self.assertEqual(self.db.changes(since=0)['last_seq'], 1)
