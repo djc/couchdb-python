@@ -100,11 +100,11 @@ def main():
             body['continuous'] = True
         if options.push:
             body.update({'source': dbname, 'target': '%s%s' % (options.target_url, dbname)})
-            ret = source_server.resource.post('_replicate', body)
+            source_server.resource.post('_replicate', body)
         else:
             # pull seems to be more reliable than push
             body.update({'source': '%s%s' % (options.source_url, dbname), 'target': dbname})
-            ret = target_server.resource.post('_replicate', body)
+            target_server.resource.post('_replicate', body)
         print "%.1f s" % (time.time() - start)
     
     if options.compact_target:

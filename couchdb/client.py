@@ -25,12 +25,10 @@ False
 
 import mimetypes
 import os
-from urllib import quote, urlencode
 from types import FunctionType
 from inspect import getsource
 from textwrap import dedent
 import re
-import socket
 
 from couchdb import http, json
 

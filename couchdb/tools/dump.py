@@ -12,8 +12,6 @@ file.
 """
 
 from base64 import b64decode
-from email.MIMEBase import MIMEBase
-from email.MIMEMultipart import MIMEMultipart
 from optparse import OptionParser
 import sys
 

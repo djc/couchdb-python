@@ -105,14 +105,14 @@ class ResponseBody(object):
         while True:
             chunksz = int(self.resp.fp.readline().strip(), 16)
             if not chunksz:
-                crlf = self.resp.fp.read(2)
+                self.resp.fp.read(2) #crlf
                 self.resp.close()
                 self.callback()
                 break
             chunk = self.resp.fp.read(chunksz)
             for ln in chunk.splitlines():
                 yield ln
-            crlf = self.resp.fp.read(2)
+            self.resp.fp.read(2) #crlf
 
 
 class Session(object):

@@ -12,7 +12,6 @@ file.
 """
 
 from base64 import b64encode
-from email import message_from_file
 from optparse import OptionParser
 import sys
 

@@ -467,7 +467,7 @@ class DateField(Field):
         if isinstance(value, basestring):
             try:
                 value = date(*strptime(value, '%Y-%m-%d')[:3])
-            except ValueError, e:
+            except ValueError:
                 raise ValueError('Invalid ISO date %r' % value)
         return value
 
@@ -496,7 +496,7 @@ class DateTimeField(Field):
                 value = value.rstrip('Z') # remove timezone separator
                 timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
                 value = datetime.utcfromtimestamp(timestamp)
-            except ValueError, e:
+            except ValueError:
                 raise ValueError('Invalid ISO date/time %r' % value)
         return value
 
@@ -525,7 +525,7 @@ class TimeField(Field):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
                 value = time(*strptime(value, '%H:%M:%S')[3:6])
-            except ValueError, e:
+            except ValueError:
                 raise ValueError('Invalid ISO time %r' % value)
         return value
 

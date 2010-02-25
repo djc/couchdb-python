@@ -7,7 +7,6 @@
 # you should have received as part of this distribution.
 
 import doctest
-import os
 import unittest
 
 from couchdb import design

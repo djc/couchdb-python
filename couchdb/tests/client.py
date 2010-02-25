@@ -81,8 +81,8 @@ class ServerTestCase(unittest.TestCase):
         self.assertEquals(b[id]['test'], 'b')
 
     def test_replicate_continuous(self):
-        a = self.server.create('python-tests')
-        b = self.server.create('python-tests-a')
+        self.server.create('python-tests')
+        self.server.create('python-tests-a')
         result = self.server.replicate('python-tests', 'python-tests-a', continuous=True)
         self.assertEquals(result['ok'], True)
         version = tuple(int(i) for i in self.server.version().split('.')[:2])
@@ -138,7 +138,7 @@ class DatabaseTestCase(unittest.TestCase):
         try:
             self.db['foo'] = {u'number': float('nan')}
             self.fail('Expected ValueError')
-        except ValueError, e:
+        except ValueError:
             pass
 
     def test_doc_revs(self):
@@ -284,7 +284,7 @@ class DatabaseTestCase(unittest.TestCase):
             }
         }
 
-        res = self.db.view('test/multi_key')
+        self.db.view('test/multi_key')
         self.assertTrue(self.db.compact('test'))
 
     def test_view_function_objects(self):
