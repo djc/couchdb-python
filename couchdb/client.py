@@ -366,7 +366,8 @@ class Database(object):
         immediate commits, this method can be used to ensure that any
         non-committed changes are committed to physical storage.
         """
-        self.resource.post_json('_ensure_full_commit')
+        _, _, data = self.resource.post_json('_ensure_full_commit')
+        return data
 
     def compact(self, ddoc=None):
         """Compact the database or a design document's index.
@@ -400,7 +401,7 @@ class Database(object):
         if not isinstance(src, basestring):
             if not isinstance(src, dict):
                 if hasattr(src, 'items'):
-                    src = src.items()
+                    src = dict(src.items())
                 else:
                     raise TypeError('expected dict or string, got %s' %
                                     type(src))
@@ -409,7 +410,7 @@ class Database(object):
         if not isinstance(dest, basestring):
             if not isinstance(dest, dict):
                 if hasattr(dest, 'items'):
-                    dest = dest.items()
+                    dest = dict(dest.items())
                 else:
                     raise TypeError('expected dict or string, got %s' %
                                     type(dest))
@@ -785,7 +786,7 @@ class View(object):
         return ViewResults(self, options)
 
     def __iter__(self):
-        return self()
+        return iter(self())
 
     def _encode_options(self, options):
         retval = {}
