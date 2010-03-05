@@ -167,6 +167,10 @@ class Session(object):
             conn.connect()
 
         def _try_request(retries=1):
+            def _retry():
+                conn.close()
+                conn.connect()
+                return _try_request(retries - 1)
             try:
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
@@ -189,21 +193,15 @@ class Session(object):
                 # line saying, "Presumably, the server closed the connection
                 # before sending a valid response."
                 if retries > 0 and e.line == '':
-                    conn.close()
-                    conn.connect()
-                    return _try_request(retries - 1)
+                    return _retry()
                 else:
                     raise
             except socket.error, e:
                 ecode = e.args[0]
                 if retries > 0 and ecode == 54: # reset by peer
-                    conn.close()
-                    conn.connect()
-                    return _try_request(retries - 1)
+                    return _retry()
                 elif retries > 0 and ecode == 32: # broken pipe
-                    conn.close()
-                    conn.connect()
-                    return _try_request(retries - 1)
+                    return _retry()
                 else:
                     raise
 
