@@ -210,10 +210,10 @@ class Session(object):
 
         # Handle authentication challenge
         if status == 401:
-            resp.read()
             auth_header = resp.getheader('www-authenticate', '')
             if auth_header:
                 if self._authenticate(auth_header, headers, credentials):
+                    resp.read() # read the 401 response
                     resp = _try_request()
                     status = resp.status
 
