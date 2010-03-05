@@ -210,12 +210,14 @@ class Session(object):
 
         # Handle authentication challenge
         if status == 401:
-            auth_header = resp.getheader('www-authenticate', '')
-            if auth_header:
-                if self._authenticate(auth_header, headers, credentials):
-                    resp.read() # read the 401 response
-                    resp = _try_request()
-                    status = resp.status
+            # Assume basic auth (CouchDB 0.11.x doesn't send a www-authenticate
+            # header).
+            authorization = basic_auth(credentials)
+            if authorization:
+                resp.read() # read the 401 response
+                headers['Authorization'] = authorization
+                resp = _try_request()
+                status = resp.status
 
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
@@ -300,17 +302,6 @@ class Session(object):
     def _clean_cache(self):
         ls = sorted(self.cache.iteritems(), key=cache_sort)
         self.cache = dict(ls[-CACHE_SIZE[0]:])
-
-    def _authenticate(self, info, headers, credentials):
-        # Naive Basic authentication support
-        match = re.match(r'''(\w*)\s+realm=['"]([^'"]+)['"]''', info)
-        if match:
-            scheme, realm = match.groups()
-            if scheme.lower() == 'basic':
-                headers['Authorization'] = 'Basic %s' % b64encode(
-                    '%s:%s' % credentials
-                )
-                return True
 
     def _get_connection(self, url):
         scheme, host = urlsplit(url, 'http', False)[:2]
@@ -423,6 +414,12 @@ def extract_credentials(url):
         username = None
         password = None
     return urlunsplit(parts), (username, password)
+
+
+def basic_auth(credentials):
+    if credentials == (None, None):
+        return None
+    return 'Basic %s' % b64encode('%s:%s' % credentials)
 
 
 def quote(string, safe=''):
