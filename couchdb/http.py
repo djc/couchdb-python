@@ -200,8 +200,10 @@ class Session(object):
                     conn.close()
                     conn.connect()
                     return _try_request(retries - 1)
-                elif ecode == 32: # broken pipe
-                    pass
+                elif retries > 0 and ecode == 32: # broken pipe
+                    conn.close()
+                    conn.connect()
+                    return _try_request(retries - 1)
                 else:
                     raise
 
