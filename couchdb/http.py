@@ -162,6 +162,10 @@ class Session(object):
             else:
                 headers['Transfer-Encoding'] = 'chunked'
 
+        authorization = basic_auth(credentials)
+        if authorization:
+            headers['Authorization'] = authorization
+
         path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
         conn = self._get_connection(url)
         if conn.sock is None:
@@ -206,17 +210,6 @@ class Session(object):
 
         resp = _try_request()
         status = resp.status
-
-        # Handle authentication challenge
-        if status == 401:
-            # Assume basic auth (CouchDB 0.11.x doesn't send a www-authenticate
-            # header).
-            authorization = basic_auth(credentials)
-            if authorization:
-                resp.read() # read the 401 response
-                headers['Authorization'] = authorization
-                resp = _try_request()
-                status = resp.status
 
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
