@@ -398,7 +398,7 @@ def extract_credentials(url):
     given URL.
     
     >>> extract_credentials('http://localhost:5984/_config/')
-    ('http://localhost:5984/_config/', (None, None))
+    ('http://localhost:5984/_config/', None)
     >>> extract_credentials('http://joe:secret@localhost:5984/_config/')
     ('http://localhost:5984/_config/', ('joe', 'secret'))
     """
@@ -406,19 +406,17 @@ def extract_credentials(url):
     netloc = parts[1]
     if '@' in netloc:
         creds, netloc = netloc.split('@')
-        username, password = creds.split(':')
+        credentials = tuple(creds.split(':'))
         parts = list(parts)
         parts[1] = netloc
     else:
-        username = None
-        password = None
-    return urlunsplit(parts), (username, password)
+        credentials = None
+    return urlunsplit(parts), credentials
 
 
 def basic_auth(credentials):
-    if credentials == (None, None):
-        return None
-    return 'Basic %s' % b64encode('%s:%s' % credentials)
+    if credentials:
+        return 'Basic %s' % b64encode('%s:%s' % credentials)
 
 
 def quote(string, safe=''):
