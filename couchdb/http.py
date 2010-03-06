@@ -13,6 +13,7 @@ standard library.
 
 from base64 import b64encode
 from datetime import datetime
+import errno
 from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
 import re
 import socket
@@ -198,9 +199,7 @@ class Session(object):
                     raise
             except socket.error, e:
                 ecode = e.args[0]
-                if retries > 0 and ecode == 54: # reset by peer
-                    return _retry()
-                elif retries > 0 and ecode == 32: # broken pipe
+                if retries > 0 and ecode in [errno.ECONNRESET, errno.EPIPE]:
                     return _retry()
                 else:
                     raise
