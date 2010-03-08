@@ -255,6 +255,8 @@ class Database(object):
 
     def __init__(self, url, name=None, session=None):
         if isinstance(url, basestring):
+            if not url.startswith('http'):
+                url = DEFAULT_BASE_URL + url
             self.resource = http.Resource(url, session)
         else:
             self.resource = url

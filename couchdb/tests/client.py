@@ -137,7 +137,7 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
 
     def test_exists(self):
         self.assertTrue(client.Database(client.DEFAULT_BASE_URL+'python-tests'))
-        self.assertFalse(client.Database(client.DEFAULT_BASE_URL+'python-tests-missing'))
+        self.assertFalse(client.Database('python-tests-missing'))
 
     def test_name(self):
         # Access name assigned during init.
