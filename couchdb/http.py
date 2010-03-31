@@ -288,7 +288,7 @@ class Session(object):
                 raise ServerError((status, error))
 
         # Store cachable responses
-        if not streamed and method in ('GET', 'HEAD') and 'etag' in resp.msg:
+        if not streamed and method == 'GET' and 'etag' in resp.msg:
             self.cache[url] = (status, resp.msg, data)
             if len(self.cache) > CACHE_SIZE[1]:
                 self._clean_cache()
