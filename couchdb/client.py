@@ -66,21 +66,15 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, url=DEFAULT_BASE_URL, cache=None, timeout=None,
-                 full_commit=True):
+    def __init__(self, url=DEFAULT_BASE_URL, full_commit=True, session=None):
         """Initialize the server object.
 
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
-        :param cache: either a cache directory path (as a string) or an object
-                      compatible with the ``httplib2.FileCache`` interface. If
-                      `None` (the default), no caching is performed.
-        :param timeout: socket timeout in number of seconds, or `None` for no
-                        timeout
+        :param session: an http.Session instance or None for a default session
         """
         if isinstance(url, basestring):
-            session = http.Session(cache=cache, timeout=timeout)
-            self.resource = http.Resource(url, session)
+            self.resource = http.Resource(url, session or http.Session())
         else:
             self.resource = url # treat as a Resource object
         if not full_commit:

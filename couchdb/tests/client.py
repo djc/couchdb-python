@@ -42,6 +42,12 @@ class ServerTestCase(unittest.TestCase):
         serv = client.Server(url=res)
         serv.config()
 
+    def test_init_with_session(self):
+        sess = http.Session()
+        serv = client.Server(client.DEFAULT_BASE_URL, session=sess)
+        serv.config()
+        self.assertTrue(serv.resource.session is sess)
+
     def test_exists(self):
         self.assertTrue(client.Server(client.DEFAULT_BASE_URL))
         self.assertFalse(client.Server('http://localhost:9999'))

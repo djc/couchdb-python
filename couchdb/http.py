@@ -119,6 +119,13 @@ class ResponseBody(object):
 class Session(object):
 
     def __init__(self, cache=None, timeout=None, max_redirects=5):
+        """Initialize an HTTP client session.
+
+        :param cache: an instance with a dict-like interface or None to allow
+                      Session to create a dict for caching.
+        :param timeout: socket timeout in number of seconds, or `None` for no
+                        timeout
+        """
         from couchdb import __version__ as VERSION
         self.user_agent = 'CouchDB-Python/%s' % VERSION
         if cache is None:
