@@ -71,6 +71,7 @@ class Server(object):
 
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
+        :param full_commit: turn on the X-Couch-Full-Commit header
         :param session: an http.Session instance or None for a default session
         """
         if isinstance(url, basestring):
