@@ -176,6 +176,10 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
         except ValueError:
             pass
 
+    def test_disallow_none_id(self):
+        deldoc = lambda: self.db.delete({'_id': None, '_rev': None})
+        self.assertRaises(ValueError, deldoc)
+
     def test_doc_revs(self):
         doc = {'bar': 42}
         self.db['foo'] = doc

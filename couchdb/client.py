@@ -449,6 +449,8 @@ class Database(object):
         :raise ResourceConflict: if the document was updated in the database
         :since: 0.4.1
         """
+        if doc['_id'] is None:
+            raise ValueError('document ID cannot be None')
         self.resource.delete_json(doc['_id'], rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
