@@ -82,13 +82,13 @@ class Field(object):
         if instance is None:
             return self
         value = instance._data.get(self.name)
-        if value is None and self.default is not None:
+        if value is not None:
+            value = self._to_python(value)
+        elif self.default is not None:
             default = self.default
             if callable(default):
                 default = default()
             value = default
-        if value is not None:
-            value = self._to_python(value)
         return value
 
     def __set__(self, instance, value):
@@ -204,8 +204,8 @@ class Document(Schema):
             db[self._data.id] = self._data
         return self
 
-    def query(cls, db, code, content_type='text/javascript', eager=False,
-              **options):
+    def query(cls, db, map_fun, reduce_fun, language='javascript',
+              eager=False, **options):
         """Execute a CouchDB temporary view and map the result values back to
         objects of this schema.
         
@@ -221,8 +221,8 @@ class Document(Schema):
             data = row.value
             data['_id'] = row.id
             return cls.wrap(data)
-        return db.query(code, content_type=content_type, wrapper=_wrapper,
-                        **options)
+        return db.query(map_fun, reduce_fun=reduce_fun, language=language,
+                        wrapper=_wrapper, **options)
     query = classmethod(query)
 
     def view(cls, db, viewname, eager=False, **options):
@@ -271,6 +271,7 @@ class BooleanField(Field):
 
 
 class DecimalField(Field):
+    """Schema field for decimal values."""
 
     def _to_python(self, value):
         return Decimal(value)
@@ -452,7 +453,7 @@ class ListField(Field):
         return self.Proxy(value, self.field)
 
     def _to_json(self, value):
-        return list(value)
+        return [self.field._to_json(item) for item in value]
 
 
     class Proxy(list):
@@ -460,6 +461,24 @@ class ListField(Field):
         def __init__(self, list, field):
             self.list = list
             self.field = field
+
+        def __lt__(self, other):
+            return self.list < other
+
+        def __le__(self, other):
+            return self.list <= other
+
+        def __eq__(self, other):
+            return self.list == other
+
+        def __ne__(self, other):
+            return self.list != other
+
+        def __gt__(self, other):
+            return self.list > other
+
+        def __ge__(self, other):
+            return self.list >= other
 
         def __repr__(self):
             return repr(self.list)

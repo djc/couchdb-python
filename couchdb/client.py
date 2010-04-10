@@ -28,9 +28,16 @@ from urllib import quote, urlencode
 import re
 import simplejson as json
 
-__all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
-           'Database', 'Document', 'ViewResults', 'Row']
+__all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
+           'ServerError', 'Server', 'Database', 'Document', 'ViewResults',
+           'Row']
 __docformat__ = 'restructuredtext en'
+
+
+class PreconditionFailed(Exception):
+    """Exception raised when a 412 HTTP error is received in response to a
+    request.
+    """
 
 
 class ResourceNotFound(Exception):
@@ -84,7 +91,7 @@ class Server(object):
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
         """
-        self.resource = Resource(httplib2.Http(), uri)
+        self.resource = Resource(None, uri)
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -196,8 +203,6 @@ class Database(object):
     True
     >>> len(db)
     2
-    >>> list(db)            #doctest: +ELLIPSIS
-    [u'...', u'JohnDoe']
 
     >>> del server['python-tests']
     """
@@ -260,7 +265,7 @@ class Database(object):
 
     def _get_name(self):
         if self._name is None:
-            self._name = self.resource.get()['db_name']
+            self._name = self.info()['db_name']
         return self._name
     name = property(_get_name)
 
@@ -291,8 +296,20 @@ class Database(object):
         except ResourceNotFound:
             return default
 
-    def query(self, code, content_type='text/javascript', wrapper=None,
-              **options):
+    def info(self):
+        """Return information about the database as a dictionary.
+        
+        The returned dictionary exactly corresponds to the JSON response to
+        a ``GET`` request on the database URI.
+        
+        :return: a dictionary of database properties
+        :rtype: ``dict``
+        :since: 0.4
+        """
+        return self.resource.get()
+
+    def query(self, map_fun, reduce_fun=None, language='javascript',
+              wrapper=None, **options):
         """Execute an ad-hoc query (a "temp view") against the database.
         
         >>> server = Server('http://localhost:5984/')
@@ -300,34 +317,38 @@ class Database(object):
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
         >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
-        >>> code = '''function(doc) {
-        ...     if (doc.type=='Person')
-        ...         map(doc.name, null);
+        >>> map_fun = '''function(doc) {
+        ...     if (doc.type == 'Person')
+        ...         emit(doc.name, null);
         ... }'''
-        >>> for row in db.query(code):
+        >>> for row in db.query(map_fun):
         ...     print row.key
         John Doe
         Mary Jane
         
-        >>> for row in db.query(code, descending=True):
+        >>> for row in db.query(map_fun, descending=True):
         ...     print row.key
         Mary Jane
         John Doe
         
-        >>> for row in db.query(code, key='John Doe'):
+        >>> for row in db.query(map_fun, key='John Doe'):
         ...     print row.key
         John Doe
         
         >>> del server['python-tests']
         
-        :param code: the code of the view function
-        :param content_type: the MIME type of the code, which determines the
-                             language the view function is written in
+        :param map_fun: the code of the map function
+        :param reduce_fun: the code of the reduce function (optional)
+        :param language: the language of the functions, to determine which view
+                         server to use
+        :param wrapper: an optional callable that should be used to wrap the
+                        result rows
+        :param options: optional query string parameters
         :return: the view reults
         :rtype: `ViewResults`
         """
-        return TemporaryView(uri(self.resource.uri, '_temp_view'), code,
-                             content_type=content_type, wrapper=wrapper,
+        return TemporaryView(uri(self.resource.uri, '_temp_view'), map_fun,
+                             reduce_fun, language=language, wrapper=wrapper,
                              http=self.resource.http)(**options)
 
     def update(self, documents):
@@ -355,12 +376,14 @@ class Database(object):
         :since: version 0.2
         """
         documents = list(documents)
-        data = self.resource.post('_bulk_docs', content=documents)
-        for idx, result in enumerate(data['results']):
-            assert 'ok' in result # FIXME: how should error handling work here?
-            doc = documents[idx]
-            doc.update({'_id': result['id'], '_rev': result['rev']})
-            yield doc
+        data = self.resource.post('_bulk_docs', content={'docs': documents})
+        assert data['ok'] # FIXME: Should probably raise a proper exception
+        def _update():
+            for idx, result in enumerate(data['new_revs']):
+                doc = documents[idx]
+                doc.update({'_id': result['id'], '_rev': result['rev']})
+                yield doc
+        return _update()
 
     def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
@@ -375,9 +398,16 @@ class Database(object):
         
         >>> del server['python-tests']
         
+        :param name: the name of the view, including the ``_view/design_docid``
+                     prefix for custom views
+        :param wrapper: an optional callable that should be used to wrap the
+                        result rows
+        :param options: optional query string parameters
         :return: the view results
         :rtype: `ViewResults`
         """
+        if not name.startswith('_'):
+            name = '_view/' + name
         return PermanentView(uri(self.resource.uri, *name.split('/')), name,
                              wrapper=wrapper,
                              http=self.resource.http)(**options)
@@ -389,9 +419,6 @@ class Document(dict):
     This is basically just a dictionary with the two additional properties
     `id` and `rev`, which contain the document ID and revision, respectively.
     """
-
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
 
     def __repr__(self):
         return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
@@ -420,7 +447,7 @@ class View(object):
         for name, value in options.items():
             if name in ('key', 'startkey', 'endkey') \
                     or not isinstance(value, basestring):
-                value = json.dumps(value)
+                value = json.dumps(value, ensure_ascii=False)
             retval[name] = value
         return retval
 
@@ -446,21 +473,25 @@ class PermanentView(View):
 class TemporaryView(View):
     """Representation of a temporary view."""
 
-    def __init__(self, uri, code=None, content_type='text/javascript',
-                 wrapper=None, http=None):
+    def __init__(self, uri, map_fun=None, reduce_fun=None,
+                 language='javascript', wrapper=None, http=None):
         View.__init__(self, uri, wrapper=wrapper, http=http)
         self.resource = Resource(http, uri)
-        self.code = code
-        self.content_type = content_type
+        self.map_fun = map_fun
+        self.reduce_fun = reduce_fun
+        self.language = language
 
     def __repr__(self):
-        return '<%s %r>' % (type(self).__name__, self.code)
+        return '<%s %r %r>' % (type(self).__name__, self.map_fun,
+                               self.reduce_fun)
 
     def _exec(self, options):
-        headers = {}
-        if self.content_type:
-            headers['Content-Type'] = self.content_type
-        return self.resource.post(content=self.code, headers=headers,
+        body = {'map': self.map_fun, 'language': self.language}
+        if self.reduce_fun:
+            body['reduce'] = self.reduce_fun
+        content = json.dumps(body, ensure_ascii=False).encode('utf-8')
+        return self.resource.post(content=content,
+                                  headers={'Content-Type': 'application/json'},
                                   **self._encode_options(options))
 
 
@@ -476,10 +507,10 @@ class ViewResults(object):
     >>> db['johndoe'] = dict(type='Person', name='John Doe')
     >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
     >>> db['gotham'] = dict(type='City', name='Gotham City')
-    >>> code = '''function(doc) {
-    ...     map([doc.type, doc.name], doc.name);
+    >>> map_fun = '''function(doc) {
+    ...     emit([doc.type, doc.name], doc.name);
     ... }'''
-    >>> results = db.query(code)
+    >>> results = db.query(map_fun)
 
     At this point, the view has not actually been accessed yet. It is accessed
     as soon as it is iterated over, its length is requested, or one of its
@@ -540,8 +571,9 @@ class ViewResults(object):
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = [Row(r['id'], r['key'], r['value']) for r in data['rows']]
-        self._total_rows = data['total_rows']
+        self._rows = [Row(r.get('id'), r['key'], r['value'])
+                      for r in data['rows']]
+        self._total_rows = data.get('total_rows')
         self._offset = data.get('offset', 0)
 
     def _get_rows(self):
@@ -555,21 +587,25 @@ class ViewResults(object):
         """)
 
     def _get_total_rows(self):
-        if self._total_rows is None:
+        if self._rows is None:
             self._fetch()
         return self._total_rows
     total_rows = property(_get_total_rows, doc="""\
         The total number of rows in this view.
         
-        :type: `int`
+        This value is `None` for reduce views.
+        
+        :type: `int` or ``NoneType`` for reduce views
         """)
 
     def _get_offset(self):
-        if self._offset is None:
+        if self._rows is None:
             self._fetch()
         return self._offset
     offset = property(_get_offset, doc="""\
         The offset of the results from the first row in the view.
+        
+        This value is 0 for reduce views.
         
         :type: `int`
         """)
@@ -579,11 +615,14 @@ class Row(object):
     """Representation of a row as returned by database views."""
 
     def __init__(self, id, key, value):
-        self.id = id #: The document ID
+        self.id = id #: The document ID, or `None` for rows in a reduce view
         self.key = key #: The key of the row
         self.value = value #: The value of the row
 
     def __repr__(self):
+        if self.id is None:
+            return '<%s key=%r, value=%r>' % (type(self).__name__, self.key,
+                                              self.value)
         return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
                                                  self.key, self.value)
 
@@ -624,9 +663,9 @@ class Resource(object):
         headers.setdefault('Accept', 'application/json')
         headers.setdefault('User-Agent', 'couchdb-python %s' % __version__)
         body = None
-        if content:
+        if content is not None:
             if not isinstance(content, basestring):
-                body = json.dumps(content)
+                body = json.dumps(content, ensure_ascii=False).encode('utf-8')
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content
@@ -649,6 +688,8 @@ class Resource(object):
                 raise ResourceNotFound(error)
             elif status_code == 409:
                 raise ResourceConflict(error)
+            elif status_code == 412:
+                raise PreconditionFailed(error)
             else:
                 raise ServerError((status_code, error))
 
@@ -679,6 +720,10 @@ def uri(base, *path, **query):
         if type(value) in (list, tuple):
             params.extend([(name, i) for i in value if i is not None])
         elif value is not None:
+            if value is True:
+                value = 'true'
+            elif value is False:
+                value = 'false'
             params.append((name, value))
     if params:
         retval.extend(['?', unicode_urlencode(params)])
