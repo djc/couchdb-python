@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2008 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -103,7 +103,7 @@ class test_doc(Command):
 
 setup(
     name = 'CouchDB',
-    version = '0.2',
+    version = '0.3',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level

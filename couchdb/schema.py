@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2008 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -9,7 +9,7 @@
 """Mapping from raw JSON data structures to Python objects and vice versa.
 
 >>> from couchdb import Server
->>> server = Server('http://localhost:8888/')
+>>> server = Server('http://localhost:5984/')
 >>> db = server.create('python-tests')
 
 To define a document schema, you declare a Python class inherited from
@@ -56,13 +56,10 @@ True
 >>> del server['python-tests']
 """
 
-# NOTE: this module is very much under construction and still subject to major
-#       changes or even removal
-
 from calendar import timegm
 from datetime import date, datetime, time
 from decimal import Decimal
-from time import strptime
+from time import strptime, struct_time
 
 __all__ = ['Schema', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
@@ -158,7 +155,7 @@ class Schema(object):
                 attrval.name = attrname
             fields[attrname] = attrval
         d['_fields'] = fields
-        return type('AnonymousDocument', (cls,), d)
+        return type('AnonymousStruct', (cls,), d)
     build = classmethod(build)
 
     def wrap(cls, data):
@@ -194,16 +191,58 @@ class Document(Schema):
     rev = property(rev)
 
     def load(cls, db, id):
+        """Load a specific document from the given database."""
         return cls.wrap(db.get(id))
     load = classmethod(load)
 
     def store(self, db):
+        """Store the document in the given database."""
         if getattr(self._data, 'id', None) is None:
             docid = db.create(self._data)
             self._data = db.get(docid)
         else:
             db[self._data.id] = self._data
         return self
+
+    def query(cls, db, code, content_type='text/javascript', eager=False,
+              **options):
+        """Execute a CouchDB temporary view and map the result values back to
+        objects of this schema.
+        
+        Note that by default, any properties of the document that are not
+        included in the values of the view will be treated as if they were
+        missing from the document. If you'd rather want to load the full
+        document for every row, set the `eager` option to `True`, but note that
+        this will initiate a new HTTP request for every document.
+        """
+        def _wrapper(row):
+            if eager:
+                return cls.load(db, row.id)
+            data = row.value
+            data['_id'] = row.id
+            return cls.wrap(data)
+        return db.query(code, content_type=content_type, wrapper=_wrapper,
+                        **options)
+    query = classmethod(query)
+
+    def view(cls, db, viewname, eager=False, **options):
+        """Execute a CouchDB named view and map the result values back to
+        objects of this schema.
+        
+        Note that by default, any properties of the document that are not
+        included in the values of the view will be treated as if they were
+        missing from the document. If you'd rather want to load the full
+        document for every row, set the `eager` option to `True`, but note that
+        this will initiate a new HTTP request for every document.
+        """
+        def _wrapper(row):
+            if eager:
+                return cls.load(db, row.id)
+            data = row.value
+            data['_id'] = row.id
+            return cls.wrap(data)
+        return db.view(viewname, wrapper=_wrapper, **options)
+    view = classmethod(view)
 
 
 class TextField(Field):
@@ -270,18 +309,19 @@ class DateTimeField(Field):
     """Schema field for storing date/time values.
     
     >>> field = DateTimeField()
-    >>> field._to_python('2007-04-01T15:30:00')
+    >>> field._to_python('2007-04-01T15:30:00Z')
     datetime.datetime(2007, 4, 1, 15, 30)
-    >>> field._to_json(datetime(2007, 4, 1, 15, 30))
-    '2007-04-01T15:30:00'
+    >>> field._to_json(datetime(2007, 4, 1, 15, 30, 0, 9876))
+    '2007-04-01T15:30:00Z'
     >>> field._to_json(date(2007, 4, 1))
-    '2007-04-01T00:00:00'
+    '2007-04-01T00:00:00Z'
     """
 
     def _to_python(self, value):
         if isinstance(value, basestring):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
+                value = value.rstrip('Z') # remove timezone separator
                 timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
                 value = datetime.utcfromtimestamp(timestamp)
             except ValueError, e:
@@ -289,9 +329,11 @@ class DateTimeField(Field):
         return value
 
     def _to_json(self, value):
-        if not isinstance(value, datetime):
+        if isinstance(value, struct_time):
+            value = datetime.utcfromtimestamp(timegm(value))
+        elif not isinstance(value, datetime):
             value = datetime.combine(value, time(0))
-        return value.isoformat()
+        return value.replace(microsecond=0).isoformat() + 'Z'
 
 
 class TimeField(Field):
@@ -309,6 +351,7 @@ class TimeField(Field):
     def _to_python(self, value):
         if isinstance(value, basestring):
             try:
+                value = value.split('.', 1)[0] # strip out microseconds
                 value = time(*strptime(value, '%H:%M:%S')[3:6])
             except ValueError, e:
                 raise ValueError('Invalid ISO time %r' % value)
@@ -317,14 +360,14 @@ class TimeField(Field):
     def _to_json(self, value):
         if isinstance(value, datetime):
             value = value.time()
-        return value.isoformat()
+        return value.replace(microsecond=0).isoformat()
 
 
 class DictField(Field):
     """Field type for nested dictionaries.
     
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):
@@ -355,16 +398,16 @@ class DictField(Field):
         return self.schema.wrap(value)
 
     def _to_json(self, value):
-        if isinstance(value, Schema):
-            return value.unwrap()
-        return dict(value)
+        if not isinstance(value, Schema):
+            value = self.schema(**value)
+        return value.unwrap()
 
 
 class ListField(Field):
     """Field type for sequences of other fields.
 
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):
@@ -373,11 +416,13 @@ class ListField(Field):
     ...     pubdate = DateTimeField(default=datetime.now)
     ...     comments = ListField(DictField(Schema.build(
     ...         author = TextField(),
-    ...         content = TextField()
+    ...         content = TextField(),
+    ...         time = DateTimeField()
     ...     )))
 
     >>> post = Post(title='Foo bar')
-    >>> post.comments.append(author='myself', content='Bla bla')
+    >>> post.comments.append(author='myself', content='Bla bla',
+    ...                      time=datetime.now())
     >>> len(post.comments)
     1
     >>> post.store(db) #doctest: +ELLIPSIS
@@ -388,14 +433,19 @@ class ListField(Field):
     u'myself'
     >>> comment['content']
     u'Bla bla'
+    >>> comment['time'] #doctest: +ELLIPSIS
+    u'...T...Z'
 
     >>> del server['python-tests']
     """
 
     def __init__(self, field, name=None, default=None):
         Field.__init__(self, name=name, default=default or [])
-        if type(field) is type and issubclass(field, Field):
-            field = field()
+        if type(field) is type:
+            if issubclass(field, Field):
+                field = field()
+            elif issubclass(field, Schema):
+                field = DictField(field)
         self.field = field
 
     def _to_python(self, value):

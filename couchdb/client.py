@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2008 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -8,7 +8,7 @@
 
 """Python client API for CouchDB.
 
->>> server = Server('http://localhost:8888/')
+>>> server = Server('http://localhost:5984/')
 >>> db = server.create('python-tests')
 >>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
@@ -29,7 +29,7 @@ import re
 import simplejson as json
 
 __all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
-           'Database', 'Document', 'View']
+           'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
 
 
@@ -54,7 +54,7 @@ class ServerError(Exception):
 class Server(object):
     """Representation of a CouchDB server.
 
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
@@ -82,7 +82,7 @@ class Server(object):
         """Initialize the server object.
         
         :param uri: the URI of the server (for example
-                    ``http://localhost:8888/``)
+                    ``http://localhost:5984/``)
         """
         self.resource = Resource(httplib2.Http(), uri)
 
@@ -156,7 +156,7 @@ class Server(object):
 class Database(object):
     """Representation of a database on a CouchDB server.
 
-    >>> server = Server('http://localhost:8888/')
+    >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
     New documents can be added to the database using the `create()` method:
@@ -243,7 +243,7 @@ class Database(object):
 
         :param id: the document ID
         :return: a `Row` object representing the requested document
-        :rtype: `Row`
+        :rtype: `Document`
         """
         return Document(self.resource.get(id))
 
@@ -284,17 +284,18 @@ class Database(object):
                         found
         :return: a `Row` object representing the requested document, or `None`
                  if no document with the ID was found
-        :rtype: `Row`
+        :rtype: `Document`
         """
         try:
             return Document(self.resource.get(id, **options))
         except ResourceNotFound:
             return default
 
-    def query(self, code, content_type='text/javascript', **options):
+    def query(self, code, content_type='text/javascript', wrapper=None,
+              **options):
         """Execute an ad-hoc query (a "temp view") against the database.
         
-        >>> server = Server('http://localhost:8888/')
+        >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
         >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
@@ -322,26 +323,18 @@ class Database(object):
         :param code: the code of the view function
         :param content_type: the MIME type of the code, which determines the
                              language the view function is written in
-        :return: an iterable over the resulting `Row` objects
-        :rtype: ``generator``
+        :return: the view reults
+        :rtype: `ViewResults`
         """
-        for name, value in options.items():
-            if name in ('key', 'startkey', 'endkey') \
-                    or not isinstance(value, basestring):
-                options[name] = json.dumps(value)
-        headers = {}
-        if content_type:
-            headers['Content-Type'] = content_type
-        data = self.resource.post('_temp_view', content=code, headers=headers,
-                                  **options)
-        for row in data['rows']:
-            yield Row(row['id'], row['key'], row['value'])
+        return TemporaryView(uri(self.resource.uri, '_temp_view'), code,
+                             content_type=content_type, wrapper=wrapper,
+                             http=self.resource.http)(**options)
 
     def update(self, documents):
         """Perform a bulk update or insertion of the given documents using a
         single HTTP request.
         
-        >>> server = Server('http://localhost:8888/')
+        >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
         >>> for doc in db.update([
         ...     Document(type='Person', name='John Doe'),
@@ -369,10 +362,10 @@ class Database(object):
             doc.update({'_id': result['id'], '_rev': result['rev']})
             yield doc
 
-    def view(self, name, **options):
+    def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
         
-        >>> server = Server('http://localhost:8888/')
+        >>> server = Server('http://localhost:5984/')
         >>> db = server.create('python-tests')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
         
@@ -382,12 +375,12 @@ class Database(object):
         
         >>> del server['python-tests']
         
-        :return: a `View` object
-        :rtype: `View`
+        :return: the view results
+        :rtype: `ViewResults`
         """
-        view = View(uri(self.resource.uri, *name.split('/')), name,
-                    http=self.resource.http)
-        return view(**options)
+        return PermanentView(uri(self.resource.uri, *name.split('/')), name,
+                             wrapper=wrapper,
+                             http=self.resource.http)(**options)
 
 
 class Document(dict):
@@ -410,39 +403,185 @@ class Document(dict):
 
 
 class View(object):
+    """Abstract representation of a view or query."""
+
+    def __init__(self, uri, wrapper=None, http=None):
+        self.resource = Resource(http, uri)
+        self.wrapper = wrapper
+
+    def __call__(self, **options):
+        return ViewResults(self, options)
+
+    def __iter__(self):
+        return self()
+
+    def _encode_options(self, options):
+        retval = {}
+        for name, value in options.items():
+            if name in ('key', 'startkey', 'endkey') \
+                    or not isinstance(value, basestring):
+                value = json.dumps(value)
+            retval[name] = value
+        return retval
+
+    def _exec(self, options):
+        raise NotImplementedError
+
+
+class PermanentView(View):
     """Representation of a permanent view on the server."""
 
-    def __init__(self, uri, name, http=None):
+    def __init__(self, uri, name, wrapper=None, http=None):
+        View.__init__(self, uri, wrapper=wrapper, http=http)
         self.resource = Resource(http, uri)
         self.name = name
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.name)
 
-    def __call__(self, **options):
-        for name, value in options.items():
-            if name in ('key', 'startkey', 'endkey') \
-                    or not isinstance(value, basestring):
-                options[name] = json.dumps(value)
-        data = self.resource.get(**options)
-        for row in data['rows']:
-            yield Row(row['id'], row['key'], row['value'])
+    def _exec(self, options):
+        return self.resource.get(**self._encode_options(options))
+
+
+class TemporaryView(View):
+    """Representation of a temporary view."""
+
+    def __init__(self, uri, code=None, content_type='text/javascript',
+                 wrapper=None, http=None):
+        View.__init__(self, uri, wrapper=wrapper, http=http)
+        self.resource = Resource(http, uri)
+        self.code = code
+        self.content_type = content_type
+
+    def __repr__(self):
+        return '<%s %r>' % (type(self).__name__, self.code)
+
+    def _exec(self, options):
+        headers = {}
+        if self.content_type:
+            headers['Content-Type'] = self.content_type
+        return self.resource.post(content=self.code, headers=headers,
+                                  **self._encode_options(options))
+
+
+class ViewResults(object):
+    """Representation of a parameterized view (either permanent or temporary)
+    and the results it produces.
+    
+    This class allows the specification of ``key``, ``startkey``, and
+    ``endkey`` options using Python slice notation.
+    
+    >>> server = Server('http://localhost:5984/')
+    >>> db = server.create('python-tests')
+    >>> db['johndoe'] = dict(type='Person', name='John Doe')
+    >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+    >>> db['gotham'] = dict(type='City', name='Gotham City')
+    >>> code = '''function(doc) {
+    ...     map([doc.type, doc.name], doc.name);
+    ... }'''
+    >>> results = db.query(code)
+
+    At this point, the view has not actually been accessed yet. It is accessed
+    as soon as it is iterated over, its length is requested, or one of its
+    `rows`, `total_rows`, or `offset` properties are accessed:
+    
+    >>> len(results)
+    3
+
+    You can use slices to apply ``startkey`` and/or ``endkey`` options to the
+    view:
+
+    >>> people = results[['Person']:['Person','ZZZZ']]
+    >>> for person in people:
+    ...     print person.value
+    John Doe
+    Mary Jane
+    >>> people.total_rows, people.offset
+    (3, 1)
+    
+    Use plain indexed notation (without a slice) to apply the ``key`` option.
+    Note that as CouchDB makes no claim that keys are unique in a view, this
+    can still return multiple rows:
+    
+    >>> list(results[['City', 'Gotham City']])
+    [<Row id=u'gotham', key=[u'City', u'Gotham City'], value=u'Gotham City'>]
+    """
+
+    def __init__(self, view, options):
+        self.view = view
+        self.options = options
+        self._rows = self._total_rows = self._offset = None
+
+    def __repr__(self):
+        return '<%s %r %r>' % (type(self).__name__, self.view, self.options)
+
+    def __getitem__(self, key):
+        options = self.options.copy()
+        if type(key) is slice:
+            if key.start is not None:
+                options['startkey'] = key.start
+            if key.stop is not None:
+                options['endkey'] = key.stop
+            return ViewResults(self.view, options)
+        else:
+            options['key'] = key
+            return ViewResults(self.view, options)
 
     def __iter__(self):
-        return self()
+        wrapper = self.view.wrapper
+        for row in self.rows:
+            if wrapper is not None:
+                yield wrapper(row)
+            else:
+                yield row
+
+    def __len__(self):
+        return len(self.rows)
+
+    def _fetch(self):
+        data = self.view._exec(self.options)
+        self._rows = [Row(r['id'], r['key'], r['value']) for r in data['rows']]
+        self._total_rows = data['total_rows']
+        self._offset = data.get('offset', 0)
+
+    def _get_rows(self):
+        if self._rows is None:
+            self._fetch()
+        return self._rows
+    rows = property(_get_rows, doc="""\
+        The list of rows returned by the view.
+        
+        :type: `list`
+        """)
+
+    def _get_total_rows(self):
+        if self._total_rows is None:
+            self._fetch()
+        return self._total_rows
+    total_rows = property(_get_total_rows, doc="""\
+        The total number of rows in this view.
+        
+        :type: `int`
+        """)
+
+    def _get_offset(self):
+        if self._offset is None:
+            self._fetch()
+        return self._offset
+    offset = property(_get_offset, doc="""\
+        The offset of the results from the first row in the view.
+        
+        :type: `int`
+        """)
 
 
 class Row(object):
-    """Representation of a row as returned by database views.
-
-    This is basically just a dictionary with the two additional properties
-    `id` and `rev`, which contain the document ID and revision, respectively.
-    """
+    """Representation of a row as returned by database views."""
 
     def __init__(self, id, key, value):
-        self.id = id
-        self.key = key
-        self.value = value
+        self.id = id #: The document ID
+        self.key = key #: The key of the row
+        self.value = value #: The value of the row
 
     def __repr__(self):
         return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,

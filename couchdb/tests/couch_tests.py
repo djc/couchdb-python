@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2008 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,7 +15,7 @@ from couchdb import ResourceConflict, ResourceNotFound, Server
 class CouchTests(unittest.TestCase):
 
     def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:8888/')
+        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
         self.server = Server(uri)
         if 'python-tests' in self.server:
             del self.server['python-tests']
@@ -230,7 +230,7 @@ class CouchTests(unittest.TestCase):
         query = """function(doc) {
             map(doc.foo, null);
         }"""
-        rows = self.db.query(query)
+        rows = iter(self.db.query(query))
         self.assertEqual(None, rows.next().value)
         for idx, row in enumerate(rows):
             self.assertEqual(values[idx + 1], row.key)
