@@ -1,3 +1,37 @@
+Version 0.5
+http://couchdb-python.googlecode.com/svn/tags/0.5.0
+(Nov 28, 2008, from branches/0.5.x)
+
+ * `schema.Document` objects can now be used in the documents list passed to
+   `client.Database.update()`.
+ * `Server.__contains__()` and `Database.__contains__()` now use the HTTP HEAD
+   method to avoid unnecessary transmission of data. `Database.__del__()` also
+   uses HEAD to determine the latest revision of the document.
+ * The `Database` class now has a method `delete()` that takes a document
+   dictionary as parameter. This method should be used in preference to
+   `__del__` as it allow conflict detection and handling.
+ * Added `cache` and `timeout` arguments to the `client.Server` initializer.
+ * The `Database` class now provides methods for deleting, retrieving, and
+   updating attachments.
+ * The Python view server now exposes a `log()` function to map and reduce
+   functions (issue 21).
+ * Handling of the rereduce stage in the Python view server has been fixed.
+ * The `Server` and `Database` classes now implement the `__nonzero__` hook
+   so that they produce sensible results in boolean conditions.
+ * The client module will now reattempt a request that failed with a
+   "connection reset by peer" error.
+ * inf/nan values now raise a `ValueError` on the client side instead of
+   triggering an internal server error (issue 31).
+ * Added a new `couchdb.design` module that provides functionality for
+   managing views in design documents, so that they can be defined in the
+   Python application code, and the design documents actually stored in the
+   database can be kept in sync with the definitions in the code.
+ * The `include_docs` option for CouchDB views is now supported by the new
+   `doc` property of row instances in view results. Thanks to Paul Davis for
+   the patch (issue 33).
+ * The `keys` option for views is now supported (issue 35).
+
+
 Version 0.4
 http://couchdb-python.googlecode.com/svn/tags/0.4.0
 (Jun 28, 2008, from branches/0.4.x)

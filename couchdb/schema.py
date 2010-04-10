@@ -61,10 +61,14 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from time import strptime, struct_time
 
+from couchdb.design import ViewDefinition
+
 __all__ = ['Schema', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
            'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField']
 __docformat__ = 'restructuredtext en'
+
+DEFAULT = object()
 
 
 class Field(object):
@@ -171,37 +175,162 @@ class Schema(object):
         return self.unwrap()
 
 
+class View(object):
+    r"""Descriptor that can be used to bind a view definition to a property of
+    a `Document` class.
+    
+    >>> class Person(Document):
+    ...     name = TextField()
+    ...     age = IntegerField()
+    ...     by_name = View('people', '''\
+    ...         function(doc) {
+    ...             emit(doc.name, doc.age);
+    ...         }''')
+    >>> Person.by_name
+    <ViewDefinition '_view/people/by_name'>
+    
+    >>> print Person.by_name.map_fun
+    function(doc) {
+        emit(doc.name, doc.age);
+    }
+    
+    That property can be used as a function, which will execute the view.
+    
+    >>> from couchdb import Database
+    >>> db = Database('http://localhost:5984/python-tests')
+    
+    >>> Person.by_name(db, count=3)
+    <ViewResults <PermanentView '_view/people/by_name'> {'count': 3}>
+    
+    Actual results produced are automatically wrapped in the `Document`
+    subclass the descriptor is bound to. In this example, it would return
+    instances of the `Person` class.
+    """
+
+    def __init__(self, design, map_fun, reduce_fun=None,
+                 name=None, language='javascript', wrapper=DEFAULT,
+                 **defaults):
+        """Initialize the view descriptor.
+        
+        :param design: the name of the design document
+        :param map_fun: the map function code
+        :param reduce_fun: the reduce function code (optional)
+        :param name: the actual name of the view in the design document, if
+                     it differs from the name the descriptor is assigned to
+        :param language: the name of the language used
+        :param wrapper: an optional callable that should be used to wrap the
+                        result rows
+        :param defaults: default query string parameters to apply
+        """
+        self.design = design
+        self.name = name
+        self.map_fun = map_fun
+        self.reduce_fun = reduce_fun
+        self.language = language
+        self.wrapper = wrapper
+        self.defaults = defaults
+
+    def __get__(self, instance, cls=None):
+        if self.wrapper is DEFAULT:
+            def wrapper(row):
+                if row.doc is not None:
+                    return cls.wrap(row.doc)
+                data = row.value
+                data['_id'] = row.id
+                return cls.wrap(data)
+        else:
+            wrapper = self.wrapper
+        return ViewDefinition(self.design, self.name, self.map_fun,
+                              self.reduce_fun, language=self.language,
+                              wrapper=wrapper, **self.defaults)
+
+
+class DocumentMeta(SchemaMeta):
+
+    def __new__(cls, name, bases, d):
+        for attrname, attrval in d.items():
+            if isinstance(attrval, View):
+                if not attrval.name:
+                    attrval.name = attrname
+        return SchemaMeta.__new__(cls, name, bases, d)
+
+
 class Document(Schema):
+    __metaclass__ = DocumentMeta
+
+    def __init__(self, id=None, **values):
+        Schema.__init__(self, **values)
+        if id is not None:
+            self.id = id
 
     def __repr__(self):
         return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
                                   dict([(k, v) for k, v in self._data.items()
                                         if k not in ('_id', '_rev')]))
 
-    def id(self):
-        if hasattr(self._data, 'id'):
+    def _get_id(self):
+        if hasattr(self._data, 'id'): # When data is client.Document
             return self._data.id
         return self._data.get('_id')
-    id = property(id)
+    def _set_id(self, value):
+        if self.id is not None:
+            raise AttributeError('id can only be set on new documents')
+        self._data['_id'] = value
+    id = property(_get_id, _set_id)
 
     def rev(self):
-        if hasattr(self._data, 'rev'):
+        if hasattr(self._data, 'rev'): # When data is client.Document
             return self._data.rev
         return self._data.get('_rev')
     rev = property(rev)
 
+    def items(self):
+        """Return the fields as a list of ``(name, value)`` tuples.
+        
+        This method is provided to enable easy conversion to native dictionary
+        objects, for example to allow use of `schema.Document` instances with
+        `client.Database.update`.
+        
+        >>> class Post(Document):
+        ...     title = TextField()
+        ...     author = TextField()
+        >>> post = Post(id='foo-bar', title='Foo bar', author='Joe')
+        >>> sorted(post.items())
+        [('_id', 'foo-bar'), ('author', u'Joe'), ('title', u'Foo bar')]
+        
+        :return: a list of ``(name, value)`` tuples
+        """
+        retval = []
+        if self.id is not None:
+            retval.append(('_id', self.id))
+            if self.rev is not None:
+                retval.append(('_rev', self.rev))
+        for name, value in self._data.items():
+            if name not in ('_id', '_rev'):
+                retval.append((name, value))
+        return retval
+
     def load(cls, db, id):
-        """Load a specific document from the given database."""
-        return cls.wrap(db.get(id))
+        """Load a specific document from the given database.
+        
+        :param db: the `Database` object to retrieve the document from
+        :param id: the document ID
+        :return: the `Document` instance, or `None` if no document with the
+                 given ID was found
+        """
+        doc = db.get(id)
+        if doc is None:
+            return None
+        return cls.wrap(doc)
     load = classmethod(load)
 
     def store(self, db):
         """Store the document in the given database."""
-        if getattr(self._data, 'id', None) is None:
+        if self.id is None:
             docid = db.create(self._data)
             self._data = db.get(docid)
         else:
-            db[self._data.id] = self._data
+            db[self.id] = self._data
         return self
 
     def query(cls, db, map_fun, reduce_fun, language='javascript',
@@ -213,10 +342,13 @@ class Document(Schema):
         included in the values of the view will be treated as if they were
         missing from the document. If you'd rather want to load the full
         document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document.
+        this will initiate a new HTTP request for every document, unless the
+        `include_docs` option is explitly specified.
         """
         def _wrapper(row):
             if eager:
+                if row.doc is not None:
+                    return row.doc
                 return cls.load(db, row.id)
             data = row.value
             data['_id'] = row.id
@@ -233,10 +365,13 @@ class Document(Schema):
         included in the values of the view will be treated as if they were
         missing from the document. If you'd rather want to load the full
         document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document.
+        this will initiate a new HTTP request for every document, unless the
+        `include_docs` option is explitly specified.
         """
         def _wrapper(row):
             if eager:
+                if row.doc is not None:
+                    return row.doc
                 return cls.load(db, row.id)
             data = row.value
             data['_id'] = row.id
@@ -431,11 +566,11 @@ class ListField(Field):
     >>> post = Post.load(db, post.id)
     >>> comment = post.comments[0]
     >>> comment['author']
-    u'myself'
+    'myself'
     >>> comment['content']
-    u'Bla bla'
+    'Bla bla'
     >>> comment['time'] #doctest: +ELLIPSIS
-    u'...T...Z'
+    '...T...Z'
 
     >>> del server['python-tests']
     """

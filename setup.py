@@ -103,7 +103,7 @@ class test_doc(Command):
 
 setup(
     name = 'CouchDB',
-    version = '0.4.1',
+    version = '0.5',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
@@ -126,13 +126,14 @@ interface for the CouchDB server.""",
     packages = ['couchdb', 'couchdb.tools'],
     test_suite = 'couchdb.tests.suite',
 
-    install_requires = ['httplib2', 'simplejson'],
+    install_requires = ['httplib2'],
 
     entry_points = {
         'console_scripts': [
             'couchpy = couchdb.view:main',
             'couchdb-dump = couchdb.tools.dump:main',
-            'couchdb-load = couchdb.tools.load:main'
+            'couchdb-load = couchdb.tools.load:main',
+            'couchdb-replicate = couchdb.tools.replication_helper:main'
         ],
     },
 

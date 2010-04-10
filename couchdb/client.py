@@ -13,9 +13,9 @@
 >>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
 >>> doc['type']
-u'Person'
+'Person'
 >>> doc['name']
-u'John Doe'
+'John Doe'
 >>> del db[doc.id]
 >>> doc.id in db
 False
@@ -24,14 +24,22 @@ False
 """
 
 import httplib2
+from mimetypes import guess_type
 from urllib import quote, urlencode
 import re
-import simplejson as json
+import socket
+try:
+    import simplejson as json
+except ImportError:
+    import json # Python 2.6
 
 __all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
            'ServerError', 'Server', 'Database', 'Document', 'ViewResults',
            'Row']
 __docformat__ = 'restructuredtext en'
+
+
+DEFAULT_BASE_URI = 'http://localhost:5984/'
 
 
 class PreconditionFailed(Exception):
@@ -85,13 +93,20 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri):
+    def __init__(self, uri=DEFAULT_BASE_URI, cache=None, timeout=None):
         """Initialize the server object.
         
         :param uri: the URI of the server (for example
                     ``http://localhost:5984/``)
+        :param cache: either a cache directory path (as a string) or an object
+                      compatible with the ``httplib2.FileCache`` interface. If
+                      `None` (the default), no caching is performed.
+        :param timeout: socket timeout in number of seconds, or `None` for no
+                        timeout
         """
-        self.resource = Resource(None, uri)
+        http = httplib2.Http(cache=cache, timeout=timeout)
+        http.force_exception_to_status_code = False
+        self.resource = Resource(http, uri)
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -101,18 +116,28 @@ class Server(object):
         :return: `True` if a database with the name exists, `False` otherwise
         """
         try:
-            self.resource.get(validate_dbname(name)) # FIXME: should use HEAD
+            self.resource.head(validate_dbname(name))
             return True
         except ResourceNotFound:
             return False
 
     def __iter__(self):
         """Iterate over the names of all databases."""
-        return iter(self.resource.get('_all_dbs'))
+        resp, data = self.resource.get('_all_dbs')
+        return iter(data)
 
     def __len__(self):
         """Return the number of databases."""
-        return len(self.resource.get('_all_dbs'))
+        resp, data = self.resource.get('_all_dbs')
+        return len(data)
+
+    def __nonzero__(self):
+        """Return whether the server is available."""
+        try:
+            self.resource.head()
+            return True
+        except:
+            return False
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.resource.uri)
@@ -138,7 +163,8 @@ class Server(object):
                         http=self.resource.http)
 
     def _get_version(self):
-        return self.resource.get()['version']
+        resp, data = self.resource.get()
+        return data['version']
     version = property(_get_version, doc="""\
         The version number tuple for the CouchDB server.
 
@@ -175,18 +201,18 @@ class Database(object):
 
     >>> doc = db[doc_id]
     >>> doc                 #doctest: +ELLIPSIS
-    <Document u'...'@... {...}>
+    <Document '...'@... {...}>
 
     Documents are represented as instances of the `Row` class, which is
     basically just a normal dictionary with the additional attributes ``id`` and
     ``rev``:
 
     >>> doc.id, doc.rev     #doctest: +ELLIPSIS
-    (u'...', ...)
+    ('...', ...)
     >>> doc['type']
-    u'Person'
+    'Person'
     >>> doc['name']
-    u'John Doe'
+    'John Doe'
 
     To update an existing document, you use item access, too:
 
@@ -222,7 +248,7 @@ class Database(object):
         :return: `True` if a document with the ID exists, `False` otherwise
         """
         try:
-            self.resource.head(id) # FIXME: should use HEAD
+            self.resource.head(id)
             return True
         except ResourceNotFound:
             return False
@@ -233,15 +259,24 @@ class Database(object):
 
     def __len__(self):
         """Return the number of documents in the database."""
-        return self.resource.get()['doc_count']
+        resp, data = self.resource.get()
+        return data['doc_count']
+
+    def __nonzero__(self):
+        """Return whether the database is available."""
+        try:
+            self.resource.head()
+            return True
+        except:
+            return False
 
     def __delitem__(self, id):
         """Remove the document with the specified ID from the database.
 
         :param id: the document ID
         """
-        doc = self[id] # FIXME: this should use HEAD once Etags are supported
-        self.resource.delete(id, rev=doc.rev)
+        resp, data = self.resource.head(id)
+        self.resource.delete(id, rev=resp['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -250,7 +285,8 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        return Document(self.resource.get(id))
+        resp, data = self.resource.get(id)
+        return Document(data)
 
     def __setitem__(self, id, content):
         """Create or update a document with the specified ID.
@@ -260,8 +296,8 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        result = self.resource.put(id, content=content)
-        content.update({'_id': result['id'], '_rev': result['rev']})
+        resp, data = self.resource.put(id, content=content)
+        content.update({'_id': data['id'], '_rev': data['rev']})
 
     def _get_name(self):
         if self._name is None:
@@ -279,7 +315,37 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        return self.resource.post(content=data)['id']
+        resp, data = self.resource.post(content=data)
+        return data['id']
+
+    def delete(self, doc):
+        """Delete the given document from the database.
+
+        Use this method in preference over ``__del__`` to ensure you're
+        deleting the revision that you had previously retrieved. In the case
+        the document has been updated since it was retrieved, this method will
+        raise a `PreconditionFailed` exception.
+
+        >>> server = Server('http://localhost:5984/')
+        >>> db = server.create('python-tests')
+
+        >>> doc = dict(type='Person', name='John Doe')
+        >>> db['johndoe'] = doc
+        >>> doc2 = db['johndoe']
+        >>> doc2['age'] = 42
+        >>> db['johndoe'] = doc2
+        >>> db.delete(doc)
+        Traceback (most recent call last):
+          ...
+        PreconditionFailed: ('conflict', 'Document update conflict.')
+
+        >>> del server['python-tests']
+        
+        :param doc: a dictionary or `Document` object holding the document data
+        :raise PreconditionFailed: if the document was updated in the database
+        :since: 0.4.1
+        """
+        self.resource.delete(doc['_id'], rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
         """Return the document with the specified ID.
@@ -292,9 +358,11 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            return Document(self.resource.get(id, **options))
+            resp, data = self.resource.get(id, **options)
         except ResourceNotFound:
             return default
+        else:
+            return Document(data)
 
     def info(self):
         """Return information about the database as a dictionary.
@@ -306,7 +374,73 @@ class Database(object):
         :rtype: ``dict``
         :since: 0.4
         """
-        return self.resource.get()
+        resp, data = self.resource.get()
+        return data
+
+    def delete_attachment(self, doc, filename):
+        """Delete the specified attachment.
+        
+        :param doc: the dictionary or `Document` object representing the
+                    document that the attachment belongs to
+        :param filename: the name of the attachment file
+        :since: 0.4.1
+        """
+        resp, data = self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
+        doc.update({'_rev': data['rev']})
+
+    def get_attachment(self, id_or_doc, filename, default=None):
+        """Return an attachment from the specified doc id and filename.
+        
+        :param id_or_doc: either a document ID or a dictionary or `Document`
+                          object representing the document that the attachment
+                          belongs to
+        :param filename: the name of the attachment file
+        :param default: default value to return when the document or attachment
+                        is not found
+        :return: the content of the attachment as a string, or the value of the
+                 `default` argument if the attachment is not found
+        :since: 0.4.1
+        """
+        if isinstance(id_or_doc, basestring):
+            id = id_or_doc
+        else:
+            id = id_or_doc['_id']
+        try:
+            resp, data = self.resource(id).get(filename)
+            return data
+        except ResourceNotFound:
+            return default
+
+    def put_attachment(self, doc, content, filename=None, content_type=None):
+        """Create or replace an attachment.
+
+        :param doc: the dictionary or `Document` object representing the
+                    document that the attachment should be added to
+        :param content: the content to upload, either a file-like object or
+                        a string
+        :param filename: the name of the attachment file; if omitted, this
+                         function tries to get the filename from the file-like
+                         object passed as the `content` argument value
+        :param content_type: content type of the attachment; if omitted, the
+                             MIME type is guessed based on the file name
+                             extension
+        :since: 0.4.1
+        """
+        if hasattr(content, 'read'):
+            content = content.read()
+        if filename is None:
+            if hasattr(content, 'name'):
+                filename = content.name
+            else:
+                raise ValueError('no filename specified for attachment')
+        if content_type is None:
+            content_type = ';'.join(filter(None, guess_type(filename)))
+
+        resp, data = self.resource(doc['_id']).put(filename, content=content,
+                                                   headers={
+            'Content-Type': content_type
+        }, rev=doc['_rev'])
+        doc.update({'_rev': data['rev']})
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
@@ -363,26 +497,44 @@ class Database(object):
         ...     Document(type='City', name='Gotham City')
         ... ]):
         ...     print repr(doc) #doctest: +ELLIPSIS
-        <Document u'...'@u'...' {'type': 'Person', 'name': 'John Doe'}>
-        <Document u'...'@u'...' {'type': 'Person', 'name': 'Mary Jane'}>
-        <Document u'...'@u'...' {'type': 'City', 'name': 'Gotham City'}>
+        <Document '...'@'...' {'type': 'Person', 'name': 'John Doe'}>
+        <Document '...'@'...' {'type': 'Person', 'name': 'Mary Jane'}>
+        <Document '...'@'...' {'type': 'City', 'name': 'Gotham City'}>
         
         >>> del server['python-tests']
         
-        :param documents: a sequence of dictionaries or `Document` objects
+        If an object in the documents list is not a dictionary, this method
+        looks for an ``items()`` method that can be used to convert the object
+        to a dictionary. In this case, the returned generator will not update
+        and yield the original object, but rather yield a dictionary with
+        ``id`` and ``rev`` keys.
+        
+        :param documents: a sequence of dictionaries or `Document` objects, or
+                          objects providing a ``items()`` method that can be
+                          used to convert them to a dictionary
         :return: an iterable over the resulting documents
         :rtype: ``generator``
         
         :since: version 0.2
         """
-        documents = list(documents)
-        data = self.resource.post('_bulk_docs', content={'docs': documents})
+        docs = []
+        for doc in documents:
+            if isinstance(doc, dict):
+                docs.append(doc)
+            elif hasattr(doc, 'items'):
+                docs.append(dict(doc.items()))
+            else:
+                raise TypeError('expected dict, got %s' % type(doc))
+        resp, data = self.resource.post('_bulk_docs', content={'docs': docs})
         assert data['ok'] # FIXME: Should probably raise a proper exception
         def _update():
             for idx, result in enumerate(data['new_revs']):
                 doc = documents[idx]
-                doc.update({'_id': result['id'], '_rev': result['rev']})
-                yield doc
+                if isinstance(doc, dict):
+                    doc.update({'_id': result['id'], '_rev': result['rev']})
+                    yield doc
+                else:
+                    yield result
         return _update()
 
     def view(self, name, wrapper=None, **options):
@@ -447,7 +599,7 @@ class View(object):
         for name, value in options.items():
             if name in ('key', 'startkey', 'endkey') \
                     or not isinstance(value, basestring):
-                value = json.dumps(value, ensure_ascii=False)
+                value = json.dumps(value, allow_nan=False, ensure_ascii=False)
             retval[name] = value
         return retval
 
@@ -460,14 +612,20 @@ class PermanentView(View):
 
     def __init__(self, uri, name, wrapper=None, http=None):
         View.__init__(self, uri, wrapper=wrapper, http=http)
-        self.resource = Resource(http, uri)
         self.name = name
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def _exec(self, options):
-        return self.resource.get(**self._encode_options(options))
+        if 'keys' in options:
+            options = options.copy()
+            keys = {'keys': options.pop('keys')}
+            resp, data = self.resource.post(content=keys,
+                                            **self._encode_options(options))
+        else:
+            resp, data = self.resource.get(**self._encode_options(options))
+        return data
 
 
 class TemporaryView(View):
@@ -476,7 +634,6 @@ class TemporaryView(View):
     def __init__(self, uri, map_fun=None, reduce_fun=None,
                  language='javascript', wrapper=None, http=None):
         View.__init__(self, uri, wrapper=wrapper, http=http)
-        self.resource = Resource(http, uri)
         self.map_fun = map_fun
         self.reduce_fun = reduce_fun
         self.language = language
@@ -489,10 +646,15 @@ class TemporaryView(View):
         body = {'map': self.map_fun, 'language': self.language}
         if self.reduce_fun:
             body['reduce'] = self.reduce_fun
-        content = json.dumps(body, ensure_ascii=False).encode('utf-8')
-        return self.resource.post(content=content,
-                                  headers={'Content-Type': 'application/json'},
-                                  **self._encode_options(options))
+        if 'keys' in options:
+            options = options.copy()
+            body['keys'] = options.pop('keys')
+        content = json.dumps(body, allow_nan=False,
+                             ensure_ascii=False).encode('utf-8')
+        resp, data = self.resource.post(content=content, headers={
+            'Content-Type': 'application/json'
+        }, **self._encode_options(options))
+        return data
 
 
 class ViewResults(object):
@@ -535,7 +697,9 @@ class ViewResults(object):
     can still return multiple rows:
     
     >>> list(results[['City', 'Gotham City']])
-    [<Row id=u'gotham', key=[u'City', u'Gotham City'], value=u'Gotham City'>]
+    [<Row id='gotham', key=['City', 'Gotham City'], value='Gotham City'>]
+
+    >>> del server['python-tests']
     """
 
     def __init__(self, view, options):
@@ -571,8 +735,7 @@ class ViewResults(object):
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = [Row(r.get('id'), r['key'], r['value'])
-                      for r in data['rows']]
+        self._rows = [Row(row) for row in data['rows']]
         self._total_rows = data.get('total_rows')
         self._offset = data.get('offset', 0)
 
@@ -611,13 +774,8 @@ class ViewResults(object):
         """)
 
 
-class Row(object):
+class Row(dict):
     """Representation of a row as returned by database views."""
-
-    def __init__(self, id, key, value):
-        self.id = id #: The document ID, or `None` for rows in a reduce view
-        self.key = key #: The key of the row
-        self.value = value #: The value of the row
 
     def __repr__(self):
         if self.id is None:
@@ -625,6 +783,31 @@ class Row(object):
                                               self.value)
         return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
                                                  self.key, self.value)
+
+    def _get_id(self):
+        return self.get('id')
+    id = property(_get_id, doc="""\
+        The associated Document ID if it exists. Returns `None` when it
+        doesn't (reduce results).
+    """)
+
+    def _get_key(self):
+        return self['key']
+    key = property(_get_key, doc='The associated key.')
+
+    def _get_value(self):
+        return self['value']
+    value = property(_get_value, doc='The associated value.')
+
+    def _get_doc(self):
+        doc = self.get('doc')
+        if doc:
+            return Document(doc)
+    doc = property(_get_doc, doc="""\
+        The associated document for the row. This is only present when the
+        view was accessed with ``include_docs=True`` as a query parameter,
+        otherwise this property will be `None`.
+    """)
 
 
 # Internals
@@ -638,6 +821,9 @@ class Resource(object):
             http.force_exception_to_status_code = False
         self.http = http
         self.uri = uri
+
+    def __call__(self, path):
+        return type(self)(self.http, uri(self.uri, path))
 
     def delete(self, path=None, headers=None, **params):
         return self._request('DELETE', path, headers=headers, **params)
@@ -665,13 +851,23 @@ class Resource(object):
         body = None
         if content is not None:
             if not isinstance(content, basestring):
-                body = json.dumps(content, ensure_ascii=False).encode('utf-8')
+                body = json.dumps(content, allow_nan=False,
+                                  ensure_ascii=False).encode('utf-8')
                 headers.setdefault('Content-Type', 'application/json')
             else:
                 body = content
+            headers.setdefault('Content-Length', str(len(body)))
 
-        resp, data = self.http.request(uri(self.uri, path, **params), method,
-                                       body=body, headers=headers)
+        def _make_request(retry=1):
+            try:
+                return self.http.request(uri(self.uri, path, **params), method,
+                                             body=body, headers=headers)
+            except socket.error, e:
+                if retry > 0 and e.args[0] == 54: # reset by peer
+                    return _make_request(retry - 1)
+                raise
+        resp, data = _make_request()
+
         status_code = int(resp.status)
         if data and resp.get('content-type') == 'application/json':
             try:
@@ -693,7 +889,7 @@ class Resource(object):
             else:
                 raise ServerError((status_code, error))
 
-        return data
+        return resp, data
 
 
 def uri(base, *path, **query):
@@ -730,10 +926,12 @@ def uri(base, *path, **query):
 
     return ''.join(retval)
 
+
 def unicode_quote(string, safe=''):
     if isinstance(string, unicode):
         string = string.encode('utf-8')
     return quote(string, safe)
+
 
 def unicode_urlencode(data):
     if isinstance(data, dict):
@@ -744,6 +942,7 @@ def unicode_urlencode(data):
             value = value.encode('utf-8')
         params.append((name, value))
     return urlencode(params)
+
 
 VALID_DB_NAME = re.compile(r'^[a-z0-9_$()+-/]+$')
 def validate_dbname(name):
