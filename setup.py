@@ -103,11 +103,11 @@ class test_doc(Command):
 
 setup(
     name = 'CouchDB',
-    version = '0.1',
+    version = '0.2',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
-interface for CouchDB server.""",
+interface for the CouchDB server.""",
     author = 'Christopher Lenz',
     author_email = 'cmlenz@gmx.de',
     license = 'BSD',
@@ -130,7 +130,7 @@ interface for CouchDB server.""",
 
     entry_points = {
         'console_scripts': [
-            'couchdb-view-python = couchdb.view:run'
+            'couchpy = couchdb.view:main'
         ],
     },
 

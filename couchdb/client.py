@@ -29,7 +29,7 @@ import re
 import simplejson as json
 
 __all__ = ['ResourceNotFound', 'ResourceConflict', 'ServerError', 'Server',
-           'Database', 'View']
+           'Database', 'Document', 'View']
 __docformat__ = 'restructuredtext en'
 
 
@@ -46,8 +46,8 @@ class ResourceConflict(Exception):
 
 
 class ServerError(Exception):
-    """Exception raised when a 500 HTTP error is received in response to a
-    request.
+    """Exception raised when an unexpected HTTP error is received in response
+    to a request.
     """
 
 
@@ -55,8 +55,6 @@ class Server(object):
     """Representation of a CouchDB server.
 
     >>> server = Server('http://localhost:8888/')
-    >>> server.version
-    (0, 6, 4)
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
@@ -133,16 +131,14 @@ class Server(object):
                         http=self.resource.http)
 
     def _get_version(self):
-        data = self.resource.get()
-        version = data['version']
-        return tuple([int(part) for part in version.split('.')])
+        return self.resource.get()['version']
     version = property(_get_version, doc="""\
         The version number tuple for the CouchDB server.
 
         Note that this results in a request being made, and can also be used
         to check for the availability of the server.
         
-        :type: `tuple`
+        :type: `unicode`
         """)
 
     def create(self, name):
@@ -172,7 +168,7 @@ class Database(object):
 
     >>> doc = db[doc_id]
     >>> doc                 #doctest: +ELLIPSIS
-    <Row u'...'@... {...}>
+    <Document u'...'@... {...}>
 
     Documents are represented as instances of the `Row` class, which is
     basically just a normal dictionary with the additional attributes ``id`` and
@@ -221,14 +217,14 @@ class Database(object):
         :return: `True` if a document with the ID exists, `False` otherwise
         """
         try:
-            self.resource.get(id) # FIXME: should use HEAD
+            self.resource.head(id) # FIXME: should use HEAD
             return True
         except ResourceNotFound:
             return False
 
     def __iter__(self):
         """Return the IDs of all documents in the database."""
-        return (item.id for item in self.view('_all_docs'))
+        return iter([item.id for item in self.view('_all_docs')])
 
     def __len__(self):
         """Return the number of documents in the database."""
@@ -249,7 +245,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Row`
         """
-        return Row(self.resource.get(id))
+        return Document(self.resource.get(id))
 
     def __setitem__(self, id, content):
         """Create or update a document with the specified ID.
@@ -259,9 +255,8 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        data = self.resource.put(id, content=content)
-        content['_id'] = data['_id']
-        content['_rev'] = data['_rev']
+        result = self.resource.put(id, content=content)
+        content.update({'_id': result['id'], '_rev': result['rev']})
 
     def _get_name(self):
         if self._name is None:
@@ -279,10 +274,9 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        data = self.resource.post(content=data)
-        return data['_id']
+        return self.resource.post(content=data)['id']
 
-    def get(self, id, default=None):
+    def get(self, id, default=None, **options):
         """Return the document with the specified ID.
 
         :param id: the document ID
@@ -293,12 +287,12 @@ class Database(object):
         :rtype: `Row`
         """
         try:
-            return self[id]
+            return Document(self.resource.get(id, **options))
         except ResourceNotFound:
             return default
 
-    def query(self, code, **options):
-        """Execute an ad-hoc query against the database.
+    def query(self, code, content_type='text/javascript', **options):
+        """Execute an ad-hoc query (a "temp view") against the database.
         
         >>> server = Server('http://localhost:8888/')
         >>> db = server.create('python-tests')
@@ -307,34 +301,73 @@ class Database(object):
         >>> db['gotham'] = dict(type='City', name='Gotham City')
         >>> code = '''function(doc) {
         ...     if (doc.type=='Person')
-        ...         return {'key': doc.name};
+        ...         map(doc.name, null);
         ... }'''
         >>> for row in db.query(code):
-        ...     print row['key']
+        ...     print row.key
         John Doe
         Mary Jane
         
-        >>> for row in db.query(code, reverse=True):
-        ...     print row['key']
+        >>> for row in db.query(code, descending=True):
+        ...     print row.key
         Mary Jane
         John Doe
         
         >>> for row in db.query(code, key='John Doe'):
-        ...     print row['key']
+        ...     print row.key
         John Doe
         
         >>> del server['python-tests']
         
         :param code: the code of the view function
+        :param content_type: the MIME type of the code, which determines the
+                             language the view function is written in
         :return: an iterable over the resulting `Row` objects
         :rtype: ``generator``
         """
-        json_options = {}
         for name, value in options.items():
-            json_options[name] = json.dumps(value)
-        data = self.resource.post('_temp_view', content=code, **json_options)
+            if name in ('key', 'startkey', 'endkey') \
+                    or not isinstance(value, basestring):
+                options[name] = json.dumps(value)
+        headers = {}
+        if content_type:
+            headers['Content-Type'] = content_type
+        data = self.resource.post('_temp_view', content=code, headers=headers,
+                                  **options)
         for row in data['rows']:
-            yield Row(row)
+            yield Row(row['id'], row['key'], row['value'])
+
+    def update(self, documents):
+        """Perform a bulk update or insertion of the given documents using a
+        single HTTP request.
+        
+        >>> server = Server('http://localhost:8888/')
+        >>> db = server.create('python-tests')
+        >>> for doc in db.update([
+        ...     Document(type='Person', name='John Doe'),
+        ...     Document(type='Person', name='Mary Jane'),
+        ...     Document(type='City', name='Gotham City')
+        ... ]):
+        ...     print repr(doc) #doctest: +ELLIPSIS
+        <Document u'...'@u'...' {'type': 'Person', 'name': 'John Doe'}>
+        <Document u'...'@u'...' {'type': 'Person', 'name': 'Mary Jane'}>
+        <Document u'...'@u'...' {'type': 'City', 'name': 'Gotham City'}>
+        
+        >>> del server['python-tests']
+        
+        :param documents: a sequence of dictionaries or `Document` objects
+        :return: an iterable over the resulting documents
+        :rtype: ``generator``
+        
+        :since: version 0.2
+        """
+        documents = list(documents)
+        data = self.resource.post('_bulk_docs', content=documents)
+        for idx, result in enumerate(data['results']):
+            assert 'ok' in result # FIXME: how should error handling work here?
+            doc = documents[idx]
+            doc.update({'_id': result['id'], '_rev': result['rev']})
+            yield doc
 
     def view(self, name, **options):
         """Execute a predefined view.
@@ -352,9 +385,28 @@ class Database(object):
         :return: a `View` object
         :rtype: `View`
         """
-        view = View(uri(self.resource.uri, name), name,
+        view = View(uri(self.resource.uri, *name.split('/')), name,
                     http=self.resource.http)
         return view(**options)
+
+
+class Document(dict):
+    """Representation of a document in the database.
+
+    This is basically just a dictionary with the two additional properties
+    `id` and `rev`, which contain the document ID and revision, respectively.
+    """
+
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    def __repr__(self):
+        return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
+                                  dict([(k,v) for k,v in self.items()
+                                        if k not in ('_id', '_rev')]))
+
+    id = property(lambda self: self['_id'])
+    rev = property(lambda self: self['_rev'])
 
 
 class View(object):
@@ -368,34 +420,33 @@ class View(object):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def __call__(self, **options):
-        json_options = {}
         for name, value in options.items():
-            json_options[name] = json.dumps(value)
-        data = self.resource.get(**json_options)
+            if name in ('key', 'startkey', 'endkey') \
+                    or not isinstance(value, basestring):
+                options[name] = json.dumps(value)
+        data = self.resource.get(**options)
         for row in data['rows']:
-            yield Row(row)
+            yield Row(row['id'], row['key'], row['value'])
 
     def __iter__(self):
         return self()
 
 
-class Row(dict):
+class Row(object):
     """Representation of a row as returned by database views.
 
     This is basically just a dictionary with the two additional properties
     `id` and `rev`, which contain the document ID and revision, respectively.
     """
 
-    def __init__(self, content):
-        dict.__init__(self, content)
+    def __init__(self, id, key, value):
+        self.id = id
+        self.key = key
+        self.value = value
 
     def __repr__(self):
-        return '<%s %r@%r %r>' % (type(self).__name__, self.id, self.rev,
-                                  dict([(k,v) for k,v in self.items()
-                                        if k not in ('_id', '_rev')]))
-
-    id = property(lambda self: self.get('_id'))
-    rev = property(lambda self: self.get('_rev'))
+        return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
+                                                 self.key, self.value)
 
 
 # Internals
@@ -429,7 +480,10 @@ class Resource(object):
 
     def _request(self, method, path=None, content=None, headers=None,
                  **params):
+        from couchdb import __version__
         headers = headers or {}
+        headers.setdefault('Accept', 'application/json')
+        headers.setdefault('User-Agent', 'couchdb-python %s' % __version__)
         body = None
         if content:
             if not isinstance(content, basestring):
@@ -441,7 +495,7 @@ class Resource(object):
         resp, data = self.http.request(uri(self.uri, path, **params), method,
                                        body=body, headers=headers)
         status_code = int(resp.status)
-        if data:# FIXME and resp.get('content-type') == 'application/json':
+        if data and resp.get('content-type') == 'application/json':
             try:
                 data = json.loads(data)
             except ValueError:
@@ -449,7 +503,7 @@ class Resource(object):
 
         if status_code >= 400:
             if type(data) is dict:
-                error = data.get('error', {}).get('reason', data)
+                error = (data.get('error'), data.get('reason'))
             else:
                 error = data
             if status_code == 404:
@@ -457,7 +511,7 @@ class Resource(object):
             elif status_code == 409:
                 raise ResourceConflict(error)
             else:
-                raise ServerError(error)
+                raise ServerError((status_code, error))
 
         return data
 
@@ -492,10 +546,10 @@ def uri(base, *path, **query):
 
     return ''.join(retval)
 
-def unicode_quote(string):
+def unicode_quote(string, safe=''):
     if isinstance(string, unicode):
         string = string.encode('utf-8')
-    return quote(string, '/:')
+    return quote(string, safe)
 
 def unicode_urlencode(data):
     if isinstance(data, dict):

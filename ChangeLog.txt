@@ -1,3 +1,31 @@
+Version 0.2
+http://couchdb-python.googlecode.com/svn/tags/0.2.0
+(Nov 21, 2007, from branches/0.2.x)
+
+ * Added __len__ and __iter__ to the `schema.Schema` class to iterate
+   over and get the number of items in a document or compound field.
+ * The "version" property of client.Server now returns a plain string
+   instead of a tuple of ints.
+ * The client library now identifies itself with a meaningful
+   User-Agent string.
+ * `schema.Document.store()` now returns the document object instance,
+   instead of just the document ID.
+ * The string representation of `schema.Document` objects is now more
+   comprehensive.
+ * Only the view parameters "key", "startkey", and "endkey" are JSON
+   encoded, anything else is left alone.
+ * Slashes in document IDs are now URL-quoted until CouchDB supports
+   them.
+ * Allow the content-type to be passed for temp views via
+   `client.Database.query()` so that view languages other than
+   Javascript can be used.
+ * Added `client.Database.update()` method to bulk insert/update
+   documents in a database.
+ * The view-server script wrapper has been renamed to `couchpy`.
+ * `couchpy` now supports `--help` and `--version` options.
+ * Updated for compatibility with CouchDB release 0.7.0.
+
+
 Version 0.1
 http://couchdb-python.googlecode.com/svn/tags/0.1.0
 (Sep 23, 2007, from branches/0.1.x)

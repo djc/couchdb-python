@@ -55,12 +55,12 @@ class CouchTests(unittest.TestCase):
         # test a simple query
         query = """function(doc) {
             if (doc.a==4)
-                return doc.b
+                map(null, doc.b);
         }"""
         result = list(self.db.query(query))
         self.assertEqual(1, len(result))
         self.assertEqual('3', result[0].id)
-        self.assertEqual(16, result[0]['value'])
+        self.assertEqual(16, result[0].value)
 
         # modify a document, and redo the query
         doc = self.db['0']
@@ -109,17 +109,17 @@ class CouchTests(unittest.TestCase):
         self.assertEqual(num, len(self.db))
 
         query = """function(doc) {
-            return {key: doc.integer};
+            map(doc.integer, null);
         }"""
         results = list(self.db.query(query))
         self.assertEqual(num, len(results))
         for idx, row in enumerate(results):
-            self.assertEqual(idx, row['key'])
+            self.assertEqual(idx, row.key)
 
-        results = list(self.db.query(query, reverse=True))
+        results = list(self.db.query(query, descending=True))
         self.assertEqual(num, len(results))
         for idx, row in enumerate(results):
-            self.assertEqual(num - idx - 1, row['key'])
+            self.assertEqual(num - idx - 1, row.key)
 
     def test_multiple_rows(self):
         self.db['NC'] = {'cities': ["Charlotte", "Raleigh"]}
@@ -129,28 +129,23 @@ class CouchTests(unittest.TestCase):
                                     "Springfield"]}
 
         query = """function(doc){
-            var rows = []
             for (var i = 0; i < doc.cities.length; i++) {
-                rows[i] = {key: doc.cities[i] + ", " + doc._id};
+                map(doc.cities[i] + ", " + doc._id, null);
             }
-            // if a function returns a object with a single "multi" member
-            // then each element in the member will be output as its own row
-            // in the results
-            return {multi: rows}
         }"""
         results = list(self.db.query(query))
         self.assertEqual(11, len(results))
-        self.assertEqual("Boston, MA", results[0]['key']);
-        self.assertEqual("Cambridge, MA", results[1]['key']);
-        self.assertEqual("Charlotte, NC", results[2]['key']);
-        self.assertEqual("Lowell, MA", results[3]['key']);
-        self.assertEqual("Miami, FL", results[4]['key']);
-        self.assertEqual("Orlando, FL", results[5]['key']);
-        self.assertEqual("Raleigh, NC", results[6]['key']);
-        self.assertEqual("Springfield, FL", results[7]['key']);
-        self.assertEqual("Springfield, MA", results[8]['key']);
-        self.assertEqual("Tampa, FL", results[9]['key']);
-        self.assertEqual("Worcester, MA", results[10]['key']);
+        self.assertEqual("Boston, MA", results[0].key);
+        self.assertEqual("Cambridge, MA", results[1].key);
+        self.assertEqual("Charlotte, NC", results[2].key);
+        self.assertEqual("Lowell, MA", results[3].key);
+        self.assertEqual("Miami, FL", results[4].key);
+        self.assertEqual("Orlando, FL", results[5].key);
+        self.assertEqual("Raleigh, NC", results[6].key);
+        self.assertEqual("Springfield, FL", results[7].key);
+        self.assertEqual("Springfield, MA", results[8].key);
+        self.assertEqual("Tampa, FL", results[9].key);
+        self.assertEqual("Worcester, MA", results[10].key);
 
         # Add a city and rerun the query
         doc = self.db['NC']
@@ -158,19 +153,19 @@ class CouchTests(unittest.TestCase):
         self.db['NC'] = doc
         results = list(self.db.query(query))
         self.assertEqual(12, len(results))
-        self.assertEqual("Wilmington, NC", results[10]['key'])
+        self.assertEqual("Wilmington, NC", results[10].key)
 
         # Remove a document and redo the query again
         del self.db['MA']
         results = list(self.db.query(query))
         self.assertEqual(7, len(results))
-        self.assertEqual("Charlotte, NC", results[0]['key']);
-        self.assertEqual("Miami, FL", results[1]['key']);
-        self.assertEqual("Orlando, FL", results[2]['key']);
-        self.assertEqual("Raleigh, NC", results[3]['key']);
-        self.assertEqual("Springfield, FL", results[4]['key']);
-        self.assertEqual("Tampa, FL", results[5]['key']);
-        self.assertEqual("Wilmington, NC", results[6]['key'])
+        self.assertEqual("Charlotte, NC", results[0].key);
+        self.assertEqual("Miami, FL", results[1].key);
+        self.assertEqual("Orlando, FL", results[2].key);
+        self.assertEqual("Raleigh, NC", results[3].key);
+        self.assertEqual("Springfield, FL", results[4].key);
+        self.assertEqual("Tampa, FL", results[5].key);
+        self.assertEqual("Wilmington, NC", results[6].key)
 
     def test_large_docs(self):
         size = 100
@@ -181,7 +176,7 @@ class CouchTests(unittest.TestCase):
         self.db.create({'longtext': longtext})
 
         query = """function(doc) {
-            return doc.longtext;
+            map(null, doc.longtext);
         }"""
         results = list(self.db.query(query))
         self.assertEqual(4, len(results))
@@ -201,23 +196,23 @@ class CouchTests(unittest.TestCase):
             self.assertEqual(text, doc['text'])
 
         query = """function(doc) {
-            return {key: doc.text};
+            map(doc.text, null);
         }"""
         for idx, row in enumerate(self.db.query(query)):
-            self.assertEqual(texts[idx], row['key'])
+            self.assertEqual(texts[idx], row.key)
 
     def test_design_docs(self):
         for i in range(50): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
-        self.db['_design_foo'] = {'views': {
-            'all_docs': 'function(doc){return {key:doc.integer}}',
-            'no_docs': 'function(doc){}',
-            'single_doc': 'function(doc){if(doc._id == "1"){return 1}}'
+        self.db['_design/test'] = {'views': {
+            'all_docs': 'function(doc) { map(doc.integer, null) }',
+            'no_docs': 'function(doc) {}',
+            'single_doc': 'function(doc) { if (doc._id == "1") map(null, 1) }'
         }}
-        for idx, row in enumerate(self.db.view('_design_foo:all_docs')):
-            self.assertEqual(idx, row['key'])
-        self.assertEqual(0, len(list(self.db.view('_design_foo:no_docs'))))
-        self.assertEqual(1, len(list(self.db.view('_design_foo:single_doc'))))
+        for idx, row in enumerate(self.db.view('_view/test/all_docs')):
+            self.assertEqual(idx, row.key)
+        self.assertEqual(0, len(list(self.db.view('_view/test/no_docs'))))
+        self.assertEqual(1, len(list(self.db.view('_view/test/single_doc'))))
 
     def test_collation(self):
         values = [
@@ -233,24 +228,24 @@ class CouchTests(unittest.TestCase):
             self.db[str(idx + 1)] = {'foo': value}
 
         query = """function(doc) {
-            return {key: doc.foo};
+            map(doc.foo, null);
         }"""
         rows = self.db.query(query)
-        self.assertEqual({}, dict(rows.next())['value'])
+        self.assertEqual(None, rows.next().value)
         for idx, row in enumerate(rows):
-            self.assertEqual(values[idx], row['key'])
+            self.assertEqual(values[idx + 1], row.key)
 
-        rows = self.db.query(query, reverse=True)
+        rows = self.db.query(query, descending=True)
         for idx, row in enumerate(rows):
             if idx < len(values):
-                self.assertEqual(values[len(values) - 1- idx], row['key'])
+                self.assertEqual(values[len(values) - 1- idx], row.key)
             else:
-                self.assertEqual({}, dict(row)['value'])
+                self.assertEqual(None, row.value)
 
         for value in values:
             rows = list(self.db.query(query, key=value))
             self.assertEqual(1, len(rows))
-            self.assertEqual(value, rows[0]['key'])
+            self.assertEqual(value, rows[0].key)
 
 
 def suite():
