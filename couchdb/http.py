@@ -388,8 +388,12 @@ class Resource(object):
     def _request(self, method, path=None, body=None, headers=None, **params):
         all_headers = self.headers.copy()
         all_headers.update(headers or {})
-        return self.session.request(method, urljoin(self.url, path, **params),
-                                    body=body, headers=all_headers,
+        if path is not None:
+            url = urljoin(self.url, path, **params)
+        else:
+            url = urljoin(self.url, **params)
+        return self.session.request(method, url, body=body,
+                                    headers=all_headers,
                                     credentials=self.credentials)
 
 
@@ -461,13 +465,18 @@ def urljoin(base, *path, **query):
     'http://example.org/foo%2Fbar'
     >>> urljoin('http://example.org/', 'foo', '/bar/')
     'http://example.org/foo/%2Fbar%2F'
+
+    >>> urljoin('http://example.org/', None)
+    Traceback (most recent call last):
+        ...
+    TypeError: argument 2 to map() must support iteration
     """
     if base and base.endswith('/'):
         base = base[:-1]
     retval = [base]
 
     # build the path
-    path = '/'.join([''] + [quote(s) for s in path if s is not None])
+    path = '/'.join([''] + [quote(s) for s in path])
     if path:
         retval.append(path)
 
