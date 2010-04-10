@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2008 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -35,6 +35,15 @@ class ViewServerTestCase(unittest.TestCase):
         self.assertEqual(output.getvalue(),
                          'true\n'
                          '[[[null, {"foo": "bar"}]]]\n')
+
+    def test_i18n(self):
+        input = StringIO('["add_fun", "def fun(doc): yield doc[\\"test\\"], doc"]\n'
+                         '["map_doc", {"test": "b\xc3\xa5r"}]\n')
+        output = StringIO()
+        view.run(input=input, output=output)
+        self.assertEqual(output.getvalue(),
+                         'true\n'
+                         '[[["b\xc3\xa5r", {"test": "b\xc3\xa5r"}]]]\n')
 
     def test_map_doc_with_logging(self):
         fun = 'def fun(doc): log(\'running\'); yield None, doc'

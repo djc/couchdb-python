@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007-2008 Christopher Lenz
+# Copyright (C) 2007-2009 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -11,11 +11,13 @@ from distutils.cmd import Command
 import doctest
 from glob import glob
 import os
+import sys
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 import sys
+
 
 class build_doc(Command):
     description = 'Builds the documentation'
@@ -101,9 +103,14 @@ class test_doc(Command):
             doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
+requirements = ['httplib2']
+if sys.version_info < (2, 6):
+    requirements += ['simplejson']
+
+
 setup(
     name = 'CouchDB',
-    version = '0.5',
+    version = '0.6.2-dev',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
@@ -123,10 +130,10 @@ interface for the CouchDB server.""",
         'Topic :: Database :: Front-Ends',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    packages = ['couchdb', 'couchdb.tools'],
+    packages = ['couchdb', 'couchdb.tools', 'couchdb.tests'],
     test_suite = 'couchdb.tests.suite',
 
-    install_requires = ['httplib2'],
+    install_requires = requirements,
 
     entry_points = {
         'console_scripts': [

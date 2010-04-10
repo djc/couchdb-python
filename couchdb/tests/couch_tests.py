@@ -7,23 +7,31 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+import shutil
 import os
+import tempfile
 import unittest
-from couchdb import PreconditionFailed, ResourceNotFound, Server
+from couchdb import ResourceConflict, ResourceNotFound, Server
 
 
 class CouchTests(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = Server(uri)
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        self.cache_dir = tempfile.mkdtemp(prefix='couchdb')
+        self.server = Server(uri, cache=self.cache_dir)
+        try:
+            self.server.delete('python-tests')
+        except ResourceNotFound:
+            pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except ResourceNotFound:
+            pass
+        shutil.rmtree(self.cache_dir)
 
     def _create_test_docs(self, num):
         for i in range(num):
@@ -93,11 +101,11 @@ class CouchTests(unittest.TestCase):
         doc1['a'] = 2
         doc2['a'] = 3
         self.db['foo'] = doc1
-        self.assertRaises(PreconditionFailed, self.db.__setitem__, 'foo', doc2)
+        self.assertRaises(ResourceConflict, self.db.__setitem__, 'foo', doc2)
 
         # try submitting without the revision info
         data = {'_id': 'foo', 'a': 3, 'b': 1}
-        self.assertRaises(PreconditionFailed, self.db.__setitem__, 'foo', data)
+        self.assertRaises(ResourceConflict, self.db.__setitem__, 'foo', data)
 
         del self.db['foo']
         self.db['foo'] = data
@@ -209,10 +217,10 @@ class CouchTests(unittest.TestCase):
             'no_docs': {'map': 'function(doc) {}'},
             'single_doc': {'map': 'function(doc) { if (doc._id == "1") emit(null, 1) }'}
         }}
-        for idx, row in enumerate(self.db.view('_view/test/all_docs')):
+        for idx, row in enumerate(self.db.view('test/all_docs')):
             self.assertEqual(idx, row.key)
-        self.assertEqual(0, len(list(self.db.view('_view/test/no_docs'))))
-        self.assertEqual(1, len(list(self.db.view('_view/test/single_doc'))))
+        self.assertEqual(0, len(list(self.db.view('test/no_docs'))))
+        self.assertEqual(1, len(list(self.db.view('test/single_doc'))))
 
     def test_collation(self):
         values = [

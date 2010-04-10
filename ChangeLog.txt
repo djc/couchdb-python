@@ -1,6 +1,65 @@
+Version 0.6.1
+http://couchdb-python.googlecode.com/hg/?r=0.6.1
+(Dec 14, 2009, from branches/0.6.x)
+
+ * Compatible with CouchDB 0.9.x and 0.10.x.
+ * Removed debugging statement from `json` module (issue 82).
+ * Fixed a few bugs resulting from typos.
+ * Added a `replicate()` method to the `client.Server` class (issue 61).
+ * Honor the boundary argument in the dump script code (issue 100).
+ * Added a `stats()` method to the `client.Server` class.
+ * Added a `tasks()` method to the `client.Server` class.
+ * Allow slashes in path components passed to the uri function (issue 96).
+ * `schema.DictField` objects now have a separate backing dictionary for each
+   instance of their `schema.Document` (issue 101).
+ * `schema.ListField` proxy objects now have a more consistent (though somewhat
+   slower) `count()` method (issue 91).
+ * `schema.ListField` objects now have correct behavior for slicing operations
+   and the `pop()` method (issue 92).
+ * Added a `revisions()` method to the Database class (issue 99).
+ * Make sure we always return UTF-8 from the view server (issue 81).
+
+
+Version 0.6
+http://couchdb-python.googlecode.com/hg/?r=0.6.0
+(Jul 2, 2009, from 0.6.x)
+
+ * Compatible with CouchDB 0.9.x.
+ * `schema.DictField` instances no longer need to be bound to a `Schema`
+   (issue 51).
+ * Added a `config` property to the `client.Server` class (issue 67).
+ * Added a `compact()` method to the `client.Database` class (issue 37).
+ * Changed the `update()` method of the `client.Database` class to simplify
+   the handling of errors. The method now returns a list of `(success, docid,
+   rev_or_exc)` tuples. See the docstring of that method for the details.
+ * `schema.ListField` proxy objects now support the `__contains__()` and
+   `index()` methods (issue 77).
+ * The results of the `query()` and `view()` methods in the `schema.Document`
+   class are now properly wrapped in objects of the class if the `include_docs`
+   option is set (issue 76).
+ * Removed the `eager` option on the `query()` and `view()` methods of
+   `schema.Document`. Use the `include_docs` option instead, which doesn't
+   require an additional request per document.
+ * Added a `copy()` method to the `client.Database` class, which translates to
+   a HTTP COPY request (issue 74).
+ * Accessing a non-existing database through `Server.__getitem__` now throws
+   a `ResourceNotFound` exception as advertised (issue 41).
+ * Added a `delete()` method to the `client.Server` class for consistency
+   (issue 64).
+ * The `couchdb-dump` tool now operates in a streaming fashion, writing one
+   document at a time to the resulting MIME multipart file (issue 58).
+ * It is now possible to explicitly set the JSON module that should be used
+   for decoding/encoding JSON data. The currently available choices are
+   `simplejson`, `cjson`, and `json` (the standard library module). It is also
+   possible to use custom decoding/encoding functions.
+ * Add logging to the Python view server. It can now be configured to log to a
+   given file or the standard error stream, and the log level can be set debug
+   to see all communication between CouchDB and the view server (issue 55).
+
+
 Version 0.5
-http://couchdb-python.googlecode.com/svn/tags/0.5.0
-(Nov 28, 2008, from branches/0.5.x)
+http://couchdb-python.googlecode.com/hg/?r=0.5.0
+(Nov 28, 2008, from 0.5.x)
 
  * `schema.Document` objects can now be used in the documents list passed to
    `client.Database.update()`.
@@ -33,8 +92,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.5.0
 
 
 Version 0.4
-http://couchdb-python.googlecode.com/svn/tags/0.4.0
-(Jun 28, 2008, from branches/0.4.x)
+http://couchdb-python.googlecode.com/hg/?r=0.4.0
+(Jun 28, 2008, from 0.4.x)
 
  * Updated for compatibility with CouchDB 0.8.0
  * Added command-line scripts for importing/exporting databases.
@@ -44,8 +103,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.4.0
 
 
 Version 0.3
-http://couchdb-python.googlecode.com/svn/tags/0.3.0
-(Feb 6, 2008, from branches/0.3.x)
+http://couchdb-python.googlecode.com/hg/?r=0.3.0
+(Feb 6, 2008, from 0.3.x)
 
  * The `schema.Document` class now has a `view()` method that can be used to
    execute a CouchDB view and map the result rows back to objects of that
@@ -57,8 +116,8 @@ http://couchdb-python.googlecode.com/svn/tags/0.3.0
 
 
 Version 0.2
-http://couchdb-python.googlecode.com/svn/tags/0.2.0
-(Nov 21, 2007, from branches/0.2.x)
+http://couchdb-python.googlecode.com/hg/?r=0.2.0
+(Nov 21, 2007, from 0.2.x)
 
  * Added __len__ and __iter__ to the `schema.Schema` class to iterate
    over and get the number of items in a document or compound field.
@@ -85,7 +144,7 @@ http://couchdb-python.googlecode.com/svn/tags/0.2.0
 
 
 Version 0.1
-http://couchdb-python.googlecode.com/svn/tags/0.1.0
-(Sep 23, 2007, from branches/0.1.x)
+http://couchdb-python.googlecode.com/hg/?r=0.1.0
+(Sep 23, 2007, from 0.1.x)
 
  * First public release.

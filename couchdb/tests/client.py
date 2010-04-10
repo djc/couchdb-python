@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Christopher Lenz
+# Copyright (C) 2007-2009 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,18 +14,91 @@ import StringIO
 from couchdb import client
 
 
+class ServerTestCase(unittest.TestCase):
+
+    def setUp(self):
+        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
+        self.server = client.Server(uri)
+
+    def tearDown(self):
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
+        try:
+            self.server.delete('python-tests-a')
+        except client.ResourceNotFound:
+            pass
+
+    def test_server_vars(self):
+        version = self.server.version
+        config = self.server.config
+        stats = self.server.stats()
+        tasks = self.server.tasks()
+
+    def test_get_db_missing(self):
+        self.assertRaises(client.ResourceNotFound,
+                          lambda: self.server['python-tests'])
+
+    def test_create_db_conflict(self):
+        self.server.create('python-tests')
+        self.assertRaises(client.PreconditionFailed, self.server.create,
+                          'python-tests')
+
+    def test_delete_db(self):
+        self.server.create('python-tests')
+        assert 'python-tests' in self.server
+        self.server.delete('python-tests')
+        assert 'python-tests' not in self.server
+
+    def test_delete_db_missing(self):
+        self.assertRaises(client.ResourceNotFound, self.server.delete,
+                          'python-tests')
+
+    def test_replicate(self):
+        a = self.server.create('python-tests')
+        id = a.create({'test': 'a'})
+        b = self.server.create('python-tests-a')
+        result = self.server.replicate('python-tests', 'python-tests-a')
+        self.assertEquals(result['ok'], True)
+        self.assertEquals(b[id]['test'], 'a')
+
+        doc = b[id]
+        doc['test'] = 'b'
+        b.update([doc])
+        self.server.replicate(client.DEFAULT_BASE_URI + 'python-tests-a',
+                              'python-tests')
+        self.assertEquals(b[id]['test'], 'b')
+
+    def test_replicate_continuous(self):
+        a = self.server.create('python-tests')
+        b = self.server.create('python-tests-a')
+        result = self.server.replicate('python-tests', 'python-tests-a', continuous=True)
+        self.assertEquals(result['ok'], True)
+        version = tuple(int(i) for i in self.server.version.split('.')[:2])
+        if version >= (0, 10):
+            self.assertTrue('_local_id' in result)
+
 class DatabaseTestCase(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URI)
         self.server = client.Server(uri)
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        if 'python-tests' in self.server:
-            del self.server['python-tests']
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
+
+    def test_create_large_doc(self):
+        self.db['foo'] = {'data': '0123456789' * 110 * 1024} # 10 MB
+        self.assertEqual('foo', self.db['foo']['_id'])
 
     def test_doc_id_quoting(self):
         self.db['foo/bar'] = {'foo': 'bar'}
@@ -59,6 +132,22 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(new_rev, new_doc['_rev'])
         old_doc = self.db.get('foo', rev=old_rev)
         self.assertEqual(old_rev, old_doc['_rev'])
+
+        revs = [i for i in self.db.revisions('foo')]
+        self.assertEqual(revs[0]['_rev'], new_rev)
+        self.assertEqual(revs[1]['_rev'], old_rev)
+
+        self.assertTrue(self.db.compact())
+        while self.db.info()['compact_running']:
+            pass
+
+        # 0.10 responds with 404, 0.9 responds with 500, same content
+        doc = 'fail'
+        try:
+            doc = self.db.get('foo', rev=old_rev)
+        except client.ServerError:
+            doc = None
+        assert doc is None
 
     def test_attachment_crud(self):
         doc = {'bar': 42}
@@ -150,9 +239,89 @@ class DatabaseTestCase(unittest.TestCase):
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
 
+    def test_view_function_objects(self):
+        if 'python' not in self.server.config['query_servers']:
+            return
+
+        for i in range(1, 4):
+            self.db.create({'i': i, 'j':2*i})
+
+        def map_fun(doc):
+            yield doc['i'], doc['j']
+        res = list(self.db.query(map_fun, language='python'))
+        self.assertEqual(3, len(res))
+        for idx, i in enumerate(range(1,4)):
+            self.assertEqual(i, res[idx].key)
+            self.assertEqual(2*i, res[idx].value)
+
+        def reduce_fun(keys, values):
+            return sum(values)
+        res = list(self.db.query(map_fun, reduce_fun, 'python'))
+        self.assertEqual(1, len(res))
+        self.assertEqual(12, res[0].value)
+
+    def test_bulk_update_conflict(self):
+        docs = [
+            dict(type='Person', name='John Doe'),
+            dict(type='Person', name='Mary Jane'),
+            dict(type='City', name='Gotham City')
+        ]
+        self.db.update(docs)
+
+        # update the first doc to provoke a conflict in the next bulk update
+        doc = docs[0].copy()
+        self.db[doc['_id']] = doc
+
+        results = self.db.update(docs)
+        self.assertEqual(False, results[0][0])
+        assert isinstance(results[0][2], client.ResourceConflict)
+
+    def test_bulk_update_all_or_nothing(self):
+        docs = [
+            dict(type='Person', name='John Doe'),
+            dict(type='Person', name='Mary Jane'),
+            dict(type='City', name='Gotham City')
+        ]
+        self.db.update(docs)
+
+        # update the first doc to provoke a conflict in the next bulk update
+        doc = docs[0].copy()
+        doc['name'] = 'Jane Doe'
+        self.db[doc['_id']] = doc
+
+        results = self.db.update(docs, all_or_nothing=True)
+        self.assertEqual(True, results[0][0])
+
+        doc = self.db.get(doc['_id'], conflicts=True)
+        assert '_conflicts' in doc
+
+    def test_copy_doc(self):
+        self.db['foo'] = {'status': 'testing'}
+        result = self.db.copy('foo', 'bar')
+        self.assertEqual(result, self.db['bar'].rev)
+
+    def test_copy_doc_conflict(self):
+        self.db['bar'] = {'status': 'idle'}
+        self.db['foo'] = {'status': 'testing'}
+        self.assertRaises(client.ResourceConflict, self.db.copy, 'foo', 'bar')
+
+    def test_copy_doc_overwrite(self):
+        self.db['bar'] = {'status': 'idle'}
+        self.db['foo'] = {'status': 'testing'}
+        result = self.db.copy('foo', self.db['bar'])
+        doc = self.db['bar']
+        self.assertEqual(result, doc.rev)
+        self.assertEqual('testing', doc['status'])
+
+    def test_copy_doc_srcobj(self):
+        self.db['foo'] = {'status': 'testing'}
+        self.db.copy(self.db['foo'], 'bar')
+        self.assertEqual('testing', self.db['bar']['status'])
+
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite

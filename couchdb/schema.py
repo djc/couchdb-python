@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007-2008 Christopher Lenz
+# Copyright (C) 2007-2009 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -149,9 +149,16 @@ class Schema(object):
     def __setitem__(self, name, value):
         self._data[name] = value
 
+    def get(self, name, default):
+        return self._data.get(name, default)
+
+    def setdefault(self, name, default):
+        return self._data.setdefault(name, default)
+
     def unwrap(self):
         return self._data
 
+    @classmethod
     def build(cls, **d):
         fields = {}
         for attrname, attrval in d.items():
@@ -160,13 +167,12 @@ class Schema(object):
             fields[attrname] = attrval
         d['_fields'] = fields
         return type('AnonymousStruct', (cls,), d)
-    build = classmethod(build)
 
+    @classmethod
     def wrap(cls, data):
         instance = cls()
         instance._data = data
         return instance
-    wrap = classmethod(wrap)
 
     def _to_python(self, value):
         return self.wrap(value)
@@ -184,14 +190,14 @@ class View(object):
     ...     age = IntegerField()
     ...     by_name = View('people', '''\
     ...         function(doc) {
-    ...             emit(doc.name, doc.age);
+    ...             emit(doc.name, doc);
     ...         }''')
     >>> Person.by_name
-    <ViewDefinition '_view/people/by_name'>
+    <ViewDefinition '_design/people/_view/by_name'>
     
     >>> print Person.by_name.map_fun
     function(doc) {
-        emit(doc.name, doc.age);
+        emit(doc.name, doc);
     }
     
     That property can be used as a function, which will execute the view.
@@ -200,16 +206,37 @@ class View(object):
     >>> db = Database('http://localhost:5984/python-tests')
     
     >>> Person.by_name(db, count=3)
-    <ViewResults <PermanentView '_view/people/by_name'> {'count': 3}>
+    <ViewResults <PermanentView '_design/people/_view/by_name'> {'count': 3}>
     
-    Actual results produced are automatically wrapped in the `Document`
-    subclass the descriptor is bound to. In this example, it would return
-    instances of the `Person` class.
+    The results produced by the view are automatically wrapped in the
+    `Document` subclass the descriptor is bound to. In this example, it would
+    return instances of the `Person` class. But please note that this requires
+    the values of the view results to be dictionaries that can be mapped to the
+    schema defined by the containing `Document` class. Alternatively, the
+    ``include_docs`` query option can be used to inline the actual documents in
+    the view results, which will then be used instead of the values.
+    
+    If you use Python view functions, this class can also be used as a
+    decorator:
+    
+    >>> class Person(Document):
+    ...     name = TextField()
+    ...     age = IntegerField()
+    ...
+    ...     @View.define('people')
+    ...     def by_name(doc):
+    ...         yield doc['name'], doc
+    
+    >>> Person.by_name
+    <ViewDefinition '_design/people/_view/by_name'>
+
+    >>> print Person.by_name.map_fun
+    def by_name(doc):
+        yield doc['name'], doc
     """
 
-    def __init__(self, design, map_fun, reduce_fun=None,
-                 name=None, language='javascript', wrapper=DEFAULT,
-                 **defaults):
+    def __init__(self, design, map_fun, reduce_fun=None, name=None,
+                 language='javascript', wrapper=DEFAULT, **defaults):
         """Initialize the view descriptor.
         
         :param design: the name of the design document
@@ -229,6 +256,17 @@ class View(object):
         self.language = language
         self.wrapper = wrapper
         self.defaults = defaults
+
+    @classmethod
+    def define(cls, design, name=None, language='python', wrapper=DEFAULT,
+               **defaults):
+        """Factory method for use as a decorator (only suitable for Python
+        view code).
+        """
+        def view_wrapped(fun):
+            return cls(design, fun, language=language, wrapper=wrapper,
+                       **defaults)
+        return view_wrapped
 
     def __get__(self, instance, cls=None):
         if self.wrapper is DEFAULT:
@@ -276,13 +314,17 @@ class Document(Schema):
         if self.id is not None:
             raise AttributeError('id can only be set on new documents')
         self._data['_id'] = value
-    id = property(_get_id, _set_id)
+    id = property(_get_id, _set_id, doc='The document ID')
 
+    @property
     def rev(self):
+        """The document revision.
+        
+        :type: basestring
+        """
         if hasattr(self._data, 'rev'): # When data is client.Document
             return self._data.rev
         return self._data.get('_rev')
-    rev = property(rev)
 
     def items(self):
         """Return the fields as a list of ``(name, value)`` tuples.
@@ -310,6 +352,7 @@ class Document(Schema):
                 retval.append((name, value))
         return retval
 
+    @classmethod
     def load(cls, db, id):
         """Load a specific document from the given database.
         
@@ -322,7 +365,6 @@ class Document(Schema):
         if doc is None:
             return None
         return cls.wrap(doc)
-    load = classmethod(load)
 
     def store(self, db):
         """Store the document in the given database."""
@@ -333,51 +375,42 @@ class Document(Schema):
             db[self.id] = self._data
         return self
 
-    def query(cls, db, map_fun, reduce_fun, language='javascript',
-              eager=False, **options):
+    @classmethod
+    def query(cls, db, map_fun, reduce_fun, language='javascript', **options):
         """Execute a CouchDB temporary view and map the result values back to
         objects of this schema.
         
         Note that by default, any properties of the document that are not
         included in the values of the view will be treated as if they were
-        missing from the document. If you'd rather want to load the full
-        document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document, unless the
-        `include_docs` option is explitly specified.
+        missing from the document. If you want to load the full document for
+        every row, set the ``include_docs`` option to ``True``.
         """
         def _wrapper(row):
-            if eager:
-                if row.doc is not None:
-                    return row.doc
-                return cls.load(db, row.id)
+            if row.doc is not None:
+                return cls.wrap(row.doc)
             data = row.value
             data['_id'] = row.id
             return cls.wrap(data)
         return db.query(map_fun, reduce_fun=reduce_fun, language=language,
                         wrapper=_wrapper, **options)
-    query = classmethod(query)
 
-    def view(cls, db, viewname, eager=False, **options):
+    @classmethod
+    def view(cls, db, viewname, **options):
         """Execute a CouchDB named view and map the result values back to
         objects of this schema.
         
         Note that by default, any properties of the document that are not
         included in the values of the view will be treated as if they were
-        missing from the document. If you'd rather want to load the full
-        document for every row, set the `eager` option to `True`, but note that
-        this will initiate a new HTTP request for every document, unless the
-        `include_docs` option is explitly specified.
+        missing from the document. If you want to load the full document for
+        every row, set the ``include_docs`` option to ``True``.
         """
         def _wrapper(row):
-            if eager:
-                if row.doc is not None:
-                    return row.doc
-                return cls.load(db, row.id)
+            if row.doc is not None: # include_docs=True
+                return cls.wrap(row.doc)
             data = row.value
             data['_id'] = row.id
             return cls.wrap(data)
         return db.view(viewname, wrapper=_wrapper, **options)
-    view = classmethod(view)
 
 
 class TextField(Field):
@@ -513,9 +546,14 @@ class DictField(Field):
     ...         name = TextField(),
     ...         email = TextField()
     ...     ))
+    ...     extra = DictField()
 
-    >>> post = Post(title='Foo bar', author=dict(name='John Doe',
-    ...                                          email='john@doe.com'))
+    >>> post = Post(
+    ...     title='Foo bar',
+    ...     author=dict(name='John Doe',
+    ...                 email='john@doe.com'),
+    ...     extra=dict(foo='bar'),
+    ... )
     >>> post.store(db) #doctest: +ELLIPSIS
     <Post ...>
     >>> post = Post.load(db, post.id)
@@ -523,17 +561,25 @@ class DictField(Field):
     u'John Doe'
     >>> post.author.email
     u'john@doe.com'
+    >>> post.extra
+    {'foo': 'bar'}
 
     >>> del server['python-tests']
     """
-    def __init__(self, schema, name=None, default=None):
-        Field.__init__(self, name=name, default=default or {})
+    def __init__(self, schema=None, name=None, default=None):
+        default = default or {}
+        Field.__init__(self, name=name, default=lambda: default.copy())
         self.schema = schema
 
     def _to_python(self, value):
-        return self.schema.wrap(value)
+        if self.schema is None:
+            return value
+        else:
+            return self.schema.wrap(value)
 
     def _to_json(self, value):
+        if self.schema is None:
+            return value
         if not isinstance(value, Schema):
             value = self.schema(**value)
         return value.unwrap()
@@ -631,7 +677,22 @@ class ListField(Field):
             return self.field._to_python(self.list[index])
 
         def __setitem__(self, index, value):
-            self.list[index] = self.field._to_json(item)
+            self.list[index] = self.field._to_json(value)
+
+        def __delslice__(self, i, j):
+            del self.list[i:j]
+
+        def __getslice__(self, i, j):
+            return ListField.Proxy(self.list[i:j], self.field)
+
+        def __setslice__(self, i, j, seq):
+            self.list[i:j] = (self.field._to_json(v) for v in seq)
+
+        def __contains__(self, value):
+            for item in self.list:
+                if self.field._to_python(item) == value:
+                    return True
+            return False
 
         def __iter__(self):
             for index in range(len(self)):
@@ -644,14 +705,37 @@ class ListField(Field):
             return bool(self.list)
 
         def append(self, *args, **kwargs):
-            if args:
-                assert len(args) == 1
+            if args or not isinstance(self.field, DictField):
+                if len(args) != 1:
+                    raise TypeError('append() takes exactly one argument '
+                                    '(%s given)' % len(args))
                 value = args[0]
             else:
                 value = kwargs
-            value = self.field._to_json(value)
-            self.list.append(value)
+            self.list.append(self.field._to_json(value))
+
+        def count(self, value):
+            return [i for i in self].count(value)
 
         def extend(self, list):
             for item in list:
                 self.append(item)
+
+        def index(self, value):
+            return self.list.index(self.field._to_json(value))
+
+        def insert(self, idx, *args, **kwargs):
+            if args or not isinstance(self.field, DictField):
+                if len(args) != 1:
+                    raise TypeError('insert() takes exactly 2 arguments '
+                                    '(%s given)' % len(args))
+                value = args[0]
+            else:
+                value = kwargs
+            self.list.insert(idx, self.field._to_json(value))
+
+        def remove(self, value):
+            return self.list.remove(self.field._to_json(value))
+
+        def pop(self, *args):
+            return self.field._to_python(self.list.pop(*args))
