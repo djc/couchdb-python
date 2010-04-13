@@ -76,8 +76,8 @@ class CouchTests(unittest.TestCase):
         self.assertEqual(2, len(result))
 
         # add more documents, and redo the query again
-        self.db.create({'a': 3, 'b': 9})
-        self.db.create({'a': 4, 'b': 16})
+        self.db.save({'a': 3, 'b': 9})
+        self.db.save({'a': 4, 'b': 16})
         result = list(self.db.query(query))
         self.assertEqual(3, len(result))
         self.assertEqual(6, len(self.db))
@@ -176,10 +176,10 @@ class CouchTests(unittest.TestCase):
     def test_large_docs(self):
         size = 100
         longtext = '0123456789\n' * size
-        self.db.create({'longtext': longtext})
-        self.db.create({'longtext': longtext})
-        self.db.create({'longtext': longtext})
-        self.db.create({'longtext': longtext})
+        self.db.save({'longtext': longtext})
+        self.db.save({'longtext': longtext})
+        self.db.save({'longtext': longtext})
+        self.db.save({'longtext': longtext})
 
         query = """function(doc) {
             emit(null, doc.longtext);

@@ -86,7 +86,7 @@ class ServerTestCase(unittest.TestCase):
 
     def test_replicate(self):
         a = self.server.create('python-tests')
-        id = a.create({'test': 'a'})
+        id, rev = a.save({'test': 'a'})
         b = self.server.create('python-tests-a')
         result = self.server.replicate('python-tests', 'python-tests-a')
         self.assertEquals(result['ok'], True)
@@ -353,7 +353,7 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
 
     def test_query_multi_get(self):
         for i in range(1, 6):
-            self.db.create({'i': i})
+            self.db.save({'i': i})
         res = list(self.db.query('function(doc) { emit(doc.i, null); }',
                                  keys=range(1, 6, 2)))
         self.assertEqual(3, len(res))
@@ -485,7 +485,7 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
     def test_changes_heartbeat(self):
         def wakeup():
             time.sleep(.3)
-            self.db.create({})
+            self.db.save({})
         threading.Thread(target=wakeup).start()
         for change in self.db.changes(feed='continuous', heartbeat=100):
             break
@@ -495,7 +495,7 @@ class ViewTestCase(TempDatabaseMixin, unittest.TestCase):
 
     def test_view_multi_get(self):
         for i in range(1, 6):
-            self.db.create({'i': i})
+            self.db.save({'i': i})
         self.db['_design/test'] = {
             'language': 'javascript',
             'views': {
@@ -510,7 +510,7 @@ class ViewTestCase(TempDatabaseMixin, unittest.TestCase):
 
     def test_view_compaction(self):
         for i in range(1, 6):
-            self.db.create({'i': i})
+            self.db.save({'i': i})
         self.db['_design/test'] = {
             'language': 'javascript',
             'views': {
@@ -526,7 +526,7 @@ class ViewTestCase(TempDatabaseMixin, unittest.TestCase):
             return
 
         for i in range(1, 4):
-            self.db.create({'i': i, 'j':2*i})
+            self.db.save({'i': i, 'j':2*i})
 
         def map_fun(doc):
             yield doc['i'], doc['j']

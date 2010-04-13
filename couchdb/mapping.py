@@ -371,11 +371,7 @@ class Document(Mapping):
 
     def store(self, db):
         """Store the document in the given database."""
-        if self.id is None:
-            docid = db.create(self._data)
-            self._data = db.get(docid)
-        else:
-            db[self.id] = self._data
+        db.save(self._data)
         return self
 
     @classmethod
