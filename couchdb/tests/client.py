@@ -141,6 +141,43 @@ class TempDatabaseMixin(object):
 
 class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
 
+    def test_save_new(self):
+        doc = {'foo': 'bar'}
+        id, rev = self.db.save(doc)
+        self.assertTrue(id is not None)
+        self.assertTrue(rev is not None)
+        self.assertEqual((id, rev), (doc['_id'], doc['_rev']))
+        doc = self.db.get(id)
+        self.assertEqual(doc['foo'], 'bar')
+
+    def test_save_new_with_id(self):
+        doc = {'_id': 'foo'}
+        id, rev = self.db.save(doc)
+        self.assertTrue(doc['_id'] == id == 'foo')
+        self.assertEqual(doc['_rev'], rev)
+
+    def test_save_existing(self):
+        doc = {}
+        id_rev_old = self.db.save(doc)
+        doc['foo'] = True
+        id_rev_new = self.db.save(doc)
+        self.assertTrue(doc['_rev'] == id_rev_new[1])
+        self.assertTrue(id_rev_old[1] != id_rev_new[1])
+
+    def test_save_new_batch(self):
+        doc = {'_id': 'foo'}
+        id, rev = self.db.save(doc, batch='ok')
+        self.assertTrue(rev is None)
+        self.assertTrue('_rev' not in doc)
+
+    def test_save_existing_batch(self):
+        doc = {'_id': 'foo'}
+        self.db.save(doc)
+        id_rev_old = self.db.save(doc)
+        id_rev_new = self.db.save(doc, batch='ok')
+        self.assertTrue(id_rev_new[1] is None)
+        self.assertEqual(id_rev_old[1], doc['_rev'])
+
     def test_exists(self):
         self.assertTrue(client.Database(client.DEFAULT_BASE_URL+'python-tests'))
         self.assertFalse(client.Database('python-tests-missing'))

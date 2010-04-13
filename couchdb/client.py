@@ -357,6 +357,40 @@ class Database(object):
         _, _, data = self.resource.post_json(body=data)
         return data['id']
 
+    def save(self, doc, **options):
+        """Create a new document or update an existing document.
+
+        If doc has no _id then the server will allocate a random ID and a new
+        document will be created. Otherwise the doc's _id will be used to
+        identity the document to create or update. Trying to update an existing
+        document with an incorrect _rev will raise a ResourceConflict exception.
+
+        Note that it is generally better to avoid saving documents with no _id
+        and instead generate document IDs on the client side. This is due to
+        the fact that the underlying HTTP ``POST`` method is not idempotent,
+        and an automatic retry due to a problem somewhere on the networking
+        stack may cause multiple documents being created in the database.
+
+        To avoid such problems you can generate a UUID on the client side.
+        Python (since version 2.5) comes with a ``uuid`` module that can be
+        used for this::
+
+            from uuid import uuid4
+            doc = {'_id': uuid4().hex, 'type': 'person', 'name': 'John Doe'}
+            db.save(doc)
+
+        :param doc: the document to store
+        :param options: optional args, e.g. batch='ok'
+        :return: (id, rev) tuple of the save document
+        :rtype: `tuple`
+        """
+        _, _, data = self.resource.post_json(body=doc, **options)
+        id, rev = data['id'], data.get('rev')
+        doc['_id'] = id
+        if rev is not None: # Not present for batch='ok'
+            doc['_rev'] = rev
+        return id, rev
+
     def commit(self):
         """If the server is configured to delay commits, or previous requests
         used the special ``X-Couch-Full-Commit: false`` header to disable
