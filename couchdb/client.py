@@ -504,8 +504,10 @@ class Database(object):
             _, _, data = self.resource.get_json(id, **options)
         except http.ResourceNotFound:
             return default
-        else:
+        if hasattr(data, 'items'):
             return Document(data)
+        else:
+            return data
 
     def revisions(self, id, **options):
         """Return all available revisions of the given document.

@@ -394,6 +394,8 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
 
         doc = self.db.get(doc['_id'], conflicts=True)
         assert '_conflicts' in doc
+        revs = self.db.get(doc['_id'], open_revs='all')
+        assert len(revs) == 2
 
     def test_bulk_update_bad_doc(self):
         self.assertRaises(TypeError, self.db.update, [object()])
