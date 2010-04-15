@@ -17,6 +17,7 @@ import errno
 from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
 import re
 import socket
+import time
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -81,8 +82,8 @@ CHUNK_SIZE = 1024 * 8
 CACHE_SIZE = 10, 75 # some random values to limit memory use
 
 def cache_sort(i):
-    return datetime.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S')
-
+    t = time.mktime(time.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S'))
+    return datetime.fromtimestamp(t)
 
 class ResponseBody(object):
 
