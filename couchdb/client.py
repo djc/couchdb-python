@@ -70,7 +70,7 @@ class Server(object):
     def __init__(self, url=DEFAULT_BASE_URL, full_commit=True, session=None):
         """Initialize the server object.
 
-        :param uri: the URI of the server (for example
+        :param url: the URI of the server (for example
                     ``http://localhost:5984/``)
         :param full_commit: turn on the X-Couch-Full-Commit header
         :param session: an http.Session instance or None for a default session
@@ -144,7 +144,7 @@ class Server(object):
         options from the configuration files of the server, or the default
         values for options that are not explicitly configured.
 
-        :type: `dict`
+        :rtype: `dict`
         """
         status, headers, data = self.resource.get_json('_config')
         return data
@@ -155,7 +155,7 @@ class Server(object):
         Note that this results in a request being made, and can also be used
         to check for the availability of the server.
 
-        :type: `unicode`"""
+        :rtype: `unicode`"""
         status, headers, data = self.resource.get_json()
         return data['version']
 
@@ -327,7 +327,7 @@ class Database(object):
         Note that this may require a request to the server unless the name has
         already been cached by the `info()` method.
 
-        :type: basestring
+        :rtype: basestring
         """
         if self._name is None:
             self.info()
@@ -797,7 +797,7 @@ class Document(dict):
     def id(self):
         """The document ID.
 
-        :type: basestring
+        :rtype: basestring
         """
         return self['_id']
 
@@ -805,7 +805,7 @@ class Document(dict):
     def rev(self):
         """The document revision.
 
-        :type: basestring
+        :rtype: basestring
         """
         return self['_rev']
 
@@ -980,7 +980,7 @@ class ViewResults(object):
     def rows(self):
         """The list of rows returned by the view.
 
-        :type: `list`
+        :rtype: `list`
         """
         if self._rows is None:
             self._fetch()
@@ -992,7 +992,7 @@ class ViewResults(object):
 
         This value is `None` for reduce views.
 
-        :type: `int` or ``NoneType`` for reduce views
+        :rtype: `int` or ``NoneType`` for reduce views
         """
         if self._rows is None:
             self._fetch()
@@ -1004,7 +1004,7 @@ class ViewResults(object):
 
         This value is 0 for reduce views.
 
-        :type: `int`
+        :rtype: `int`
         """
         if self._rows is None:
             self._fetch()

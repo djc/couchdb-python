@@ -323,7 +323,7 @@ class Document(Mapping):
     def rev(self):
         """The document revision.
         
-        :type: basestring
+        :rtype: basestring
         """
         if hasattr(self._data, 'rev'): # When data is client.Document
             return self._data.rev
