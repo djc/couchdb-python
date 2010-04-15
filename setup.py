@@ -103,14 +103,14 @@ class test_doc(Command):
             doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
-requirements = ['httplib2']
+requirements = []
 if sys.version_info < (2, 6):
     requirements += ['simplejson']
 
 
 setup(
     name = 'CouchDB',
-    version = '0.6.2-dev',
+    version = '0.7',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level

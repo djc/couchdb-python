@@ -7,19 +7,18 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import shutil
 import os
-import tempfile
 import unittest
-from couchdb import ResourceConflict, ResourceNotFound, Server
+
+from couchdb.client import Server
+from couchdb.http import ResourceConflict, ResourceNotFound
 
 
 class CouchTests(unittest.TestCase):
 
     def setUp(self):
         uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.cache_dir = tempfile.mkdtemp(prefix='couchdb')
-        self.server = Server(uri, cache=self.cache_dir)
+        self.server = Server(uri, full_commit=False)
         try:
             self.server.delete('python-tests')
         except ResourceNotFound:
@@ -31,7 +30,6 @@ class CouchTests(unittest.TestCase):
             self.server.delete('python-tests')
         except ResourceNotFound:
             pass
-        shutil.rmtree(self.cache_dir)
 
     def _create_test_docs(self, num):
         for i in range(num):
@@ -78,8 +76,8 @@ class CouchTests(unittest.TestCase):
         self.assertEqual(2, len(result))
 
         # add more documents, and redo the query again
-        self.db.create({'a': 3, 'b': 9})
-        self.db.create({'a': 4, 'b': 16})
+        self.db.save({'a': 3, 'b': 9})
+        self.db.save({'a': 4, 'b': 16})
         result = list(self.db.query(query))
         self.assertEqual(3, len(result))
         self.assertEqual(6, len(self.db))
@@ -178,10 +176,10 @@ class CouchTests(unittest.TestCase):
     def test_large_docs(self):
         size = 100
         longtext = '0123456789\n' * size
-        self.db.create({'longtext': longtext})
-        self.db.create({'longtext': longtext})
-        self.db.create({'longtext': longtext})
-        self.db.create({'longtext': longtext})
+        self.db.save({'longtext': longtext})
+        self.db.save({'longtext': longtext})
+        self.db.save({'longtext': longtext})
+        self.db.save({'longtext': longtext})
 
         query = """function(doc) {
             emit(null, doc.longtext);
@@ -236,7 +234,9 @@ class CouchTests(unittest.TestCase):
             self.db[str(idx + 1)] = {'foo': value}
 
         query = """function(doc) {
-            emit(doc.foo, null);
+            if(doc.foo !== undefined) {
+                emit(doc.foo, null);
+            }
         }"""
         rows = iter(self.db.query(query))
         self.assertEqual(None, rows.next().value)

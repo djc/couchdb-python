@@ -10,7 +10,7 @@
 
 >>> server = Server('http://localhost:5984/')
 >>> db = server.create('python-tests')
->>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
+>>> doc_id, doc_rev = db.save({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
 >>> doc['type']
 'Person'
@@ -23,48 +23,21 @@ False
 >>> del server['python-tests']
 """
 
-import httplib2
 import mimetypes
-from urllib import quote, urlencode
+import os
 from types import FunctionType
 from inspect import getsource
 from textwrap import dedent
 import re
-import socket
+import warnings
 
-from couchdb import json
+from couchdb import http, json
 
-__all__ = ['PreconditionFailed', 'ResourceNotFound', 'ResourceConflict',
-           'ServerError', 'Server', 'Database', 'Document', 'ViewResults',
-           'Row']
+__all__ = ['Server', 'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
 
 
-DEFAULT_BASE_URI = 'http://localhost:5984/'
-
-
-class PreconditionFailed(Exception):
-    """Exception raised when a 412 HTTP error is received in response to a
-    request.
-    """
-
-
-class ResourceNotFound(Exception):
-    """Exception raised when a 404 HTTP error is received in response to a
-    request.
-    """
-
-
-class ResourceConflict(Exception):
-    """Exception raised when a 409 HTTP error is received in response to a
-    request.
-    """
-
-
-class ServerError(Exception):
-    """Exception raised when an unexpected HTTP error is received in response
-    to a request.
-    """
+DEFAULT_BASE_URL = 'http://localhost:5984/'
 
 
 class Server(object):
@@ -94,20 +67,20 @@ class Server(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri=DEFAULT_BASE_URI, cache=None, timeout=None):
+    def __init__(self, url=DEFAULT_BASE_URL, full_commit=True, session=None):
         """Initialize the server object.
 
-        :param uri: the URI of the server (for example
+        :param url: the URI of the server (for example
                     ``http://localhost:5984/``)
-        :param cache: either a cache directory path (as a string) or an object
-                      compatible with the ``httplib2.FileCache`` interface. If
-                      `None` (the default), no caching is performed.
-        :param timeout: socket timeout in number of seconds, or `None` for no
-                        timeout
+        :param full_commit: turn on the X-Couch-Full-Commit header
+        :param session: an http.Session instance or None for a default session
         """
-        http = httplib2.Http(cache=cache, timeout=timeout)
-        http.force_exception_to_status_code = False
-        self.resource = Resource(http, uri)
+        if isinstance(url, basestring):
+            self.resource = http.Resource(url, session or http.Session())
+        else:
+            self.resource = url # treat as a Resource object
+        if not full_commit:
+            self.resource.headers['X-Couch-Full-Commit'] = 'false'
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -119,17 +92,17 @@ class Server(object):
         try:
             self.resource.head(validate_dbname(name))
             return True
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return False
 
     def __iter__(self):
         """Iterate over the names of all databases."""
-        resp, data = self.resource.get('_all_dbs')
+        status, headers, data = self.resource.get_json('_all_dbs')
         return iter(data)
 
     def __len__(self):
         """Return the number of databases."""
-        resp, data = self.resource.get('_all_dbs')
+        status, headers, data = self.resource.get_json('_all_dbs')
         return len(data)
 
     def __nonzero__(self):
@@ -141,7 +114,7 @@ class Server(object):
             return False
 
     def __repr__(self):
-        return '<%s %r>' % (type(self).__name__, self.resource.uri)
+        return '<%s %r>' % (type(self).__name__, self.resource.url)
 
     def __delitem__(self, name):
         """Remove the database with the specified name.
@@ -149,7 +122,7 @@ class Server(object):
         :param name: the name of the database
         :raise ResourceNotFound: if no database with that name exists
         """
-        self.resource.delete(validate_dbname(name))
+        self.resource.delete_json(validate_dbname(name))
 
     def __getitem__(self, name):
         """Return a `Database` object representing the database with the
@@ -160,12 +133,10 @@ class Server(object):
         :rtype: `Database`
         :raise ResourceNotFound: if no database with that name exists
         """
-        db = Database(uri(self.resource.uri, name), validate_dbname(name),
-                      http=self.resource.http)
+        db = Database(self.resource(name), validate_dbname(name))
         db.resource.head() # actually make a request to the database
         return db
 
-    @property
     def config(self):
         """The configuration of the CouchDB server.
 
@@ -173,30 +144,29 @@ class Server(object):
         options from the configuration files of the server, or the default
         values for options that are not explicitly configured.
 
-        :type: `dict`
+        :rtype: `dict`
         """
-        resp, data = self.resource.get('_config')
+        status, headers, data = self.resource.get_json('_config')
         return data
 
-    @property
     def version(self):
         """The version string of the CouchDB server.
 
         Note that this results in a request being made, and can also be used
         to check for the availability of the server.
 
-        :type: `unicode`"""
-        resp, data = self.resource.get()
+        :rtype: `unicode`"""
+        status, headers, data = self.resource.get_json()
         return data['version']
 
     def stats(self):
         """Database statistics."""
-        resp, data = self.resource.get('_stats')
+        status, headers, data = self.resource.get_json('_stats')
         return data
 
     def tasks(self):
         """A list of tasks currently active on the server."""
-        resp, data = self.resource.get('_active_tasks')
+        status, headers, data = self.resource.get_json('_active_tasks')
         return data
 
     def create(self, name):
@@ -207,7 +177,7 @@ class Server(object):
         :rtype: `Database`
         :raise PreconditionFailed: if a database with that name already exists
         """
-        self.resource.put(validate_dbname(name))
+        self.resource.put_json(validate_dbname(name))
         return self[name]
 
     def delete(self, name):
@@ -228,7 +198,7 @@ class Server(object):
         """
         data = {'source': source, 'target': target}
         data.update(options)
-        resp, data = self.resource.post('_replicate', data)
+        status, headers, data = self.resource.post_json('_replicate', data)
         return data
 
 
@@ -238,9 +208,9 @@ class Database(object):
     >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
-    New documents can be added to the database using the `create()` method:
+    New documents can be added to the database using the `save()` method:
 
-    >>> doc_id = db.create({'type': 'Person', 'name': 'John Doe'})
+    >>> doc_id, doc_rev = db.save({'type': 'Person', 'name': 'John Doe'})
 
     This class provides a dictionary-like interface to databases: documents are
     retrieved by their ID using item access
@@ -265,7 +235,7 @@ class Database(object):
     >>> doc['name'] = 'Mary Jane'
     >>> db[doc.id] = doc
 
-    The `create()` method creates a document with a random ID generated by
+    The `save()` method creates a document with a random ID generated by
     CouchDB (which is not recommended). If you want to explicitly specify the
     ID, you'd use item access just as with updating:
 
@@ -279,8 +249,13 @@ class Database(object):
     >>> del server['python-tests']
     """
 
-    def __init__(self, uri, name=None, http=None):
-        self.resource = Resource(http, uri)
+    def __init__(self, url, name=None, session=None):
+        if isinstance(url, basestring):
+            if not url.startswith('http'):
+                url = DEFAULT_BASE_URL + url
+            self.resource = http.Resource(url, session)
+        else:
+            self.resource = url
         self._name = name
 
     def __repr__(self):
@@ -296,7 +271,7 @@ class Database(object):
         try:
             self.resource.head(id)
             return True
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return False
 
     def __iter__(self):
@@ -305,7 +280,7 @@ class Database(object):
 
     def __len__(self):
         """Return the number of documents in the database."""
-        resp, data = self.resource.get()
+        _, _, data = self.resource.get_json()
         return data['doc_count']
 
     def __nonzero__(self):
@@ -321,8 +296,8 @@ class Database(object):
 
         :param id: the document ID
         """
-        resp, data = self.resource.head(id)
-        self.resource.delete(id, rev=resp['etag'].strip('"'))
+        status, headers, data = self.resource.head(id)
+        self.resource.delete_json(id, rev=headers['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -331,7 +306,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        resp, data = self.resource.get(id)
+        _, _, data = self.resource.get_json(id)
         return Document(data)
 
     def __setitem__(self, id, content):
@@ -342,7 +317,7 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        resp, data = self.resource.put(id, content=content)
+        status, headers, data = self.resource.put_json(id, body=content)
         content.update({'_id': data['id'], '_rev': data['rev']})
 
     @property
@@ -352,7 +327,7 @@ class Database(object):
         Note that this may require a request to the server unless the name has
         already been cached by the `info()` method.
 
-        :type: basestring
+        :rtype: basestring
         """
         if self._name is None:
             self.info()
@@ -380,19 +355,69 @@ class Database(object):
         :return: the ID of the created document
         :rtype: `unicode`
         """
-        resp, data = self.resource.post(content=data)
+        warnings.warn('Database.create is deprecated, please use Database.save instead [2010-04-13]',
+                      DeprecationWarning, stacklevel=2)
+        _, _, data = self.resource.post_json(body=data)
         return data['id']
 
-    def compact(self):
-        """Compact the database.
+    def save(self, doc, **options):
+        """Create a new document or update an existing document.
 
-        This will try to prune all revisions from the database.
+        If doc has no _id then the server will allocate a random ID and a new
+        document will be created. Otherwise the doc's _id will be used to
+        identity the document to create or update. Trying to update an existing
+        document with an incorrect _rev will raise a ResourceConflict exception.
+
+        Note that it is generally better to avoid saving documents with no _id
+        and instead generate document IDs on the client side. This is due to
+        the fact that the underlying HTTP ``POST`` method is not idempotent,
+        and an automatic retry due to a problem somewhere on the networking
+        stack may cause multiple documents being created in the database.
+
+        To avoid such problems you can generate a UUID on the client side.
+        Python (since version 2.5) comes with a ``uuid`` module that can be
+        used for this::
+
+            from uuid import uuid4
+            doc = {'_id': uuid4().hex, 'type': 'person', 'name': 'John Doe'}
+            db.save(doc)
+
+        :param doc: the document to store
+        :param options: optional args, e.g. batch='ok'
+        :return: (id, rev) tuple of the save document
+        :rtype: `tuple`
+        """
+        _, _, data = self.resource.post_json(body=doc, **options)
+        id, rev = data['id'], data.get('rev')
+        doc['_id'] = id
+        if rev is not None: # Not present for batch='ok'
+            doc['_rev'] = rev
+        return id, rev
+
+    def commit(self):
+        """If the server is configured to delay commits, or previous requests
+        used the special ``X-Couch-Full-Commit: false`` header to disable
+        immediate commits, this method can be used to ensure that any
+        non-committed changes are committed to physical storage.
+        """
+        _, _, data = self.resource.post_json('_ensure_full_commit')
+        return data
+
+    def compact(self, ddoc=None):
+        """Compact the database or a design document's index.
+
+        Without an argument, this will try to prune all old revisions from the
+        database. With an argument, it will compact the index cache for all
+        views in the design document specified.
 
         :return: a boolean to indicate whether the compaction was initiated
                  successfully
         :rtype: `bool`
         """
-        resp, data = self.resource.post('_compact')
+        if ddoc:
+            _, _, data = self.resource('_compact').post_json(ddoc)
+        else:
+            _, _, data = self.resource.post_json('_compact')
         return data['ok']
 
     def copy(self, src, dest):
@@ -410,7 +435,7 @@ class Database(object):
         if not isinstance(src, basestring):
             if not isinstance(src, dict):
                 if hasattr(src, 'items'):
-                    src = src.items()
+                    src = dict(src.items())
                 else:
                     raise TypeError('expected dict or string, got %s' %
                                     type(src))
@@ -419,18 +444,19 @@ class Database(object):
         if not isinstance(dest, basestring):
             if not isinstance(dest, dict):
                 if hasattr(dest, 'items'):
-                    dest = dest.items()
+                    dest = dict(dest.items())
                 else:
                     raise TypeError('expected dict or string, got %s' %
                                     type(dest))
             if '_rev' in dest:
-                dest = '%s?%s' % (unicode_quote(dest['_id']),
-                                  unicode_urlencode({'rev': dest['_rev']}))
+                dest = '%s?%s' % (http.quote(dest['_id']),
+                                  http.urlencode({'rev': dest['_rev']}))
             else:
-                dest = unicode_quote(dest['_id'])
+                dest = http.quote(dest['_id'])
 
-        resp, data = self.resource._request('COPY', src,
+        _, _, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})
+        data = json.decode(data.read())
         return data['rev']
 
     def delete(self, doc):
@@ -460,7 +486,9 @@ class Database(object):
         :raise ResourceConflict: if the document was updated in the database
         :since: 0.4.1
         """
-        self.resource.delete(doc['_id'], rev=doc['_rev'])
+        if doc['_id'] is None:
+            raise ValueError('document ID cannot be None')
+        self.resource.delete_json(doc['_id'], rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
         """Return the document with the specified ID.
@@ -473,11 +501,13 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            resp, data = self.resource.get(id, **options)
-        except ResourceNotFound:
+            _, _, data = self.resource.get_json(id, **options)
+        except http.ResourceNotFound:
             return default
-        else:
+        if hasattr(data, 'items'):
             return Document(data)
+        else:
+            return data
 
     def revisions(self, id, **options):
         """Return all available revisions of the given document.
@@ -487,8 +517,8 @@ class Database(object):
                  in reverse chronological order, if any were found
         """
         try:
-            resp, data = self.resource.get(id, revs=True)
-        except ResourceNotFound:
+            status, headers, data = self.resource.get_json(id, revs=True)
+        except http.ResourceNotFound:
             return
 
         startrev = data['_revisions']['start']
@@ -509,7 +539,7 @@ class Database(object):
         :rtype: ``dict``
         :since: 0.4
         """
-        resp, data = self.resource.get()
+        _, _, data = self.resource.get_json()
         self._name = data['db_name']
         return data
 
@@ -525,7 +555,8 @@ class Database(object):
         :param filename: the name of the attachment file
         :since: 0.4.1
         """
-        resp, data = self.resource(doc['_id']).delete(filename, rev=doc['_rev'])
+        resource = self.resource(doc['_id'])
+        _, _, data = resource.delete_json(filename, rev=doc['_rev'])
         doc['_rev'] = data['rev']
 
     def get_attachment(self, id_or_doc, filename, default=None):
@@ -546,9 +577,9 @@ class Database(object):
         else:
             id = id_or_doc['_id']
         try:
-            resp, data = self.resource(id).get(filename)
+            _, _, data = self.resource(id).get(filename)
             return data
-        except ResourceNotFound:
+        except http.ResourceNotFound:
             return default
 
     def put_attachment(self, doc, content, filename=None, content_type=None):
@@ -570,18 +601,18 @@ class Database(object):
                              extension
         :since: 0.4.1
         """
-        if hasattr(content, 'read'):
-            content = content.read()
         if filename is None:
             if hasattr(content, 'name'):
-                filename = content.name
+                filename = os.path.basename(content.name)
             else:
                 raise ValueError('no filename specified for attachment')
         if content_type is None:
-            content_type = ';'.join(filter(None, mimetypes.guess_type(filename)))
+            content_type = ';'.join(
+                filter(None, mimetypes.guess_type(filename))
+            )
 
-        resp, data = self.resource(doc['_id']).put(filename, content=content,
-                                                   headers={
+        resource = self.resource(doc['_id'])
+        status, headers, data = resource.put_json(filename, body=content, headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
         doc['_rev'] = data['rev']
@@ -625,9 +656,9 @@ class Database(object):
         :return: the view reults
         :rtype: `ViewResults`
         """
-        return TemporaryView(uri(self.resource.uri, '_temp_view'), map_fun,
-                             reduce_fun, language=language, wrapper=wrapper,
-                             http=self.resource.http)(**options)
+        return TemporaryView(self.resource('_temp_view'), map_fun,
+                             reduce_fun, language=language,
+                             wrapper=wrapper)(**options)
 
     def update(self, documents, **options):
         """Perform a bulk update or insertion of the given documents using a
@@ -657,7 +688,7 @@ class Database(object):
         If an object in the documents list is not a dictionary, this method
         looks for an ``items()`` method that can be used to convert the object
         to a dictionary. Effectively this means you can also use this method
-        with `schema.Document` objects.
+        with `mapping.Document` objects.
 
         :param documents: a sequence of dictionaries or `Document` objects, or
                           objects providing a ``items()`` method that can be
@@ -678,16 +709,16 @@ class Database(object):
 
         content = options
         content.update(docs=docs)
-        resp, data = self.resource.post('_bulk_docs', content=content)
+        _, _, data = self.resource.post_json('_bulk_docs', body=content)
 
         results = []
         for idx, result in enumerate(data):
             if 'error' in result:
                 if result['error'] == 'conflict':
-                    exc_type = ResourceConflict
+                    exc_type = http.ResourceConflict
                 else:
                     # XXX: Any other error types mappable to exceptions here?
-                    exc_type = ServerError
+                    exc_type = http.ServerError
                 results.append((False, result['id'],
                                 exc_type(result['reason'])))
             else:
@@ -724,9 +755,30 @@ class Database(object):
         if not name.startswith('_'):
             design, name = name.split('/', 1)
             name = '/'.join(['_design', design, '_view', name])
-        return PermanentView(uri(self.resource.uri, *name.split('/')), name,
-                             wrapper=wrapper,
-                             http=self.resource.http)(**options)
+        return PermanentView(self.resource(*name.split('/')), name,
+                             wrapper=wrapper)(**options)
+
+    def _changes(self, **opts):
+        _, _, data = self.resource.get('_changes', **opts)
+        lines = iter(data)
+        for ln in lines:
+            if not ln: # skip heartbeats
+                continue
+            doc = json.decode(ln)
+            if 'last_seq' in doc: # consume the rest of the response if this
+                for ln in lines:  # was the last line, allows conn reuse
+                    pass
+            yield doc
+
+    def changes(self, **opts):
+        """Retrieve a changes feed from the database.
+
+        Takes since, feed, heartbeat and timeout options.
+        """
+        if opts.get('feed') == 'continuous':
+            return self._changes(**opts)
+        _, _, data = self.resource.get_json('_changes', **opts)
+        return data
 
 
 class Document(dict):
@@ -745,7 +797,7 @@ class Document(dict):
     def id(self):
         """The document ID.
 
-        :type: basestring
+        :rtype: basestring
         """
         return self['_id']
 
@@ -753,7 +805,7 @@ class Document(dict):
     def rev(self):
         """The document revision.
 
-        :type: basestring
+        :rtype: basestring
         """
         return self['_rev']
 
@@ -761,15 +813,18 @@ class Document(dict):
 class View(object):
     """Abstract representation of a view or query."""
 
-    def __init__(self, uri, wrapper=None, http=None):
-        self.resource = Resource(http, uri)
+    def __init__(self, url, wrapper=None, session=None):
+        if isinstance(url, basestring):
+            self.resource = http.Resource(url, session)
+        else:
+            self.resource = url
         self.wrapper = wrapper
 
     def __call__(self, **options):
         return ViewResults(self, options)
 
     def __iter__(self):
-        return self()
+        return iter(self())
 
     def _encode_options(self, options):
         retval = {}
@@ -787,8 +842,8 @@ class View(object):
 class PermanentView(View):
     """Representation of a permanent view on the server."""
 
-    def __init__(self, uri, name, wrapper=None, http=None):
-        View.__init__(self, uri, wrapper=wrapper, http=http)
+    def __init__(self, uri, name, wrapper=None, session=None):
+        View.__init__(self, uri, wrapper=wrapper, session=session)
         self.name = name
 
     def __repr__(self):
@@ -798,10 +853,10 @@ class PermanentView(View):
         if 'keys' in options:
             options = options.copy()
             keys = {'keys': options.pop('keys')}
-            resp, data = self.resource.post(content=keys,
-                                            **self._encode_options(options))
+            _, _, data = self.resource.post_json(body=keys,
+                                                 **self._encode_options(options))
         else:
-            resp, data = self.resource.get(**self._encode_options(options))
+            _, _, data = self.resource.get_json(**self._encode_options(options))
         return data
 
 
@@ -809,8 +864,8 @@ class TemporaryView(View):
     """Representation of a temporary view."""
 
     def __init__(self, uri, map_fun, reduce_fun=None,
-                 language='javascript', wrapper=None, http=None):
-        View.__init__(self, uri, wrapper=wrapper, http=http)
+                 language='javascript', wrapper=None, session=None):
+        View.__init__(self, uri, wrapper=wrapper, session=session)
         if isinstance(map_fun, FunctionType):
             map_fun = getsource(map_fun).rstrip('\n\r')
         self.map_fun = dedent(map_fun.lstrip('\n\r'))
@@ -833,7 +888,7 @@ class TemporaryView(View):
             options = options.copy()
             body['keys'] = options.pop('keys')
         content = json.encode(body).encode('utf-8')
-        resp, data = self.resource.post(content=content, headers={
+        _, _, data = self.resource.post_json(body=content, headers={
             'Content-Type': 'application/json'
         }, **self._encode_options(options))
         return data
@@ -925,7 +980,7 @@ class ViewResults(object):
     def rows(self):
         """The list of rows returned by the view.
 
-        :type: `list`
+        :rtype: `list`
         """
         if self._rows is None:
             self._fetch()
@@ -937,7 +992,7 @@ class ViewResults(object):
 
         This value is `None` for reduce views.
 
-        :type: `int` or ``NoneType`` for reduce views
+        :rtype: `int` or ``NoneType`` for reduce views
         """
         if self._rows is None:
             self._fetch()
@@ -949,7 +1004,7 @@ class ViewResults(object):
 
         This value is 0 for reduce views.
 
-        :type: `int`
+        :rtype: `int`
         """
         if self._rows is None:
             self._fetch()
@@ -992,154 +1047,6 @@ class Row(dict):
         doc = self.get('doc')
         if doc:
             return Document(doc)
-
-
-# Internals
-
-
-class Resource(object):
-
-    def __init__(self, http, uri):
-        if http is None:
-            http = httplib2.Http()
-            http.force_exception_to_status_code = False
-        self.http = http
-        self.uri = uri
-
-    def __call__(self, path):
-        return type(self)(self.http, uri(self.uri, path))
-
-    def delete(self, path=None, headers=None, **params):
-        return self._request('DELETE', path, headers=headers, **params)
-
-    def get(self, path=None, headers=None, **params):
-        return self._request('GET', path, headers=headers, **params)
-
-    def head(self, path=None, headers=None, **params):
-        return self._request('HEAD', path, headers=headers, **params)
-
-    def post(self, path=None, content=None, headers=None, **params):
-        return self._request('POST', path, content=content, headers=headers,
-                             **params)
-
-    def put(self, path=None, content=None, headers=None, **params):
-        return self._request('PUT', path, content=content, headers=headers,
-                             **params)
-
-    def _request(self, method, path=None, content=None, headers=None,
-                 **params):
-        from couchdb import __version__
-        headers = headers or {}
-        headers.setdefault('Accept', 'application/json')
-        headers.setdefault('User-Agent', 'couchdb-python %s' % __version__)
-        body = None
-        if content is not None:
-            if not isinstance(content, basestring):
-                body = json.encode(content).encode('utf-8')
-                headers.setdefault('Content-Type', 'application/json')
-            else:
-                body = content
-            headers.setdefault('Content-Length', str(len(body)))
-
-        def _make_request(retry=1):
-            try:
-                return self.http.request(uri(self.uri, path, **params), method,
-                                             body=body, headers=headers)
-            except socket.error, e:
-                if retry > 0 and e.args[0] == 54: # reset by peer
-                    return _make_request(retry - 1)
-                raise
-        resp, data = _make_request()
-
-        status_code = int(resp.status)
-        if data and resp.get('content-type') == 'application/json':
-            try:
-                data = json.decode(data)
-            except ValueError:
-                pass
-
-        if status_code >= 400:
-            if type(data) is dict:
-                error = (data.get('error'), data.get('reason'))
-            else:
-                error = data
-            if status_code == 404:
-                raise ResourceNotFound(error)
-            elif status_code == 409:
-                raise ResourceConflict(error)
-            elif status_code == 412:
-                raise PreconditionFailed(error)
-            else:
-                raise ServerError((status_code, error))
-
-        return resp, data
-
-
-def uri(base, *path, **query):
-    """Assemble a uri based on a base, any number of path segments, and query
-    string parameters.
-
-    >>> uri('http://example.org', '_all_dbs')
-    'http://example.org/_all_dbs'
-
-    A trailing slash on the uri base is handled gracefully:
-
-    >>> uri('http://example.org/', '_all_dbs')
-    'http://example.org/_all_dbs'
-
-    And multiple positional arguments become path parts:
-
-    >>> uri('http://example.org/', 'foo', 'bar')
-    'http://example.org/foo/bar'
-
-    All slashes within a path part are escaped:
-
-    >>> uri('http://example.org/', 'foo/bar')
-    'http://example.org/foo%2Fbar'
-    >>> uri('http://example.org/', 'foo', '/bar/')
-    'http://example.org/foo/%2Fbar%2F'
-    """
-    if base and base.endswith('/'):
-        base = base[:-1]
-    retval = [base]
-
-    # build the path
-    path = '/'.join([''] + [unicode_quote(s) for s in path if s is not None])
-    if path:
-        retval.append(path)
-
-    # build the query string
-    params = []
-    for name, value in query.items():
-        if type(value) in (list, tuple):
-            params.extend([(name, i) for i in value if i is not None])
-        elif value is not None:
-            if value is True:
-                value = 'true'
-            elif value is False:
-                value = 'false'
-            params.append((name, value))
-    if params:
-        retval.extend(['?', unicode_urlencode(params)])
-
-    return ''.join(retval)
-
-
-def unicode_quote(string, safe=''):
-    if isinstance(string, unicode):
-        string = string.encode('utf-8')
-    return quote(string, safe)
-
-
-def unicode_urlencode(data):
-    if isinstance(data, dict):
-        data = data.items()
-    params = []
-    for name, value in data:
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
-        params.append((name, value))
-    return urlencode(params)
 
 
 VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2008 Christopher Lenz
+# Copyright (C) 2009 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -9,12 +9,12 @@
 import doctest
 import unittest
 
-from couchdb import design
+from couchdb import http
 
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(design))
+    suite.addTest(doctest.DocTestSuite(http))
     return suite
 
 

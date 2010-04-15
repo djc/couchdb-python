@@ -1,3 +1,23 @@
+Version 0.7.0
+http://couchdb-python.googlecode.com/hg/?r=default
+(???, from branches/0.7.x)
+
+ * Breaking change: the dependency on `httplib2` has been replaced by
+   an internal `couchdb.http` library. This changes the API in several places.
+   Most importantly, `resource.request()` now returns a 3-member tuple. 
+ * Breaking change: `couchdb.schema` has been renamed to `couchdb.mapping`.
+   This better reflects what is actually provided. Classes inside
+   `couchdb.mapping` have been similarly renamed (e.g. `Schema` -> `Mapping`).
+ * Breaking change: `couchdb.schema.View` has been renamed to
+   `couchdb.mapping.ViewField`, in order to help distinguish it from
+   `couchdb.client.View`.
+ * Breaking change: the `client.Server` properties `version` and `config`
+   have become methods in order to improve API consistency.
+ * Prevent `schema.ListField` objects from sharing the same default (issue 107).
+ * Added a `changes()` method to the `client.Database` class (issue 103).
+ * Added an optional argument to the 'Database.compact` method to enable
+   view compaction (the rest of issue 37).
+
 Version 0.6.1
 http://couchdb-python.googlecode.com/hg/?r=0.6.1
 (Dec 14, 2009, from branches/0.6.x)

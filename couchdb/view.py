@@ -86,7 +86,7 @@ def run(input=sys.stdin, output=sys.stdout):
 
     def reduce(*cmd, **kwargs):
         code = BOM_UTF8 + cmd[0][0].encode('utf-8')
-        args = cmd[1:][0]
+        args = cmd[1]
         globals_ = {}
         try:
             exec code in {'log': _log}, globals_
@@ -122,6 +122,7 @@ def run(input=sys.stdin, output=sys.stdout):
         return [True, [results]]
 
     def rereduce(*cmd):
+        # Note: weird kwargs is for Python 2.5 compat
         return reduce(*cmd, **{'rereduce': True})
 
     handlers = {'reset': reset, 'add_fun': add_fun, 'map_doc': map_doc,

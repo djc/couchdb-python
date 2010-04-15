@@ -12,7 +12,7 @@
 >>> server = Server('http://localhost:5984/')
 >>> db = server.create('python-tests')
 
-To define a document schema, you declare a Python class inherited from
+To define a document mapping, you declare a Python class inherited from
 `Document`, and add any number of `Field` attributes:
 
 >>> class Person(Document):
@@ -56,6 +56,8 @@ True
 >>> del server['python-tests']
 """
 
+import copy
+
 from calendar import timegm
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -63,9 +65,10 @@ from time import strptime, struct_time
 
 from couchdb.design import ViewDefinition
 
-__all__ = ['Schema', 'Document', 'Field', 'TextField', 'FloatField',
+__all__ = ['Mapping', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
-           'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField']
+           'DateField', 'DateTimeField', 'TimeField', 'DictField', 'ListField',
+           'ViewField']
 __docformat__ = 'restructuredtext en'
 
 DEFAULT = object()
@@ -75,7 +78,7 @@ class Field(object):
     """Basic unit for mapping a piece of data between Python and JSON.
     
     Instances of this class can be added to subclasses of `Document` to describe
-    the schema of a document.
+    the mapping of a document.
     """
 
     def __init__(self, name=None, default=None):
@@ -107,7 +110,7 @@ class Field(object):
         return self._to_python(value)
 
 
-class SchemaMeta(type):
+class MappingMeta(type):
 
     def __new__(cls, name, bases, d):
         fields = {}
@@ -123,8 +126,8 @@ class SchemaMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
-class Schema(object):
-    __metaclass__ = SchemaMeta
+class Mapping(object):
+    __metaclass__ = MappingMeta
 
     def __init__(self, **values):
         self._data = {}
@@ -181,14 +184,14 @@ class Schema(object):
         return self.unwrap()
 
 
-class View(object):
+class ViewField(object):
     r"""Descriptor that can be used to bind a view definition to a property of
     a `Document` class.
     
     >>> class Person(Document):
     ...     name = TextField()
     ...     age = IntegerField()
-    ...     by_name = View('people', '''\
+    ...     by_name = ViewField('people', '''\
     ...         function(doc) {
     ...             emit(doc.name, doc);
     ...         }''')
@@ -212,7 +215,7 @@ class View(object):
     `Document` subclass the descriptor is bound to. In this example, it would
     return instances of the `Person` class. But please note that this requires
     the values of the view results to be dictionaries that can be mapped to the
-    schema defined by the containing `Document` class. Alternatively, the
+    mapping defined by the containing `Document` class. Alternatively, the
     ``include_docs`` query option can be used to inline the actual documents in
     the view results, which will then be used instead of the values.
     
@@ -223,7 +226,7 @@ class View(object):
     ...     name = TextField()
     ...     age = IntegerField()
     ...
-    ...     @View.define('people')
+    ...     @ViewField.define('people')
     ...     def by_name(doc):
     ...         yield doc['name'], doc
     
@@ -283,21 +286,21 @@ class View(object):
                               wrapper=wrapper, **self.defaults)
 
 
-class DocumentMeta(SchemaMeta):
+class DocumentMeta(MappingMeta):
 
     def __new__(cls, name, bases, d):
         for attrname, attrval in d.items():
-            if isinstance(attrval, View):
+            if isinstance(attrval, ViewField):
                 if not attrval.name:
                     attrval.name = attrname
-        return SchemaMeta.__new__(cls, name, bases, d)
+        return MappingMeta.__new__(cls, name, bases, d)
 
 
-class Document(Schema):
+class Document(Mapping):
     __metaclass__ = DocumentMeta
 
     def __init__(self, id=None, **values):
-        Schema.__init__(self, **values)
+        Mapping.__init__(self, **values)
         if id is not None:
             self.id = id
 
@@ -320,7 +323,7 @@ class Document(Schema):
     def rev(self):
         """The document revision.
         
-        :type: basestring
+        :rtype: basestring
         """
         if hasattr(self._data, 'rev'): # When data is client.Document
             return self._data.rev
@@ -330,7 +333,7 @@ class Document(Schema):
         """Return the fields as a list of ``(name, value)`` tuples.
         
         This method is provided to enable easy conversion to native dictionary
-        objects, for example to allow use of `schema.Document` instances with
+        objects, for example to allow use of `mapping.Document` instances with
         `client.Database.update`.
         
         >>> class Post(Document):
@@ -368,17 +371,13 @@ class Document(Schema):
 
     def store(self, db):
         """Store the document in the given database."""
-        if self.id is None:
-            docid = db.create(self._data)
-            self._data = db.get(docid)
-        else:
-            db[self.id] = self._data
+        db.save(self._data)
         return self
 
     @classmethod
     def query(cls, db, map_fun, reduce_fun, language='javascript', **options):
         """Execute a CouchDB temporary view and map the result values back to
-        objects of this schema.
+        objects of this mapping.
         
         Note that by default, any properties of the document that are not
         included in the values of the view will be treated as if they were
@@ -397,7 +396,7 @@ class Document(Schema):
     @classmethod
     def view(cls, db, viewname, **options):
         """Execute a CouchDB named view and map the result values back to
-        objects of this schema.
+        objects of this mapping.
         
         Note that by default, any properties of the document that are not
         included in the values of the view will be treated as if they were
@@ -414,32 +413,32 @@ class Document(Schema):
 
 
 class TextField(Field):
-    """Schema field for string values."""
+    """Mapping field for string values."""
     _to_python = unicode
 
 
 class FloatField(Field):
-    """Schema field for float values."""
+    """Mapping field for float values."""
     _to_python = float
 
 
 class IntegerField(Field):
-    """Schema field for integer values."""
+    """Mapping field for integer values."""
     _to_python = int
 
 
 class LongField(Field):
-    """Schema field for long integer values."""
+    """Mapping field for long integer values."""
     _to_python = long
 
 
 class BooleanField(Field):
-    """Schema field for boolean values."""
+    """Mapping field for boolean values."""
     _to_python = bool
 
 
 class DecimalField(Field):
-    """Schema field for decimal values."""
+    """Mapping field for decimal values."""
 
     def _to_python(self, value):
         return Decimal(value)
@@ -449,7 +448,7 @@ class DecimalField(Field):
 
 
 class DateField(Field):
-    """Schema field for storing dates.
+    """Mapping field for storing dates.
     
     >>> field = DateField()
     >>> field._to_python('2007-04-01')
@@ -464,7 +463,7 @@ class DateField(Field):
         if isinstance(value, basestring):
             try:
                 value = date(*strptime(value, '%Y-%m-%d')[:3])
-            except ValueError, e:
+            except ValueError:
                 raise ValueError('Invalid ISO date %r' % value)
         return value
 
@@ -475,7 +474,7 @@ class DateField(Field):
 
 
 class DateTimeField(Field):
-    """Schema field for storing date/time values.
+    """Mapping field for storing date/time values.
     
     >>> field = DateTimeField()
     >>> field._to_python('2007-04-01T15:30:00Z')
@@ -493,7 +492,7 @@ class DateTimeField(Field):
                 value = value.rstrip('Z') # remove timezone separator
                 timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
                 value = datetime.utcfromtimestamp(timestamp)
-            except ValueError, e:
+            except ValueError:
                 raise ValueError('Invalid ISO date/time %r' % value)
         return value
 
@@ -506,7 +505,7 @@ class DateTimeField(Field):
 
 
 class TimeField(Field):
-    """Schema field for storing times.
+    """Mapping field for storing times.
     
     >>> field = TimeField()
     >>> field._to_python('15:30:00')
@@ -522,7 +521,7 @@ class TimeField(Field):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
                 value = time(*strptime(value, '%H:%M:%S')[3:6])
-            except ValueError, e:
+            except ValueError:
                 raise ValueError('Invalid ISO time %r' % value)
         return value
 
@@ -542,7 +541,7 @@ class DictField(Field):
     >>> class Post(Document):
     ...     title = TextField()
     ...     content = TextField()
-    ...     author = DictField(Schema.build(
+    ...     author = DictField(Mapping.build(
     ...         name = TextField(),
     ...         email = TextField()
     ...     ))
@@ -566,22 +565,22 @@ class DictField(Field):
 
     >>> del server['python-tests']
     """
-    def __init__(self, schema=None, name=None, default=None):
+    def __init__(self, mapping=None, name=None, default=None):
         default = default or {}
         Field.__init__(self, name=name, default=lambda: default.copy())
-        self.schema = schema
+        self.mapping = mapping
 
     def _to_python(self, value):
-        if self.schema is None:
+        if self.mapping is None:
             return value
         else:
-            return self.schema.wrap(value)
+            return self.mapping.wrap(value)
 
     def _to_json(self, value):
-        if self.schema is None:
+        if self.mapping is None:
             return value
-        if not isinstance(value, Schema):
-            value = self.schema(**value)
+        if not isinstance(value, Mapping):
+            value = self.mapping(**value)
         return value.unwrap()
 
 
@@ -596,7 +595,7 @@ class ListField(Field):
     ...     title = TextField()
     ...     content = TextField()
     ...     pubdate = DateTimeField(default=datetime.now)
-    ...     comments = ListField(DictField(Schema.build(
+    ...     comments = ListField(DictField(Mapping.build(
     ...         author = TextField(),
     ...         content = TextField(),
     ...         time = DateTimeField()
@@ -622,11 +621,12 @@ class ListField(Field):
     """
 
     def __init__(self, field, name=None, default=None):
-        Field.__init__(self, name=name, default=default or [])
+        default = default or []
+        Field.__init__(self, name=name, default=lambda: copy.copy(default))
         if type(field) is type:
             if issubclass(field, Field):
                 field = field()
-            elif issubclass(field, Schema):
+            elif issubclass(field, Mapping):
                 field = DictField(field)
         self.field = field
 

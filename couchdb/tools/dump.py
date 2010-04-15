@@ -12,8 +12,6 @@ file.
 """
 
 from base64 import b64decode
-from email.MIMEBase import MIMEBase
-from email.MIMEMultipart import MIMEMultipart
 from optparse import OptionParser
 import sys
 
@@ -30,10 +28,10 @@ def dump_db(dburl, username=None, password=None, boundary=None,
         db.resource.http.add_credentials(username, password)
 
     envelope = write_multipart(output, boundary=boundary)
-
     for docid in db:
+
         doc = db.get(docid, attachments=True)
-        print>>sys.stderr, 'Dumping document %r' % doc.id
+        print >> sys.stderr, 'Dumping document %r' % doc.id
         attachments = doc.pop('_attachments', {})
         jsondoc = json.encode(doc)
 
@@ -57,7 +55,7 @@ def dump_db(dburl, username=None, password=None, boundary=None,
             envelope.add('application/json', jsondoc, {
                 'Content-ID': doc.id,
                 'ETag': '"%s"' % doc.rev
-            }, )
+            })
 
     envelope.close()
 
