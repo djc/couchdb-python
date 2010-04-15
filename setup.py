@@ -110,7 +110,7 @@ if sys.version_info < (2, 6):
 
 setup(
     name = 'CouchDB',
-    version = '0.7',
+    version = '0.8',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
@@ -122,7 +122,7 @@ interface for the CouchDB server.""",
     zip_safe = True,
 
     classifiers = [
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',

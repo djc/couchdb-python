@@ -1,6 +1,5 @@
-Version 0.7.0
-http://couchdb-python.googlecode.com/hg/?r=default
-(???, from branches/0.7.x)
+Version 0.7.0 (Apr 15, 2010)
+http://couchdb-python.googlecode.com/hg/?r=0.7.0
 
  * Breaking change: the dependency on `httplib2` has been replaced by
    an internal `couchdb.http` library. This changes the API in several places.
