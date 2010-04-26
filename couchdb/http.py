@@ -33,8 +33,8 @@ from urlparse import urlsplit, urlunsplit
 from couchdb import json
 
 __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
-           'ServerError', 'Unauthorized', 'RedirectLimit', 'Session',
-           'Resource']
+           'ResourceConflict', 'ServerError', 'Unauthorized', 'RedirectLimit',
+           'Session', 'Resource']
 __docformat__ = 'restructuredtext en'
 
 
