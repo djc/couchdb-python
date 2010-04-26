@@ -7,6 +7,7 @@
 # you should have received as part of this distribution.
 
 from couchdb.client import *
+from couchdb.http import *
 
 try:
     __version__ = __import__('pkg_resources').get_distribution('CouchDB').version
