@@ -15,7 +15,6 @@ from base64 import b64encode
 from datetime import datetime
 import errno
 from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
-import re
 import socket
 import time
 try:
