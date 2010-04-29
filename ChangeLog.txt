@@ -1,3 +1,7 @@
+Version 0.7.1
+* Regression: reinclude all http exception types in the 'couchdb' package's
+  scope.
+
 Version 0.7.0 (Apr 15, 2010)
 http://couchdb-python.googlecode.com/hg/?r=0.7.0
 
