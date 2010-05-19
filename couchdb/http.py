@@ -116,10 +116,13 @@ class ResponseBody(object):
             self.resp.fp.read(2) #crlf
 
 
+RETRYABLE_ERRORS = [errno.ECONNRESET, errno.EPIPE]
+
+
 class Session(object):
 
     def __init__(self, cache=None, timeout=None, max_redirects=5,
-                 retry_delays=[0]):
+                 retry_delays=[0], retryable_errors=RETRYABLE_ERRORS):
         """Initialize an HTTP client session.
 
         :param cache: an instance with a dict-like interface or None to allow
@@ -139,6 +142,7 @@ class Session(object):
         self.conns = {} # HTTP connections keyed by (scheme, host)
         self.lock = Lock()
         self.retry_delays = list(retry_delays) # We don't want this changing on us.
+        self.retryable_errors = set(retryable_errors)
 
     def request(self, method, url, body=None, headers=None, credentials=None,
                 num_redirects=0):
@@ -185,7 +189,7 @@ class Session(object):
                     return _try_request()
                 except socket.error, e:
                     ecode = e.args[0]
-                    if ecode not in [errno.ECONNRESET, errno.EPIPE]:
+                    if ecode not in self.retryable_errors:
                         raise
                     try:
                         delay = retries.next()
