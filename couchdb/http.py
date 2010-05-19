@@ -118,13 +118,15 @@ class ResponseBody(object):
 
 class Session(object):
 
-    def __init__(self, cache=None, timeout=None, max_redirects=5):
+    def __init__(self, cache=None, timeout=None, max_redirects=5,
+                 retry_delays=[0]):
         """Initialize an HTTP client session.
 
         :param cache: an instance with a dict-like interface or None to allow
                       Session to create a dict for caching.
         :param timeout: socket timeout in number of seconds, or `None` for no
                         timeout
+        :param retry_delays: list of request retry delays.
         """
         from couchdb import __version__ as VERSION
         self.user_agent = 'CouchDB-Python/%s' % VERSION
@@ -136,6 +138,7 @@ class Session(object):
         self.perm_redirects = {}
         self.conns = {} # HTTP connections keyed by (scheme, host)
         self.lock = Lock()
+        self.retry_delays = list(retry_delays) # We don't want this changing on us.
 
     def request(self, method, url, body=None, headers=None, credentials=None,
                 num_redirects=0):
@@ -176,16 +179,21 @@ class Session(object):
         path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
         conn = self._get_connection(url)
 
-        def _try_request_with_retries(retries=1):
+        def _try_request_with_retries(retries):
             while True:
                 try:
                     return _try_request()
                 except socket.error, e:
                     ecode = e.args[0]
-                    if not retries or ecode not in [errno.ECONNRESET, errno.EPIPE]:
+                    if ecode not in [errno.ECONNRESET, errno.EPIPE]:
                         raise
+                    try:
+                        delay = retries.next()
+                    except StopIteration:
+                        # No more retries, raise last socket error.
+                        raise e
+                    time.sleep(delay)
                     conn.close()
-                    retries -= 1
 
         def _try_request():
             try:
@@ -217,7 +225,7 @@ class Session(object):
                 else:
                     raise
 
-        resp = _try_request_with_retries()
+        resp = _try_request_with_retries(iter(self.retry_delays))
         status = resp.status
 
         # Handle conditional response
