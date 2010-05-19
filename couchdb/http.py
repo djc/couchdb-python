@@ -175,15 +175,22 @@ class Session(object):
 
         path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
         conn = self._get_connection(url)
-        if conn.sock is None:
-            conn.connect()
 
-        def _try_request(retries=1):
-            def _retry():
-                conn.close()
-                conn.connect()
-                return _try_request(retries - 1)
+        def _try_request_with_retries(retries=1):
+            while True:
+                try:
+                    return _try_request()
+                except socket.error, e:
+                    ecode = e.args[0]
+                    if not retries or ecode not in [errno.ECONNRESET, errno.EPIPE]:
+                        raise
+                    conn.close()
+                    retries -= 1
+
+        def _try_request():
             try:
+                if conn.sock is None:
+                    conn.connect()
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
                     conn.putheader(header, headers[header])
@@ -204,18 +211,13 @@ class Session(object):
                 # httplib raises a BadStatusLine when it cannot read the status
                 # line saying, "Presumably, the server closed the connection
                 # before sending a valid response."
-                if retries > 0 and e.line == '':
-                    return _retry()
-                else:
-                    raise
-            except socket.error, e:
-                ecode = e.args[0]
-                if retries > 0 and ecode in [errno.ECONNRESET, errno.EPIPE]:
-                    return _retry()
+                # Raise as ECONNRESET to simplify retry logic.
+                if e.line == '':
+                    raise socket.error(errno.ECONNRESET)
                 else:
                     raise
 
-        resp = _try_request()
+        resp = _try_request_with_retries()
         status = resp.status
 
         # Handle conditional response
