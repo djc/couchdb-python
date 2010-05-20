@@ -560,12 +560,19 @@ class ViewTestCase(TempDatabaseMixin, unittest.TestCase):
         self.assertTrue('TemporaryView' in repr(view))
         self.assertTrue(mapfunc in repr(view))
 
-    def test_wrapper(self):
+    def test_wrapper_iter(self):
         class Wrapper(object):
             def __init__(self, doc):
                 pass
         self.db['foo'] = {}
         self.assertTrue(isinstance(list(self.db.view('_all_docs', wrapper=Wrapper))[0], Wrapper))
+
+    def test_wrapper_rows(self):
+        class Wrapper(object):
+            def __init__(self, doc):
+                pass
+        self.db['foo'] = {}
+        self.assertTrue(isinstance(self.db.view('_all_docs', wrapper=Wrapper).rows[0], Wrapper))
 
     def test_properties(self):
         for attr in ['rows', 'total_rows', 'offset']:

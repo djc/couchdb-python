@@ -960,19 +960,15 @@ class ViewResults(object):
             return ViewResults(self.view, options)
 
     def __iter__(self):
-        wrapper = self.view.wrapper
-        for row in self.rows:
-            if wrapper is not None:
-                yield wrapper(row)
-            else:
-                yield row
+        return iter(self.rows)
 
     def __len__(self):
         return len(self.rows)
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = [Row(row) for row in data['rows']]
+        wrapper = self.view.wrapper or Row
+        self._rows = [wrapper(row) for row in data['rows']]
         self._total_rows = data.get('total_rows')
         self._offset = data.get('offset', 0)
 

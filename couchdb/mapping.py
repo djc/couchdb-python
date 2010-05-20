@@ -273,12 +273,7 @@ class ViewField(object):
 
     def __get__(self, instance, cls=None):
         if self.wrapper is DEFAULT:
-            def wrapper(row):
-                if row.doc is not None:
-                    return cls.wrap(row.doc)
-                data = row.value
-                data['_id'] = row.id
-                return cls.wrap(data)
+            wrapper = cls._wrap_row
         else:
             wrapper = self.wrapper
         return ViewDefinition(self.design, self.name, self.map_fun,
@@ -384,14 +379,8 @@ class Document(Mapping):
         missing from the document. If you want to load the full document for
         every row, set the ``include_docs`` option to ``True``.
         """
-        def _wrapper(row):
-            if row.doc is not None:
-                return cls.wrap(row.doc)
-            data = row.value
-            data['_id'] = row.id
-            return cls.wrap(data)
         return db.query(map_fun, reduce_fun=reduce_fun, language=language,
-                        wrapper=_wrapper, **options)
+                        wrapper=cls._wrap_row, **options)
 
     @classmethod
     def view(cls, db, viewname, **options):
@@ -403,13 +392,16 @@ class Document(Mapping):
         missing from the document. If you want to load the full document for
         every row, set the ``include_docs`` option to ``True``.
         """
-        def _wrapper(row):
-            if row.doc is not None: # include_docs=True
-                return cls.wrap(row.doc)
-            data = row.value
-            data['_id'] = row.id
-            return cls.wrap(data)
-        return db.view(viewname, wrapper=_wrapper, **options)
+        return db.view(viewname, wrapper=cls._wrap_row, **options)
+
+    @classmethod
+    def _wrap_row(cls, row):
+        doc = row.get('doc')
+        if doc is not None:
+            return cls.wrap(doc)
+        data = row['value']
+        data['_id'] = row['id']
+        return cls.wrap(data)
 
 
 class TextField(Field):

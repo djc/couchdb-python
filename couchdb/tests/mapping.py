@@ -11,7 +11,7 @@ import doctest
 import os
 import unittest
 
-from couchdb import client, mapping
+from couchdb import client, design, mapping
 from couchdb.http import ResourceNotFound
 
 class DocumentTestCase(unittest.TestCase):
@@ -226,11 +226,62 @@ class ListFieldTestCase(unittest.TestCase):
         self.assertEqual([i for i in thing2.numbers], [])
 
 
+all_map_func = 'function(doc) { emit(doc._id, doc); }'
+
+
+class WrappingTestCase(unittest.TestCase):
+
+    class Item(mapping.Document):
+        with_include_docs = mapping.ViewField('test', all_map_func,
+                                              include_docs=True)
+        without_include_docs = mapping.ViewField('test', all_map_func)
+
+    def setUp(self):
+        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
+        self.server = client.Server(uri, full_commit=False)
+        try:
+            self.server.delete('python-tests')
+        except ResourceNotFound:
+            pass
+        self.db = self.server.create('python-tests')
+        design.ViewDefinition.sync_many(self.db, [self.Item.with_include_docs,
+                                                  self.Item.without_include_docs])
+
+    def tearDown(self):
+        try:
+            self.server.delete('python-tests')
+        except client.ResourceNotFound:
+            pass
+
+    def test_viewfield_property(self):
+        self.Item().store(self.db)
+        results = self.Item.with_include_docs(self.db)
+        self.assertEquals(type(results.rows[0]), self.Item)
+        results = self.Item.without_include_docs(self.db)
+        self.assertEquals(type(results.rows[0]), self.Item)
+
+    def test_view(self):
+        self.Item().store(self.db)
+        results = self.Item.view(self.db, 'test/without_include_docs')
+        self.assertEquals(type(results.rows[0]), self.Item)
+        results = self.Item.view(self.db, 'test/without_include_docs',
+                                 include_docs=True)
+        self.assertEquals(type(results.rows[0]), self.Item)
+
+    def test_query(self):
+        self.Item().store(self.db)
+        results = self.Item.query(self.db, all_map_func, None)
+        self.assertEquals(type(results.rows[0]), self.Item)
+        results = self.Item.query(self.db, all_map_func, None, include_docs=True)
+        self.assertEquals(type(results.rows[0]), self.Item)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(mapping))
     suite.addTest(unittest.makeSuite(DocumentTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ListFieldTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(WrappingTestCase, 'test'))
     return suite
 
 
