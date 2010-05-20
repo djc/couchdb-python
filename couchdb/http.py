@@ -116,7 +116,12 @@ class ResponseBody(object):
             self.resp.fp.read(2) #crlf
 
 
-RETRYABLE_ERRORS = [errno.ECONNRESET, errno.EPIPE]
+RETRYABLE_ERRORS = frozenset([
+    errno.EPIPE, errno.ETIMEDOUT,
+    errno.ECONNRESET, errno.ECONNREFUSED, errno.ECONNABORTED,
+    errno.EHOSTDOWN, errno.EHOSTUNREACH,
+    errno.ENETRESET, errno.ENETUNREACH, errno.ENETDOWN
+])
 
 
 class Session(object):
