@@ -32,6 +32,7 @@ Documentation
 .. toctree::
    :maxdepth: 2
 
+   getting-started.rst
    views.rst
    client.rst
    mapping.rst
