@@ -17,22 +17,22 @@ It consists of the following main modules:
 * ``couchdb.mapping``: This module provides advanced mapping between CouchDB
   JSON documents and Python objects.
 
-Additionally, the ``couchdb.view`` module implements a view server for views
-written in Python.
+Additionally, the ``couchdb.view`` module implements a view server for
+views written in Python.
 
 There may also be more information on the `project website`_.
 
 .. _couchdb: http://couchdb.org/
 .. _project website: http://code.google.com/p/couchdb-python
+.. _views written in Python: views
 
-API Documentation
-=================
-
-Contents:
+Documentation
+=============
 
 .. toctree::
    :maxdepth: 2
 
+   views.rst
    client.rst
    mapping.rst
 

@@ -1,5 +1,5 @@
-couchdb.mapping - Mapping CouchDB documents to Python objects
-=============================================================
+Mapping CouchDB documents to Python objects: couchdb.mapping
+============================================================
 
 .. automodule:: couchdb.mapping
    :members:

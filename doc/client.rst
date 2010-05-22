@@ -1,5 +1,5 @@
-couchdb.client - Basic CouchDB API
-==================================
+Basic CouchDB API: couchdb.client
+=================================
 
 .. automodule:: couchdb.client
    :members:
