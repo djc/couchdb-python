@@ -382,25 +382,25 @@ class Resource(object):
 
     def delete_json(self, *a, **k):
         status, headers, data = self.delete(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
     def get_json(self, *a, **k):
         status, headers, data = self.get(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
     def post_json(self, *a, **k):
         status, headers, data = self.post(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
     def put_json(self, *a, **k):
         status, headers, data = self.put(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
