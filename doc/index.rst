@@ -36,6 +36,7 @@ Documentation
    views.rst
    client.rst
    mapping.rst
+   changes.rst
 
 Indices and tables
 ==================
