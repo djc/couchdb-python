@@ -31,6 +31,7 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
+   :numbered:
 
    getting-started.rst
    views.rst
