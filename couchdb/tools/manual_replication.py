@@ -27,7 +27,6 @@ import couchdb.client
 import optparse
 import sys
 import time
-import httplib2
 
 def compact(server, dbnames):
     for dbname in dbnames:
@@ -62,18 +61,12 @@ def main():
     parser.add_option('--push',
         action='store_true',
         help='use push instead of pull replication')
-    parser.add_option('--debug',
-        action='store_true',
-        dest='debug')
 
     options, args = parser.parse_args()
 
     if not options.target_url or (not options.source_url):
         parser.error("Need at least --source-server and --target-server")
         sys.exit(1)
-
-    if options.debug:
-        httplib2.debuglevel = 1
 
     if not options.source_url.endswith('/'):
         options.source_url = options.source_url + '/'
