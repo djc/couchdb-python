@@ -169,6 +169,19 @@ class Server(object):
         status, headers, data = self.resource.get_json('_active_tasks')
         return data
 
+    def uuids(self, count=None):
+        """Retrieve a batch of uuids
+
+        :param count: a number of uuids to fetch
+                      (None -- get as many as the server sends)
+        :return: a list of uuids
+        """
+        if count is None:
+            _, _, data = self.resource.get_json('_uuids')
+        else:
+            _, _, data = self.resource.get_json('_uuids', count=count)
+        return data['uuids']
+
     def create(self, name):
         """Create a new database with the given name.
 

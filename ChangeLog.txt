@@ -8,6 +8,7 @@ Version 0.7.1 (unreleased)
  * Replaced epydoc API docs by Sphinx-based documentation.
  * Improve wrapping of view results.
  * Removed couchdb-replicate script (replacement for continuous replication).
+ * Added a `uuids()` method to the `client.Server` class (issue 122).
 
 
 Version 0.7.0 (Apr 15, 2010)

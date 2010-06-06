@@ -120,6 +120,12 @@ class ServerTestCase(unittest.TestCase):
         self.server.create('python-tests-a')
         self.assertTrue(len(self.server) >= 2)
 
+    def test_uuids(self):
+        ls = self.server.uuids()
+        assert type(ls) == list
+        ls = self.server.uuids(count=10)
+        assert type(ls) == list and len(ls) == 10
+
 
 class TempDatabaseMixin(object):
 
