@@ -14,7 +14,7 @@ setting up trigger based replication. But you can also use the
 '--continuous' option to set up automatic replication on newer
 CouchDB versions.
 
-Use 'python manual_replication.py --help' to get more detailed usage
+Use 'python replicate.py --help' to get more detailed usage
 instructions.
 
 Be careful when using 127.0.0.1 as the source-server or target-server.
