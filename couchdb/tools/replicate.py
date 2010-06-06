@@ -74,17 +74,18 @@ def main():
         options.target_url = options.target_url + '/'
     source_server = couchdb.client.Server(options.source_url)
     target_server = couchdb.client.Server(options.target_url)
+
     if not options.dbnames:
-        dbnames = source_server.resource.get('_all_dbs')[1]
-        dbnames.sort()
+        dbnames = sorted(i for i in source_server)
     else:
         dbnames = options.dbnames
 
+    targetdbs = sorted(i for i in target_server)
     for dbname in sorted(dbnames, reverse=True):
         start = time.time()
         print dbname,
         sys.stdout.flush()
-        if dbname not in target_server.resource.get('_all_dbs')[1]:
+        if dbname not in targetdbs:
             target_server.create(dbname)
             print "created",
             sys.stdout.flush()
