@@ -3,6 +3,11 @@ Version 0.7.1 (unreleased)
 
  * Regression: reinclude all http exception types in the 'couchdb' package's
    scope.
+ * Request retries schedule and frequency are now customizable.
+ * Allow more kinds of request errors to trigger a retry.
+ * Replaced epydoc API docs by Sphinx-based documentation.
+ * Improve wrapping of view results.
+ * Removed couchdb-replicate script (replacement for continuous replication).
 
 
 Version 0.7.0 (Apr 15, 2010)
