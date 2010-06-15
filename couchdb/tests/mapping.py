@@ -88,6 +88,14 @@ class DocumentTestCase(unittest.TestCase):
         assert results[0][0] is True
         assert results[1][0] is True
 
+    def test_store_existing(self):
+        class Post(mapping.Document):
+            title = mapping.TextField()
+        post = Post(title='Foo bar')
+        post.store(self.db)
+        post.store(self.db)
+        self.assertEqual(len(list(self.db.view('_all_docs'))), 1)
+
 
 class ListFieldTestCase(unittest.TestCase):
 

@@ -400,7 +400,11 @@ class Database(object):
         :return: (id, rev) tuple of the save document
         :rtype: `tuple`
         """
-        _, _, data = self.resource.post_json(body=doc, **options)
+        if '_id' in doc:
+            func = self.resource(doc['_id']).put_json
+        else:
+            func = self.resource.post_json
+        _, _, data = func(body=doc, **options)
         id, rev = data['id'], data.get('rev')
         doc['_id'] = id
         if rev is not None: # Not present for batch='ok'
