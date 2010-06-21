@@ -585,8 +585,8 @@ class Database(object):
         :param filename: the name of the attachment file
         :param default: default value to return when the document or attachment
                         is not found
-        :return: the content of the attachment as a string, or the value of the
-                 `default` argument if the attachment is not found
+        :return: a file-like object with read and close methods, or the value
+                 of the `default` argument if the attachment is not found
         :since: 0.4.1
         """
         if isinstance(id_or_doc, basestring):
