@@ -22,18 +22,18 @@ You can create a new database from Python, or use an existing database:
 After selecting a database, create a document and insert it into the db:
 
     >>> doc = {'foo': 'bar'}
-    >>> db.create(doc)
-    'e0658cab843b59e63c8779a9a5000b01'
+    >>> db.save(doc)
+    ('e0658cab843b59e63c8779a9a5000b01', '1-4c6114c65e295552ab1019e2b046b10e')
     >>> doc
-    {'_rev': '1-4c6114c65e295552ab1019e2b046b10e', 'foo': 'bar', '_id': 'e0658cab843b59e63c8779a9a50011ff'}
+    {'_rev': '1-4c6114c65e295552ab1019e2b046b10e', 'foo': 'bar', '_id': 'e0658cab843b59e63c8779a9a5000b01'}
 
-The ``create()`` method returns the ID for the newly created document. You
-can also set your own ID by including an ``_id`` item in the document.
+The ``save()`` method returns the ID and "rev" for the newly created document.
+You can also set your own ID by including an ``_id`` item in the document.
 
 Getting the document out again is easy:
 
     >>> db['e0658cab843b59e63c8779a9a5000b01']
-    <Document 'e0658cab843b59e63c8779a9a5000b01'@'1-9ee46c1a40d697d66102a0e098501135' {'blah': 'fart'}>
+    <Document 'e0658cab843b59e63c8779a9a5000b01'@'1-4c6114c65e295552ab1019e2b046b10e' {'foo': 'bar'}>
 
 To find all your documents, simply iterate over the database:
 
