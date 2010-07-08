@@ -168,7 +168,9 @@ class Session(object):
                 if etag:
                     headers['If-None-Match'] = etag
 
-        if body is not None:
+        if body is None:
+            headers.setdefault('Content-Length', '0')
+        else:
             if not isinstance(body, basestring):
                 try:
                     body = json.encode(body).encode('utf-8')
