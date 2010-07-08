@@ -432,9 +432,11 @@ class Database(object):
         :rtype: `bool`
         """
         if ddoc:
-            _, _, data = self.resource('_compact').post_json(ddoc)
+            resource = self.resource('_compact', ddoc)
         else:
-            _, _, data = self.resource.post_json('_compact')
+            resource = self.resource('_compact')
+        _, _, data = resource.post_json(
+            headers={'Content-Type': 'application/json'})
         return data['ok']
 
     def copy(self, src, dest):
