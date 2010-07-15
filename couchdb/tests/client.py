@@ -139,10 +139,7 @@ class TempDatabaseMixin(object):
         self.db = self.server.create('python-tests')
 
     def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except http.ResourceNotFound:
-            pass
+        self.server.delete('python-tests')
 
 
 class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
