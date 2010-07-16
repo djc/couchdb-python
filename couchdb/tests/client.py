@@ -15,9 +15,39 @@ import time
 import tempfile
 import threading
 import unittest
+import uuid
 
 from couchdb import client, http
 http.CACHE_SIZE = 2, 3
+
+
+class TempDatabaseMixin(object):
+
+    temp_dbs = None
+    _db = None
+
+    def setUp(self):
+        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
+        self.server = client.Server(uri, full_commit=False)
+
+    def tearDown(self):
+        if self.temp_dbs:
+            for name in self.temp_dbs:
+                self.server.delete(name)
+
+    def temp_db(self):
+        if self.temp_dbs is None:
+            self.temp_dbs = {}
+        name = 'couchdb-python/' + uuid.uuid4().hex
+        db = self.server.create(name)
+        self.temp_dbs[name] = db
+        return name, db
+
+    @property
+    def db(self):
+        if self._db is None:
+            name, self._db = self.temp_db()
+        return self._db
 
 
 class ServerTestCase(unittest.TestCase):
@@ -127,21 +157,6 @@ class ServerTestCase(unittest.TestCase):
         assert type(ls) == list and len(ls) == 10
 
 
-class TempDatabaseMixin(object):
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
-        self.server = client.Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except http.ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-
-    def tearDown(self):
-        self.server.delete('python-tests')
-
-
 class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
 
     def test_save_new(self):
@@ -182,14 +197,15 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(id_rev_old[1], doc['_rev'])
 
     def test_exists(self):
-        self.assertTrue(client.Database(client.DEFAULT_BASE_URL+'python-tests'))
-        self.assertFalse(client.Database('python-tests-missing'))
+        self.assertTrue(self.db)
+        self.assertFalse(client.Database('couchdb-python-tests/missing'))
 
     def test_name(self):
-        # Access name assigned during init.
-        self.assertTrue(self.db.name == 'python-tests')
+        # Access name assigned during creation.
+        name, db = self.temp_db()
+        self.assertTrue(db.name == name)
         # Access lazily loaded name,
-        client.Database(self.db.resource.url).name
+        self.assertTrue(client.Database(db.resource.url).name == name)
 
     def test_commit(self):
         self.assertTrue(self.db.commit()['ok'] == True)
