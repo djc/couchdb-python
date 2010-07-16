@@ -15,56 +15,13 @@ import time
 import tempfile
 import threading
 import unittest
-import uuid
 
 from couchdb import client, http
+from couchdb.tests import testutil
 http.CACHE_SIZE = 2, 3
 
 
-class TempDatabaseMixin(object):
-
-    temp_dbs = None
-    _db = None
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
-        self.server = client.Server(uri, full_commit=False)
-
-    def tearDown(self):
-        if self.temp_dbs:
-            for name in self.temp_dbs:
-                self.server.delete(name)
-
-    def temp_db(self):
-        if self.temp_dbs is None:
-            self.temp_dbs = {}
-        name = 'couchdb-python/' + uuid.uuid4().hex
-        db = self.server.create(name)
-        self.temp_dbs[name] = db
-        return name, db
-
-    @property
-    def db(self):
-        if self._db is None:
-            name, self._db = self.temp_db()
-        return self._db
-
-
-class ServerTestCase(unittest.TestCase):
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
-        self.server = client.Server(uri, full_commit=False)
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except http.ResourceNotFound:
-            pass
-        try:
-            self.server.delete('python-tests-a')
-        except http.ResourceNotFound:
-            pass
+class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_init_with_resource(self):
         sess = http.Session()
@@ -97,57 +54,57 @@ class ServerTestCase(unittest.TestCase):
 
     def test_get_db_missing(self):
         self.assertRaises(http.ResourceNotFound,
-                          lambda: self.server['python-tests'])
+                          lambda: self.server['couchdb-python/missing'])
 
     def test_create_db_conflict(self):
-        self.server.create('python-tests')
+        name, db = self.temp_db()
         self.assertRaises(http.PreconditionFailed, self.server.create,
-                          'python-tests')
+                          name)
 
     def test_delete_db(self):
-        self.server.create('python-tests')
-        assert 'python-tests' in self.server
-        self.server.delete('python-tests')
-        assert 'python-tests' not in self.server
+        name, db = self.temp_db()
+        assert name in self.server
+        self.del_db(name)
+        assert name not in self.server
 
     def test_delete_db_missing(self):
         self.assertRaises(http.ResourceNotFound, self.server.delete,
-                          'python-tests')
+                          'couchdb-python/missing')
 
     def test_replicate(self):
-        a = self.server.create('python-tests')
+        aname, a = self.temp_db()
+        bname, b = self.temp_db()
         id, rev = a.save({'test': 'a'})
-        b = self.server.create('python-tests-a')
-        result = self.server.replicate('python-tests', 'python-tests-a')
+        result = self.server.replicate(aname, bname)
         self.assertEquals(result['ok'], True)
         self.assertEquals(b[id]['test'], 'a')
 
         doc = b[id]
         doc['test'] = 'b'
         b.update([doc])
-        self.server.replicate(client.DEFAULT_BASE_URL + 'python-tests-a',
-                              'python-tests')
+        self.server.replicate(bname, aname)
+        self.assertEquals(a[id]['test'], 'b')
         self.assertEquals(b[id]['test'], 'b')
 
     def test_replicate_continuous(self):
-        self.server.create('python-tests')
-        self.server.create('python-tests-a')
-        result = self.server.replicate('python-tests', 'python-tests-a', continuous=True)
+        aname, a = self.temp_db()
+        bname, b = self.temp_db()
+        result = self.server.replicate(aname, bname, continuous=True)
         self.assertEquals(result['ok'], True)
         version = tuple(int(i) for i in self.server.version().split('.')[:2])
         if version >= (0, 10):
             self.assertTrue('_local_id' in result)
 
     def test_iter(self):
-        self.server.create('python-tests')
-        self.server.create('python-tests-a')
+        aname, a = self.temp_db()
+        bname, b = self.temp_db()
         dbs = list(self.server)
-        self.assertTrue('python-tests' in dbs)
-        self.assertTrue('python-tests-a' in dbs)
+        self.assertTrue(aname in dbs)
+        self.assertTrue(bname in dbs)
 
     def test_len(self):
-        self.server.create('python-tests')
-        self.server.create('python-tests-a')
+        self.temp_db()
+        self.temp_db()
         self.assertTrue(len(self.server) >= 2)
 
     def test_uuids(self):
@@ -157,7 +114,7 @@ class ServerTestCase(unittest.TestCase):
         assert type(ls) == list and len(ls) == 10
 
 
-class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
+class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_save_new(self):
         doc = {'foo': 'bar'}
@@ -198,7 +155,7 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
 
     def test_exists(self):
         self.assertTrue(self.db)
-        self.assertFalse(client.Database('couchdb-python-tests/missing'))
+        self.assertFalse(client.Database('couchdb-python/missing'))
 
     def test_name(self):
         # Access name assigned during creation.
@@ -512,7 +469,7 @@ class DatabaseTestCase(TempDatabaseMixin, unittest.TestCase):
             break
 
 
-class ViewTestCase(TempDatabaseMixin, unittest.TestCase):
+class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_view_multi_get(self):
         for i in range(1, 6):

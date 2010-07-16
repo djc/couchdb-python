@@ -8,28 +8,12 @@
 
 from decimal import Decimal
 import doctest
-import os
 import unittest
 
-from couchdb import client, design, mapping
-from couchdb.http import ResourceNotFound
+from couchdb import design, mapping
+from couchdb.tests import testutil
 
-class DocumentTestCase(unittest.TestCase):
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
+class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_mutable_fields(self):
         class Test(mapping.Document):
@@ -97,22 +81,7 @@ class DocumentTestCase(unittest.TestCase):
         self.assertEqual(len(list(self.db.view('_all_docs'))), 1)
 
 
-class ListFieldTestCase(unittest.TestCase):
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except client.ResourceNotFound:
-            pass
+class ListFieldTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_to_json(self):
         # See <http://code.google.com/p/couchdb-python/issues/detail?id=14>
@@ -237,7 +206,7 @@ class ListFieldTestCase(unittest.TestCase):
 all_map_func = 'function(doc) { emit(doc._id, doc); }'
 
 
-class WrappingTestCase(unittest.TestCase):
+class WrappingTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     class Item(mapping.Document):
         with_include_docs = mapping.ViewField('test', all_map_func,
@@ -245,21 +214,10 @@ class WrappingTestCase(unittest.TestCase):
         without_include_docs = mapping.ViewField('test', all_map_func)
 
     def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-        design.ViewDefinition.sync_many(self.db, [self.Item.with_include_docs,
-                                                  self.Item.without_include_docs])
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except client.ResourceNotFound:
-            pass
+        super(WrappingTestCase, self).setUp()
+        design.ViewDefinition.sync_many(
+            self.db, [self.Item.with_include_docs,
+                      self.Item.without_include_docs])
 
     def test_viewfield_property(self):
         self.Item().store(self.db)
