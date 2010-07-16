@@ -6,7 +6,8 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import uuid
+import random
+import sys
 from couchdb import client
 
 class TempDatabaseMixin(object):
@@ -25,7 +26,12 @@ class TempDatabaseMixin(object):
     def temp_db(self):
         if self.temp_dbs is None:
             self.temp_dbs = {}
-        name = 'couchdb-python/' + uuid.uuid4().hex
+        # Find an unused database name
+        while True:
+            name = 'couchdb-python/%d' % random.randint(0, sys.maxint)
+            if name not in self.temp_dbs:
+                break
+            print '%s already used' % name
         db = self.server.create(name)
         self.temp_dbs[name] = db
         return name, db
