@@ -37,7 +37,7 @@ __all__ = ['Server', 'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
 
 
-DEFAULT_BASE_URL = 'http://localhost:5984/'
+DEFAULT_BASE_URL = os.environ.get('COUCHDB_URL', 'http://localhost:5984/')
 
 
 class Server(object):

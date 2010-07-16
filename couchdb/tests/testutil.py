@@ -16,8 +16,7 @@ class TempDatabaseMixin(object):
     _db = None
 
     def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', client.DEFAULT_BASE_URL)
-        self.server = client.Server(uri, full_commit=False)
+        self.server = client.Server(full_commit=False)
 
     def tearDown(self):
         if self.temp_dbs:
