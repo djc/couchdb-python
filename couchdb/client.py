@@ -8,7 +8,7 @@
 
 """Python client API for CouchDB.
 
->>> server = Server('http://localhost:5984/')
+>>> server = Server()
 >>> db = server.create('python-tests')
 >>> doc_id, doc_rev = db.save({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
@@ -43,7 +43,7 @@ DEFAULT_BASE_URL = os.environ.get('COUCHDB_URL', 'http://localhost:5984/')
 class Server(object):
     """Representation of a CouchDB server.
 
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
@@ -218,7 +218,7 @@ class Server(object):
 class Database(object):
     """Representation of a database on a CouchDB server.
 
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
 
     New documents can be added to the database using the `save()` method:
@@ -486,7 +486,7 @@ class Database(object):
         the document has been updated since it was retrieved, this method will
         raise a `ResourceConflict` exception.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
 
         >>> doc = dict(type='Person', name='John Doe')
@@ -640,7 +640,7 @@ class Database(object):
               wrapper=None, **options):
         """Execute an ad-hoc query (a "temp view") against the database.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
         >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
@@ -683,7 +683,7 @@ class Database(object):
         """Perform a bulk update or insertion of the given documents using a
         single HTTP request.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
         >>> for doc in db.update([
         ...     Document(type='Person', name='John Doe'),
@@ -751,7 +751,7 @@ class Database(object):
     def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
 
@@ -920,7 +920,7 @@ class ViewResults(object):
     This class allows the specification of ``key``, ``startkey``, and
     ``endkey`` options using Python slice notation.
 
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
     >>> db['johndoe'] = dict(type='Person', name='John Doe')
     >>> db['maryjane'] = dict(type='Person', name='Mary Jane')

@@ -27,7 +27,7 @@ class ViewDefinition(object):
     with the definition in the application code.
     
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
     
     >>> view = ViewDefinition('tests', 'all', '''function(doc) {

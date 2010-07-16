@@ -9,7 +9,7 @@
 """Mapping from raw JSON data structures to Python objects and vice versa.
 
 >>> from couchdb import Server
->>> server = Server('http://localhost:5984/')
+>>> server = Server()
 >>> db = server.create('python-tests')
 
 To define a document mapping, you declare a Python class inherited from
@@ -206,7 +206,7 @@ class ViewField(object):
     That property can be used as a function, which will execute the view.
     
     >>> from couchdb import Database
-    >>> db = Database('http://localhost:5984/python-tests')
+    >>> db = Database('python-tests')
     
     >>> Person.by_name(db, count=3)
     <ViewResults <PermanentView '_design/people/_view/by_name'> {'count': 3}>
@@ -527,7 +527,7 @@ class DictField(Field):
     """Field type for nested dictionaries.
     
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):
@@ -580,7 +580,7 @@ class ListField(Field):
     """Field type for sequences of other fields.
 
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):
