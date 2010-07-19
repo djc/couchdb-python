@@ -289,7 +289,8 @@ class Session(object):
 
         # Handle errors
         if status >= 400:
-            if data is not None:
+            ctype = resp.getheader('content-type')
+            if data is not None and 'application/json' in ctype:
                 data = json.decode(data)
                 error = data.get('error'), data.get('reason')
             elif method != 'HEAD':
