@@ -487,7 +487,7 @@ def urljoin(base, *path, **query):
     >>> urljoin('http://example.org/', 'foo', '/bar/')
     'http://example.org/foo/%2Fbar%2F'
 
-    >>> urljoin('http://example.org/', None)
+    >>> urljoin('http://example.org/', None) #doctest:+IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
     TypeError: argument 2 to map() must support iteration
