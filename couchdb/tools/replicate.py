@@ -14,13 +14,7 @@ setting up trigger based replication. But you can also use the
 '--continuous' option to set up automatic replication on newer
 CouchDB versions.
 
-Use 'python replicate.py --help' to get more detailed usage
-instructions.
-
-Be careful when using 127.0.0.1 as the source-server or target-server.
-With pull replication you can use 127.0.0.1 on the target-server.
-With push replication you can use 127.0.0.1 on the source-server.
-But I suggest you always use Fully Qualified domain names.
+Use 'python replicate.py --help' to get more detailed usage instructions.
 """
 
 import couchdb.client
@@ -59,12 +53,8 @@ def main():
         action='store_true',
         dest='continuous',
         help='trigger continuous replication in cochdb')
-    parser.add_option('--push',
-        action='store_true',
-        help='use push instead of pull replication')
 
     options, args = parser.parse_args()
-
     if not options.target_url or (not options.source_url):
         parser.error("Need at least --source-server and --target-server")
         sys.exit(1)
@@ -97,14 +87,8 @@ def main():
         if options.continuous:
             body['continuous'] = True
 
-        if options.push:
-            body.update({'source': dbname, 'target': '%s%s' % (options.target_url, dbname)})
-            source_server.resource.post('_replicate', body)
-        else:
-            # pull seems to be more reliable than push
-            body.update({'source': '%s%s' % (options.source_url, dbname), 'target': dbname})
-            target_server.resource.post('_replicate', body)
-
+        body.update({'source': '%s%s' % (options.source_url, dbname), 'target': dbname})
+        target_server.resource.post('_replicate', body)
         print '%.1fs' % (time.time() - start)
     
     if options.compact_target:
