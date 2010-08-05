@@ -32,15 +32,6 @@ def main():
 
     usage = '%prog [options]'
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option('--source-server',
-        action='store',
-        dest='source_url',
-        help='the url of the server to replicate from')
-    parser.add_option('--target-server',
-        action='store',
-        dest='target_url',
-        default="http://127.0.0.1:5984",
-        help='the url of the server to replicate to [%default]')
     parser.add_option('--database',
         action='append',
         dest='dbnames',
@@ -55,17 +46,17 @@ def main():
         help='trigger continuous replication in cochdb')
 
     options, args = parser.parse_args()
-    if not options.target_url or (not options.source_url):
-        parser.error("Need at least --source-server and --target-server")
-        sys.exit(1)
+    if len(args) != 2:
+        raise parser.error('need source and target arguments')
 
-    if not options.source_url.endswith('/'):
-        options.source_url = options.source_url + '/'
-    if not options.target_url.endswith('/'):
-        options.target_url = options.target_url + '/'
+    src, tgt = args
+    if not src.endswith('/'):
+        src += '/'
+    if not tgt.endswith('/'):
+        tgt += '/'
 
-    source_server = couchdb.client.Server(options.source_url)
-    target_server = couchdb.client.Server(options.target_url)
+    source_server = couchdb.client.Server(src)
+    target_server = couchdb.client.Server(tgt)
 
     if not options.dbnames:
         dbnames = sorted(i for i in source_server)
@@ -87,7 +78,7 @@ def main():
         if options.continuous:
             body['continuous'] = True
 
-        body.update({'source': '%s%s' % (options.source_url, dbname), 'target': dbname})
+        body.update({'source': '%s%s' % (src, dbname), 'target': dbname})
         target_server.resource.post('_replicate', body)
         print '%.1fs' % (time.time() - start)
     
