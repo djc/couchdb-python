@@ -17,19 +17,46 @@ CouchDB versions.
 Use 'python replicate.py --help' to get more detailed usage instructions.
 """
 
-import couchdb.client
+from couchdb import http, client
 import optparse
 import sys
 import time
+import urlparse
+import re
+
+def findpath(parser, s):
+    '''returns (server url, path component)'''
+
+    if s == '.':
+        return client.DEFAULT_BASE_URL, ''
+    if not s.startswith('http'):
+        return client.DEFAULT_BASE_URL, s
+
+    bits = urlparse.urlparse(s)
+    res = http.Resource('%s://%s/' % (bits.scheme, bits.netloc), None)
+    parts = bits.path.split('/')[1:]
+    if not parts[-1]:
+        parts = parts[:-1]
+
+    cut = None
+    for i in range(0, len(parts) + 1):
+        try:
+            data = res.get_json(parts[:i])[2]
+        except Exception:
+            data = None
+        if data and 'couchdb' in data:
+            cut = i
+
+    if cut is None:
+        raise parser.error("'%s' does not appear to be a CouchDB" % s)
+
+    base = res.url + ('/'.join(parts[:cut]) if parts[:cut] else '')
+    return base, '/'.join(parts[cut:])
 
 def main():
 
     usage = '%prog [options]'
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option('--database',
-        action='append',
-        dest='dbnames',
-        help='Database to replicate. Can be given more than once. [all databases]')
     parser.add_option('--continuous',
         action='store_true',
         dest='continuous',
@@ -43,32 +70,51 @@ def main():
     if len(args) != 2:
         raise parser.error('need source and target arguments')
 
+    # set up server objects
+
     src, tgt = args
-    if not src.endswith('/'):
-        src += '/'
-    if not tgt.endswith('/'):
-        tgt += '/'
+    sbase, spath = findpath(parser, src)
+    source = client.Server(sbase)
+    tbase, tpath = findpath(parser, tgt)
+    target = client.Server(tbase)
 
-    source_server = couchdb.client.Server(src)
-    target_server = couchdb.client.Server(tgt)
+    # check database name specs
 
-    if not options.dbnames:
-        dbnames = sorted(i for i in source_server)
-    else:
-        dbnames = options.dbnames
+    if '*' in tpath:
+        raise parser.error('invalid target path: must be single db or empty')
+    elif '*' in spath and tpath:
+        raise parser.error('target path must be empty with multiple sources')
 
-    for dbname in sorted(dbnames, reverse=True):
+    all = sorted(i for i in source)
+    if not spath:
+        raise parser.error('source database must be specified')
+    elif spath in all:
+        databases = [(spath, tpath if tpath else spath)]
+    elif '*' in spath:
+        check = re.compile(spath.replace('*', '.*?'))
+        databases = [(i, i) for i in all if check.match(i)]
+
+    if not databases:
+        raise parser.error("no source databases match glob '%s'" % spath)
+
+    # do the actual replication
+
+    for sdb, tdb in databases:
 
         start = time.time()
-        print dbname,
+        print sdb, '->', tdb,
         sys.stdout.flush()
-        if dbname not in target_server:
-            target_server.create(dbname)
+
+        if tdb not in target:
+            target.create(tdb)
             print "created",
             sys.stdout.flush()
 
-        sdb = '%s%s' % (src, dbname)
-        target_server.replicate(sdb, dbname, continuous=options.continuous)
+        sdb = '%s%s' % (sbase, sdb)
+        if options.continuous:
+            target.replicate(sdb, tdb, continuous=options.continuous)
+        else:
+            target.replicate(sdb, tdb)
         print '%.1fs' % (time.time() - start)
 
     if not options.compact:
