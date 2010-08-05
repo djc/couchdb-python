@@ -22,12 +22,6 @@ import optparse
 import sys
 import time
 
-def compact(server, dbnames):
-    for dbname in dbnames:
-        sys.stdout.flush()
-        db = server[dbname]
-        db.resource.post('_compact')
-
 def main():
 
     usage = '%prog [options]'
@@ -36,14 +30,14 @@ def main():
         action='append',
         dest='dbnames',
         help='Database to replicate. Can be given more than once. [all databases]')
-    parser.add_option('--no-target-compaction',
-        action='store_false',
-        dest='compact_target',
-        help='do not start compaction of target after replications')
     parser.add_option('--continuous',
         action='store_true',
         dest='continuous',
         help='trigger continuous replication in cochdb')
+    parser.add_option('--compact',
+        action='store_true',
+        dest='compact',
+        help='compact target database after replication')
 
     options, args = parser.parse_args()
     if len(args) != 2:
@@ -81,9 +75,13 @@ def main():
         body.update({'source': '%s%s' % (src, dbname), 'target': dbname})
         target_server.resource.post('_replicate', body)
         print '%.1fs' % (time.time() - start)
-    
-    if options.compact_target:
-        compact(target_server, dbnames)
+
+    if not options.compact:
+        return
+
+    sys.stdout.flush()
+    for dbname in dbnames:
+        target_server[dbname].compact()
 
 if __name__ == '__main__':
     main()
