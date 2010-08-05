@@ -55,7 +55,7 @@ def findpath(parser, s):
 
 def main():
 
-    usage = '%prog [options]'
+    usage = '%prog [options] <source> <target>'
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--continuous',
         action='store_true',
