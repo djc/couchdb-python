@@ -35,6 +35,7 @@ def compact(server, dbnames):
         db.resource.post('_compact')
 
 def main():
+
     usage = '%prog [options]'
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--source-server',
@@ -72,6 +73,7 @@ def main():
         options.source_url = options.source_url + '/'
     if not options.target_url.endswith('/'):
         options.target_url = options.target_url + '/'
+
     source_server = couchdb.client.Server(options.source_url)
     target_server = couchdb.client.Server(options.target_url)
 
@@ -82,6 +84,7 @@ def main():
 
     targetdbs = sorted(i for i in target_server)
     for dbname in sorted(dbnames, reverse=True):
+
         start = time.time()
         print dbname,
         sys.stdout.flush()
@@ -89,9 +92,11 @@ def main():
             target_server.create(dbname)
             print "created",
             sys.stdout.flush()
+
         body = {}
         if options.continuous:
             body['continuous'] = True
+
         if options.push:
             body.update({'source': dbname, 'target': '%s%s' % (options.target_url, dbname)})
             source_server.resource.post('_replicate', body)
@@ -99,7 +104,8 @@ def main():
             # pull seems to be more reliable than push
             body.update({'source': '%s%s' % (options.source_url, dbname), 'target': dbname})
             target_server.resource.post('_replicate', body)
-        print "%.1f s" % (time.time() - start)
+
+        print '%.1fs' % (time.time() - start)
     
     if options.compact_target:
         compact(target_server, dbnames)
