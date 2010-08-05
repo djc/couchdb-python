@@ -57,23 +57,18 @@ def main():
     else:
         dbnames = options.dbnames
 
-    targetdbs = sorted(i for i in target_server)
     for dbname in sorted(dbnames, reverse=True):
 
         start = time.time()
         print dbname,
         sys.stdout.flush()
-        if dbname not in targetdbs:
+        if dbname not in target_server:
             target_server.create(dbname)
             print "created",
             sys.stdout.flush()
 
-        body = {}
-        if options.continuous:
-            body['continuous'] = True
-
-        body.update({'source': '%s%s' % (src, dbname), 'target': dbname})
-        target_server.resource.post('_replicate', body)
+        sdb = '%s%s' % (src, dbname)
+        target_server.replicate(sdb, dbname, continuous=options.continuous)
         print '%.1fs' % (time.time() - start)
 
     if not options.compact:
