@@ -85,7 +85,7 @@ def main():
     elif '*' in spath and tpath:
         raise parser.error('target path must be empty with multiple sources')
 
-    all = sorted(i for i in source)
+    all = sorted(i for i in source if i[0] != '_') # Skip reserved names.
     if not spath:
         raise parser.error('source database must be specified')
     elif spath in all:
