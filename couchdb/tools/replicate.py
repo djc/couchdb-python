@@ -118,11 +118,11 @@ def main():
         else:
             target.replicate(sdb, tdb)
         print '%.1fs' % (time.time() - start)
+        sys.stdout.flush()
 
     if not options.compact:
         return
 
-    sys.stdout.flush()
     for dbname in dbnames:
         target_server[dbname].compact()
 
