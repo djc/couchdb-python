@@ -21,6 +21,7 @@ from couchdb import http, client
 import optparse
 import sys
 import time
+import urllib
 import urlparse
 import re
 
@@ -112,7 +113,7 @@ def main():
             print "created",
             sys.stdout.flush()
 
-        sdb = '%s%s' % (sbase, sdb)
+        sdb = '%s%s' % (sbase, urllib.quote(sdb, ''))
         if options.continuous:
             target.replicate(sdb, tdb, continuous=options.continuous)
         else:
