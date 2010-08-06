@@ -93,6 +93,8 @@ def main():
     elif '*' in spath:
         check = re.compile(spath.replace('*', '.*?'))
         databases = [(i, i) for i in all if check.match(i)]
+    else:
+        databases = []
 
     if not databases:
         raise parser.error("no source databases match glob '%s'" % spath)
