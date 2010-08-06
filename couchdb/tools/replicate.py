@@ -120,11 +120,10 @@ def main():
         print '%.1fs' % (time.time() - start)
         sys.stdout.flush()
 
-    if not options.compact:
-        return
-
-    for dbname in dbnames:
-        target_server[dbname].compact()
+    if options.compact:
+        for (sdb, tdb) in databases:
+            print 'compact', tdb
+            target[tdb].compact()
 
 if __name__ == '__main__':
     main()
