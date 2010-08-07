@@ -36,7 +36,7 @@ def findpath(parser, s):
     bits = urlparse.urlparse(s)
     res = http.Resource('%s://%s/' % (bits.scheme, bits.netloc), None)
     parts = bits.path.split('/')[1:]
-    if not parts[-1]:
+    if parts and not parts[-1]:
         parts = parts[:-1]
 
     cut = None
