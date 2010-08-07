@@ -51,7 +51,7 @@ def findpath(parser, s):
     if cut is None:
         raise parser.error("'%s' does not appear to be a CouchDB" % s)
 
-    base = res.url + ('/'.join(parts[:cut]) if parts[:cut] else '')
+    base = res.url + (parts[:cut] and '/'.join(parts[:cut]) or '')
     return base, '/'.join(parts[cut:])
 
 def main():
