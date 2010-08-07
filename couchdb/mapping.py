@@ -483,8 +483,7 @@ class DateTimeField(Field):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
                 value = value.rstrip('Z') # remove timezone separator
-                timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
-                value = datetime.utcfromtimestamp(timestamp)
+                value = datetime(*strptime(value, '%Y-%m-%dT%H:%M:%S')[:6])
             except ValueError:
                 raise ValueError('Invalid ISO date/time %r' % value)
         return value

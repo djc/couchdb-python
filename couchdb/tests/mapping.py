@@ -80,6 +80,9 @@ class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         post.store(self.db)
         self.assertEqual(len(list(self.db.view('_all_docs'))), 1)
 
+    def test_old_datetime(self):
+        dt = mapping.DateTimeField()
+        assert dt._to_python(u'1880-01-01T00:00:00Z')
 
 class ListFieldTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
