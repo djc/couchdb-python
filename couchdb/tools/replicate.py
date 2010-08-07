@@ -23,7 +23,7 @@ import sys
 import time
 import urllib
 import urlparse
-import re
+import fnmatch
 
 def findpath(parser, s):
     '''returns (server url, path component)'''
@@ -89,13 +89,8 @@ def main():
     all = sorted(i for i in source if i[0] != '_') # Skip reserved names.
     if not spath:
         raise parser.error('source database must be specified')
-    elif spath in all:
-        databases = [(spath, tpath if tpath else spath)]
-    elif '*' in spath:
-        check = re.compile(spath.replace('*', '.*?'))
-        databases = [(i, i) for i in all if check.match(i)]
     else:
-        databases = []
+        databases = [(i, i) for i in all if fnmatch.fnmatchcase(i, spath)]
 
     if not databases:
         raise parser.error("no source databases match glob '%s'" % spath)
