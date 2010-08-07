@@ -89,9 +89,8 @@ def main():
     all = sorted(i for i in source if i[0] != '_') # Skip reserved names.
     if not spath:
         raise parser.error('source database must be specified')
-    else:
-        databases = [(i, i) for i in all if fnmatch.fnmatchcase(i, spath)]
 
+    databases = [(i, i) for i in all if fnmatch.fnmatchcase(i, spath)]
     if not databases:
         raise parser.error("no source databases match glob '%s'" % spath)
 
