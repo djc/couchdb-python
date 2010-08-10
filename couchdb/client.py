@@ -417,7 +417,9 @@ class Database(object):
         immediate commits, this method can be used to ensure that any
         non-committed changes are committed to physical storage.
         """
-        _, _, data = self.resource.post_json('_ensure_full_commit')
+        _, _, data = self.resource.post_json(
+            '_ensure_full_commit',
+            headers={'Content-Type': 'application/json'})
         return data
 
     def compact(self, ddoc=None):
