@@ -5,5 +5,6 @@ This package provides a Python interface to CouchDB.
 
   <http://couchdb.org/>
 
-Please see the files in the `doc` folder and/or the docstrings in
-the code for documentation.
+Please see the files in the `doc` folder or browse the documentation online at:
+
+  <http://packages.python.org/CouchDB/>
