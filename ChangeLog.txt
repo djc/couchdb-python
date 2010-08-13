@@ -1,14 +1,16 @@
-Version 0.7.1 (unreleased)
+Version 0.8 (Aug 13, 2010)
 --------------------------
 
- * Regression: reinclude all http exception types in the 'couchdb' package's
-   scope.
+ * The couchdb-replicate script has changed from being a poor man's version of
+   continuous replication (predating it) to being a simple script to help
+   kick off replication jobs across databases and servers.
+ * Reinclude all http exception types in the 'couchdb' package's scope.
+ * Replaced epydoc API docs by more extensive Sphinx-based documentation.
  * Request retries schedule and frequency are now customizable.
  * Allow more kinds of request errors to trigger a retry.
- * Replaced epydoc API docs by Sphinx-based documentation.
  * Improve wrapping of view results.
- * Removed couchdb-replicate script (replacement for continuous replication).
  * Added a `uuids()` method to the `client.Server` class (issue 122).
+ * Tested with CouchDB 0.10 - 1.0 (and Python 2.4 - 2.7).
 
 
 Version 0.7.0 (Apr 15, 2010)
