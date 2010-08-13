@@ -7,29 +7,13 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import os
 import unittest
 
-from couchdb.client import Server
 from couchdb.http import ResourceConflict, ResourceNotFound
+from couchdb.tests import testutil
 
 
-class CouchTests(unittest.TestCase):
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
+class CouchTests(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def _create_test_docs(self, num):
         for i in range(num):

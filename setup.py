@@ -110,7 +110,7 @@ if sys.version_info < (2, 6):
 
 setup(
     name = 'CouchDB',
-    version = '0.7.1',
+    version = '0.8',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
@@ -140,7 +140,7 @@ interface for the CouchDB server.""",
             'couchpy = couchdb.view:main',
             'couchdb-dump = couchdb.tools.dump:main',
             'couchdb-load = couchdb.tools.load:main',
-            'couchdb-replicate = couchdb.tools.replication_helper:main'
+            'couchdb-replicate = couchdb.tools.replicate:main',
         ],
     },
 

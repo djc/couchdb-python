@@ -8,7 +8,7 @@
 
 """Python client API for CouchDB.
 
->>> server = Server('http://localhost:5984/')
+>>> server = Server()
 >>> db = server.create('python-tests')
 >>> doc_id, doc_rev = db.save({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
@@ -37,13 +37,13 @@ __all__ = ['Server', 'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
 
 
-DEFAULT_BASE_URL = 'http://localhost:5984/'
+DEFAULT_BASE_URL = os.environ.get('COUCHDB_URL', 'http://localhost:5984/')
 
 
 class Server(object):
     """Representation of a CouchDB server.
 
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
@@ -169,6 +169,19 @@ class Server(object):
         status, headers, data = self.resource.get_json('_active_tasks')
         return data
 
+    def uuids(self, count=None):
+        """Retrieve a batch of uuids
+
+        :param count: a number of uuids to fetch
+                      (None -- get as many as the server sends)
+        :return: a list of uuids
+        """
+        if count is None:
+            _, _, data = self.resource.get_json('_uuids')
+        else:
+            _, _, data = self.resource.get_json('_uuids', count=count)
+        return data['uuids']
+
     def create(self, name):
         """Create a new database with the given name.
 
@@ -205,7 +218,7 @@ class Server(object):
 class Database(object):
     """Representation of a database on a CouchDB server.
 
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
 
     New documents can be added to the database using the `save()` method:
@@ -387,7 +400,11 @@ class Database(object):
         :return: (id, rev) tuple of the save document
         :rtype: `tuple`
         """
-        _, _, data = self.resource.post_json(body=doc, **options)
+        if '_id' in doc:
+            func = self.resource(doc['_id']).put_json
+        else:
+            func = self.resource.post_json
+        _, _, data = func(body=doc, **options)
         id, rev = data['id'], data.get('rev')
         doc['_id'] = id
         if rev is not None: # Not present for batch='ok'
@@ -400,7 +417,9 @@ class Database(object):
         immediate commits, this method can be used to ensure that any
         non-committed changes are committed to physical storage.
         """
-        _, _, data = self.resource.post_json('_ensure_full_commit')
+        _, _, data = self.resource.post_json(
+            '_ensure_full_commit',
+            headers={'Content-Type': 'application/json'})
         return data
 
     def compact(self, ddoc=None):
@@ -415,9 +434,11 @@ class Database(object):
         :rtype: `bool`
         """
         if ddoc:
-            _, _, data = self.resource('_compact').post_json(ddoc)
+            resource = self.resource('_compact', ddoc)
         else:
-            _, _, data = self.resource.post_json('_compact')
+            resource = self.resource('_compact')
+        _, _, data = resource.post_json(
+            headers={'Content-Type': 'application/json'})
         return data['ok']
 
     def copy(self, src, dest):
@@ -467,7 +488,7 @@ class Database(object):
         the document has been updated since it was retrieved, this method will
         raise a `ResourceConflict` exception.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
 
         >>> doc = dict(type='Person', name='John Doe')
@@ -568,8 +589,8 @@ class Database(object):
         :param filename: the name of the attachment file
         :param default: default value to return when the document or attachment
                         is not found
-        :return: the content of the attachment as a string, or the value of the
-                 `default` argument if the attachment is not found
+        :return: a file-like object with read and close methods, or the value
+                 of the `default` argument if the attachment is not found
         :since: 0.4.1
         """
         if isinstance(id_or_doc, basestring):
@@ -621,7 +642,7 @@ class Database(object):
               wrapper=None, **options):
         """Execute an ad-hoc query (a "temp view") against the database.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
         >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
@@ -664,7 +685,7 @@ class Database(object):
         """Perform a bulk update or insertion of the given documents using a
         single HTTP request.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
         >>> for doc in db.update([
         ...     Document(type='Person', name='John Doe'),
@@ -732,7 +753,7 @@ class Database(object):
     def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
 
-        >>> server = Server('http://localhost:5984/')
+        >>> server = Server()
         >>> db = server.create('python-tests')
         >>> db['gotham'] = dict(type='City', name='Gotham City')
 
@@ -901,7 +922,7 @@ class ViewResults(object):
     This class allows the specification of ``key``, ``startkey``, and
     ``endkey`` options using Python slice notation.
 
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
     >>> db['johndoe'] = dict(type='Person', name='John Doe')
     >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
@@ -960,19 +981,15 @@ class ViewResults(object):
             return ViewResults(self.view, options)
 
     def __iter__(self):
-        wrapper = self.view.wrapper
-        for row in self.rows:
-            if wrapper is not None:
-                yield wrapper(row)
-            else:
-                yield row
+        return iter(self.rows)
 
     def __len__(self):
         return len(self.rows)
 
     def _fetch(self):
         data = self.view._exec(self.options)
-        self._rows = [Row(row) for row in data['rows']]
+        wrapper = self.view.wrapper or Row
+        self._rows = [wrapper(row) for row in data['rows']]
         self._total_rows = data.get('total_rows')
         self._offset = data.get('offset', 0)
 
@@ -1049,8 +1066,11 @@ class Row(dict):
             return Document(doc)
 
 
+SPECIAL_DB_NAMES = set(['_users'])
 VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')
 def validate_dbname(name):
+    if name in SPECIAL_DB_NAMES:
+        return name
     if not VALID_DB_NAME.match(name):
         raise ValueError('Invalid database name')
     return name

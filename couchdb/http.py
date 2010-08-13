@@ -15,7 +15,6 @@ from base64 import b64encode
 from datetime import datetime
 import errno
 from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
-import re
 import socket
 import time
 try:
@@ -33,8 +32,8 @@ from urlparse import urlsplit, urlunsplit
 from couchdb import json
 
 __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
-           'ServerError', 'Unauthorized', 'RedirectLimit', 'Session',
-           'Resource']
+           'ResourceConflict', 'ServerError', 'Unauthorized', 'RedirectLimit',
+           'Session', 'Resource']
 __docformat__ = 'restructuredtext en'
 
 
@@ -117,15 +116,25 @@ class ResponseBody(object):
             self.resp.fp.read(2) #crlf
 
 
+RETRYABLE_ERRORS = frozenset([
+    errno.EPIPE, errno.ETIMEDOUT,
+    errno.ECONNRESET, errno.ECONNREFUSED, errno.ECONNABORTED,
+    errno.EHOSTDOWN, errno.EHOSTUNREACH,
+    errno.ENETRESET, errno.ENETUNREACH, errno.ENETDOWN
+])
+
+
 class Session(object):
 
-    def __init__(self, cache=None, timeout=None, max_redirects=5):
+    def __init__(self, cache=None, timeout=None, max_redirects=5,
+                 retry_delays=[0], retryable_errors=RETRYABLE_ERRORS):
         """Initialize an HTTP client session.
 
         :param cache: an instance with a dict-like interface or None to allow
                       Session to create a dict for caching.
         :param timeout: socket timeout in number of seconds, or `None` for no
                         timeout
+        :param retry_delays: list of request retry delays.
         """
         from couchdb import __version__ as VERSION
         self.user_agent = 'CouchDB-Python/%s' % VERSION
@@ -137,6 +146,8 @@ class Session(object):
         self.perm_redirects = {}
         self.conns = {} # HTTP connections keyed by (scheme, host)
         self.lock = Lock()
+        self.retry_delays = list(retry_delays) # We don't want this changing on us.
+        self.retryable_errors = set(retryable_errors)
 
     def request(self, method, url, body=None, headers=None, credentials=None,
                 num_redirects=0):
@@ -157,7 +168,9 @@ class Session(object):
                 if etag:
                     headers['If-None-Match'] = etag
 
-        if body is not None:
+        if body is None:
+            headers.setdefault('Content-Length', '0')
+        else:
             if not isinstance(body, basestring):
                 try:
                     body = json.encode(body).encode('utf-8')
@@ -176,15 +189,27 @@ class Session(object):
 
         path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
         conn = self._get_connection(url)
-        if conn.sock is None:
-            conn.connect()
 
-        def _try_request(retries=1):
-            def _retry():
-                conn.close()
-                conn.connect()
-                return _try_request(retries - 1)
+        def _try_request_with_retries(retries):
+            while True:
+                try:
+                    return _try_request()
+                except socket.error, e:
+                    ecode = e.args[0]
+                    if ecode not in self.retryable_errors:
+                        raise
+                    try:
+                        delay = retries.next()
+                    except StopIteration:
+                        # No more retries, raise last socket error.
+                        raise e
+                    time.sleep(delay)
+                    conn.close()
+
+        def _try_request():
             try:
+                if conn.sock is None:
+                    conn.connect()
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
                     conn.putheader(header, headers[header])
@@ -205,18 +230,13 @@ class Session(object):
                 # httplib raises a BadStatusLine when it cannot read the status
                 # line saying, "Presumably, the server closed the connection
                 # before sending a valid response."
-                if retries > 0 and e.line == '':
-                    return _retry()
-                else:
-                    raise
-            except socket.error, e:
-                ecode = e.args[0]
-                if retries > 0 and ecode in [errno.ECONNRESET, errno.EPIPE]:
-                    return _retry()
+                # Raise as ECONNRESET to simplify retry logic.
+                if e.line == '' or e.line == "''":
+                    raise socket.error(errno.ECONNRESET)
                 else:
                     raise
 
-        resp = _try_request()
+        resp = _try_request_with_retries(iter(self.retry_delays))
         status = resp.status
 
         # Handle conditional response
@@ -269,7 +289,8 @@ class Session(object):
 
         # Handle errors
         if status >= 400:
-            if data is not None:
+            ctype = resp.getheader('content-type')
+            if data is not None and 'application/json' in ctype:
                 data = json.decode(data)
                 error = data.get('error'), data.get('reason')
             elif method != 'HEAD':
@@ -364,25 +385,25 @@ class Resource(object):
 
     def delete_json(self, *a, **k):
         status, headers, data = self.delete(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
     def get_json(self, *a, **k):
         status, headers, data = self.get(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
     def post_json(self, *a, **k):
         status, headers, data = self.post(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
     def put_json(self, *a, **k):
         status, headers, data = self.put(*a, **k)
-        if headers.get('content-type') == 'application/json':
+        if 'application/json' in headers.get('content-type'):
             data = json.decode(data.read())
         return status, headers, data
 
@@ -467,7 +488,7 @@ def urljoin(base, *path, **query):
     >>> urljoin('http://example.org/', 'foo', '/bar/')
     'http://example.org/foo/%2Fbar%2F'
 
-    >>> urljoin('http://example.org/', None)
+    >>> urljoin('http://example.org/', None) #doctest:+IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
         ...
     TypeError: argument 2 to map() must support iteration

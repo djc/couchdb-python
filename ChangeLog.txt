@@ -1,5 +1,20 @@
+Version 0.8 (Aug 13, 2010)
+--------------------------
+
+ * The couchdb-replicate script has changed from being a poor man's version of
+   continuous replication (predating it) to being a simple script to help
+   kick off replication jobs across databases and servers.
+ * Reinclude all http exception types in the 'couchdb' package's scope.
+ * Replaced epydoc API docs by more extensive Sphinx-based documentation.
+ * Request retries schedule and frequency are now customizable.
+ * Allow more kinds of request errors to trigger a retry.
+ * Improve wrapping of view results.
+ * Added a `uuids()` method to the `client.Server` class (issue 122).
+ * Tested with CouchDB 0.10 - 1.0 (and Python 2.4 - 2.7).
+
+
 Version 0.7.0 (Apr 15, 2010)
-http://couchdb-python.googlecode.com/hg/?r=0.7.0
+----------------------------
 
  * Breaking change: the dependency on `httplib2` has been replaced by
    an internal `couchdb.http` library. This changes the API in several places.
@@ -17,9 +32,9 @@ http://couchdb-python.googlecode.com/hg/?r=0.7.0
  * Added an optional argument to the 'Database.compact` method to enable
    view compaction (the rest of issue 37).
 
-Version 0.6.1
-http://couchdb-python.googlecode.com/hg/?r=0.6.1
-(Dec 14, 2009, from branches/0.6.x)
+
+Version 0.6.1 (Dec 14, 2009)
+----------------------------
 
  * Compatible with CouchDB 0.9.x and 0.10.x.
  * Removed debugging statement from `json` module (issue 82).
@@ -39,9 +54,8 @@ http://couchdb-python.googlecode.com/hg/?r=0.6.1
  * Make sure we always return UTF-8 from the view server (issue 81).
 
 
-Version 0.6
-http://couchdb-python.googlecode.com/hg/?r=0.6.0
-(Jul 2, 2009, from 0.6.x)
+Version 0.6 (Jul 2, 2009)
+-------------------------
 
  * Compatible with CouchDB 0.9.x.
  * `schema.DictField` instances no longer need to be bound to a `Schema`
@@ -76,9 +90,8 @@ http://couchdb-python.googlecode.com/hg/?r=0.6.0
    to see all communication between CouchDB and the view server (issue 55).
 
 
-Version 0.5
-http://couchdb-python.googlecode.com/hg/?r=0.5.0
-(Nov 28, 2008, from 0.5.x)
+Version 0.5 (Nov 29, 2008)
+--------------------------
 
  * `schema.Document` objects can now be used in the documents list passed to
    `client.Database.update()`.
@@ -110,9 +123,8 @@ http://couchdb-python.googlecode.com/hg/?r=0.5.0
  * The `keys` option for views is now supported (issue 35).
 
 
-Version 0.4
-http://couchdb-python.googlecode.com/hg/?r=0.4.0
-(Jun 28, 2008, from 0.4.x)
+Version 0.4 (Jun 28, 2008)
+--------------------------
 
  * Updated for compatibility with CouchDB 0.8.0
  * Added command-line scripts for importing/exporting databases.
@@ -121,9 +133,8 @@ http://couchdb-python.googlecode.com/hg/?r=0.4.0
  * The `_view` prefix can now be omitted when specifying view names.
 
 
-Version 0.3
-http://couchdb-python.googlecode.com/hg/?r=0.3.0
-(Feb 6, 2008, from 0.3.x)
+Version 0.3 (Feb 6, 2008)
+-------------------------
 
  * The `schema.Document` class now has a `view()` method that can be used to
    execute a CouchDB view and map the result rows back to objects of that
@@ -134,9 +145,8 @@ http://couchdb-python.googlecode.com/hg/?r=0.3.0
  * Add a `query()` classmethod to the `Document` class.
 
 
-Version 0.2
-http://couchdb-python.googlecode.com/hg/?r=0.2.0
-(Nov 21, 2007, from 0.2.x)
+Version 0.2 (Nov 21, 2007)
+--------------------------
 
  * Added __len__ and __iter__ to the `schema.Schema` class to iterate
    over and get the number of items in a document or compound field.
@@ -162,8 +172,7 @@ http://couchdb-python.googlecode.com/hg/?r=0.2.0
  * Updated for compatibility with CouchDB release 0.7.0.
 
 
-Version 0.1
-http://couchdb-python.googlecode.com/hg/?r=0.1.0
-(Sep 23, 2007, from 0.1.x)
+Version 0.1 (Sep 23, 2007)
+--------------------------
 
  * First public release.

@@ -1,5 +1,5 @@
 include COPYING
+include Makefile
 include ChangeLog.txt
-include doc/api/*.*
-include doc/*.html
-include doc/conf/*.ini
+include doc/conf.py
+include doc/*.rst

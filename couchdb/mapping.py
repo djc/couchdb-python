@@ -9,12 +9,13 @@
 """Mapping from raw JSON data structures to Python objects and vice versa.
 
 >>> from couchdb import Server
->>> server = Server('http://localhost:5984/')
+>>> server = Server()
 >>> db = server.create('python-tests')
 
 To define a document mapping, you declare a Python class inherited from
 `Document`, and add any number of `Field` attributes:
 
+>>> from couchdb.mapping import TextField, IntegerField, DateField
 >>> class Person(Document):
 ...     name = TextField()
 ...     age = IntegerField()
@@ -206,7 +207,7 @@ class ViewField(object):
     That property can be used as a function, which will execute the view.
     
     >>> from couchdb import Database
-    >>> db = Database('http://localhost:5984/python-tests')
+    >>> db = Database('python-tests')
     
     >>> Person.by_name(db, count=3)
     <ViewResults <PermanentView '_design/people/_view/by_name'> {'count': 3}>
@@ -273,12 +274,7 @@ class ViewField(object):
 
     def __get__(self, instance, cls=None):
         if self.wrapper is DEFAULT:
-            def wrapper(row):
-                if row.doc is not None:
-                    return cls.wrap(row.doc)
-                data = row.value
-                data['_id'] = row.id
-                return cls.wrap(data)
+            wrapper = cls._wrap_row
         else:
             wrapper = self.wrapper
         return ViewDefinition(self.design, self.name, self.map_fun,
@@ -384,14 +380,8 @@ class Document(Mapping):
         missing from the document. If you want to load the full document for
         every row, set the ``include_docs`` option to ``True``.
         """
-        def _wrapper(row):
-            if row.doc is not None:
-                return cls.wrap(row.doc)
-            data = row.value
-            data['_id'] = row.id
-            return cls.wrap(data)
         return db.query(map_fun, reduce_fun=reduce_fun, language=language,
-                        wrapper=_wrapper, **options)
+                        wrapper=cls._wrap_row, **options)
 
     @classmethod
     def view(cls, db, viewname, **options):
@@ -403,13 +393,16 @@ class Document(Mapping):
         missing from the document. If you want to load the full document for
         every row, set the ``include_docs`` option to ``True``.
         """
-        def _wrapper(row):
-            if row.doc is not None: # include_docs=True
-                return cls.wrap(row.doc)
-            data = row.value
-            data['_id'] = row.id
-            return cls.wrap(data)
-        return db.view(viewname, wrapper=_wrapper, **options)
+        return db.view(viewname, wrapper=cls._wrap_row, **options)
+
+    @classmethod
+    def _wrap_row(cls, row):
+        doc = row.get('doc')
+        if doc is not None:
+            return cls.wrap(doc)
+        data = row['value']
+        data['_id'] = row['id']
+        return cls.wrap(data)
 
 
 class TextField(Field):
@@ -490,8 +483,7 @@ class DateTimeField(Field):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
                 value = value.rstrip('Z') # remove timezone separator
-                timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
-                value = datetime.utcfromtimestamp(timestamp)
+                value = datetime(*strptime(value, '%Y-%m-%dT%H:%M:%S')[:6])
             except ValueError:
                 raise ValueError('Invalid ISO date/time %r' % value)
         return value
@@ -535,7 +527,7 @@ class DictField(Field):
     """Field type for nested dictionaries.
     
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):
@@ -588,7 +580,7 @@ class ListField(Field):
     """Field type for sequences of other fields.
 
     >>> from couchdb import Server
-    >>> server = Server('http://localhost:5984/')
+    >>> server = Server()
     >>> db = server.create('python-tests')
 
     >>> class Post(Document):

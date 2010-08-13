@@ -8,28 +8,12 @@
 
 from decimal import Decimal
 import doctest
-import os
 import unittest
 
-from couchdb import client, mapping
-from couchdb.http import ResourceNotFound
+from couchdb import design, mapping
+from couchdb.tests import testutil
 
-class DocumentTestCase(unittest.TestCase):
-
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
+class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_mutable_fields(self):
         class Test(mapping.Document):
@@ -88,23 +72,19 @@ class DocumentTestCase(unittest.TestCase):
         assert results[0][0] is True
         assert results[1][0] is True
 
+    def test_store_existing(self):
+        class Post(mapping.Document):
+            title = mapping.TextField()
+        post = Post(title='Foo bar')
+        post.store(self.db)
+        post.store(self.db)
+        self.assertEqual(len(list(self.db.view('_all_docs'))), 1)
 
-class ListFieldTestCase(unittest.TestCase):
+    def test_old_datetime(self):
+        dt = mapping.DateTimeField()
+        assert dt._to_python(u'1880-01-01T00:00:00Z')
 
-    def setUp(self):
-        uri = os.environ.get('COUCHDB_URI', 'http://localhost:5984/')
-        self.server = client.Server(uri, full_commit=False)
-        try:
-            self.server.delete('python-tests')
-        except ResourceNotFound:
-            pass
-        self.db = self.server.create('python-tests')
-
-    def tearDown(self):
-        try:
-            self.server.delete('python-tests')
-        except client.ResourceNotFound:
-            pass
+class ListFieldTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_to_json(self):
         # See <http://code.google.com/p/couchdb-python/issues/detail?id=14>
@@ -226,11 +206,51 @@ class ListFieldTestCase(unittest.TestCase):
         self.assertEqual([i for i in thing2.numbers], [])
 
 
+all_map_func = 'function(doc) { emit(doc._id, doc); }'
+
+
+class WrappingTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    class Item(mapping.Document):
+        with_include_docs = mapping.ViewField('test', all_map_func,
+                                              include_docs=True)
+        without_include_docs = mapping.ViewField('test', all_map_func)
+
+    def setUp(self):
+        super(WrappingTestCase, self).setUp()
+        design.ViewDefinition.sync_many(
+            self.db, [self.Item.with_include_docs,
+                      self.Item.without_include_docs])
+
+    def test_viewfield_property(self):
+        self.Item().store(self.db)
+        results = self.Item.with_include_docs(self.db)
+        self.assertEquals(type(results.rows[0]), self.Item)
+        results = self.Item.without_include_docs(self.db)
+        self.assertEquals(type(results.rows[0]), self.Item)
+
+    def test_view(self):
+        self.Item().store(self.db)
+        results = self.Item.view(self.db, 'test/without_include_docs')
+        self.assertEquals(type(results.rows[0]), self.Item)
+        results = self.Item.view(self.db, 'test/without_include_docs',
+                                 include_docs=True)
+        self.assertEquals(type(results.rows[0]), self.Item)
+
+    def test_query(self):
+        self.Item().store(self.db)
+        results = self.Item.query(self.db, all_map_func, None)
+        self.assertEquals(type(results.rows[0]), self.Item)
+        results = self.Item.query(self.db, all_map_func, None, include_docs=True)
+        self.assertEquals(type(results.rows[0]), self.Item)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(mapping))
     suite.addTest(unittest.makeSuite(DocumentTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ListFieldTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(WrappingTestCase, 'test'))
     return suite
 
 
