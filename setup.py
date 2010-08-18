@@ -14,8 +14,10 @@ import os
 import sys
 try:
     from setuptools import setup
+    has_setuptools = True
 except ImportError:
     from distutils.core import setup
+    has_setuptools = False
 import sys
 
 
@@ -108,6 +110,26 @@ if sys.version_info < (2, 6):
     requirements += ['simplejson']
 
 
+# Build setuptools-specific options (if installed).
+if not has_setuptools:
+    print "WARNING: setuptools/distribute not available. Console scripts will not be installed."
+    setuptools_options = {}
+else:
+    setuptools_options = {
+        'entry_points': {
+            'console_scripts': [
+                'couchpy = couchdb.view:main',
+                'couchdb-dump = couchdb.tools.dump:main',
+                'couchdb-load = couchdb.tools.load:main',
+                'couchdb-replicate = couchdb.tools.replicate:main',
+            ],
+        },
+        'install_requires': requirements,
+        'test_suite': 'couchdb.tests.suite',
+        'zip_safe': True,
+    }
+
+
 setup(
     name = 'CouchDB',
     version = '0.9',
@@ -119,7 +141,6 @@ interface for the CouchDB server.""",
     author_email = 'cmlenz@gmx.de',
     license = 'BSD',
     url = 'http://code.google.com/p/couchdb-python/',
-    zip_safe = True,
 
     classifiers = [
         'Development Status :: 4 - Beta',
@@ -131,18 +152,6 @@ interface for the CouchDB server.""",
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     packages = ['couchdb', 'couchdb.tools', 'couchdb.tests'],
-    test_suite = 'couchdb.tests.suite',
-
-    install_requires = requirements,
-
-    entry_points = {
-        'console_scripts': [
-            'couchpy = couchdb.view:main',
-            'couchdb-dump = couchdb.tools.dump:main',
-            'couchdb-load = couchdb.tools.load:main',
-            'couchdb-replicate = couchdb.tools.replicate:main',
-        ],
-    },
-
-    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc}
+    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc},
+    **setuptools_options
 )
