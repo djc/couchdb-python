@@ -153,7 +153,7 @@ class Mapping(object):
     def __setitem__(self, name, value):
         self._data[name] = value
 
-    def get(self, name, default):
+    def get(self, name, default=None):
         return self._data.get(name, default)
 
     def setdefault(self, name, default):

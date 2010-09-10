@@ -84,6 +84,12 @@ class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         dt = mapping.DateTimeField()
         assert dt._to_python(u'1880-01-01T00:00:00Z')
 
+    def test_get_has_default(self):
+        doc = mapping.Document()
+        doc.get('foo')
+        doc.get('foo', None)
+
+
 class ListFieldTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_to_json(self):
