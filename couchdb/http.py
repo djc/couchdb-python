@@ -208,23 +208,20 @@ class Session(object):
 
         def _try_request():
             try:
-                if conn.sock is None:
-                    conn.connect()
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
                     conn.putheader(header, headers[header])
                 conn.endheaders()
                 if body is not None:
                     if isinstance(body, str):
-                        conn.sock.sendall(body)
+                        conn.send(body)
                     else: # assume a file-like object and send in chunks
                         while 1:
                             chunk = body.read(CHUNK_SIZE)
                             if not chunk:
                                 break
-                            conn.sock.sendall(('%x\r\n' % len(chunk)) +
-                                              chunk + '\r\n')
-                        conn.sock.sendall('0\r\n\r\n')
+                            conn.send(('%x\r\n' % len(chunk)) + chunk + '\r\n')
+                        conn.send('0\r\n\r\n')
                 return conn.getresponse()
             except BadStatusLine, e:
                 # httplib raises a BadStatusLine when it cannot read the status
@@ -339,6 +336,7 @@ class Session(object):
                 else:
                     raise ValueError('%s is not a supported scheme' % scheme)
                 conn = cls(host)
+                conn.connect()
         finally:
             self.lock.release()
         return conn
