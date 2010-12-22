@@ -411,6 +411,18 @@ class Database(object):
             doc['_rev'] = rev
         return id, rev
 
+    def cleanup(self):
+        """Clean up old design document indexes.
+
+        Remove all unused index files from the database storage area.
+
+        :return: a boolean to indicate successful cleanup initiation
+        :rtype: `bool`
+        """
+        headers = {'Content-Type': 'application/json'}
+        _, _, data = self.resource('_view_cleanup').post_json(headers=headers)
+        return data['ok']
+
     def commit(self):
         """If the server is configured to delay commits, or previous requests
         used the special ``X-Couch-Full-Commit: false`` header to disable
