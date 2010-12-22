@@ -473,9 +473,15 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
-    def test_row_nodoc(self):
-        res = list(self.db.view('_all_docs', keys=['blah']))
-        self.assertEqual(repr(res[0]), "<Row key='blah', error='not_found'>")
+    def test_row_object(self):
+
+        row = list(self.db.view('_all_docs', keys=['blah']))[0]
+        self.assertEqual(repr(row), "<Row key='blah', error='not_found'>")
+        self.assertEqual(row.error, 'not_found')
+
+        self.db.save({'_id': 'xyz', 'foo': 'bar'})
+        row = list(self.db.view('_all_docs', keys=['xyz']))[0]
+        self.assertEqual(row.error, None)
 
     def test_view_multi_get(self):
         for i in range(1, 6):

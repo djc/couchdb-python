@@ -1054,6 +1054,10 @@ class Row(dict):
         return self['value']
 
     @property
+    def error(self):
+        return self.get('error')
+
+    @property
     def doc(self):
         """The associated document for the row. This is only present when the
         view was accessed with ``include_docs=True`` as a query parameter,
