@@ -21,7 +21,6 @@ from couchdb import client, http
 from couchdb.tests import testutil
 http.CACHE_SIZE = 2, 3
 
-
 class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_init_with_resource(self):
@@ -473,6 +472,10 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 
 class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    def test_row_nodoc(self):
+        res = list(self.db.view('_all_docs', keys=['blah']))
+        self.assertEqual(repr(res[0]), "<Row key='blah', error='not_found'>")
 
     def test_view_multi_get(self):
         for i in range(1, 6):

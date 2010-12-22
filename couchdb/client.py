@@ -1032,11 +1032,9 @@ class Row(dict):
     """Representation of a row as returned by database views."""
 
     def __repr__(self):
-        if self.id is None:
-            return '<%s key=%r, value=%r>' % (type(self).__name__, self.key,
-                                              self.value)
-        return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
-                                                 self.key, self.value)
+        keys = 'id', 'key', 'error', 'value'
+        items = ['%s=%r' % (k, self[k]) for k in keys if k in self]
+        return '<%s %s>' % (type(self).__name__, ', '.join(items))
 
     @property
     def id(self):
