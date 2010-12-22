@@ -1045,12 +1045,10 @@ class Row(dict):
 
     @property
     def key(self):
-        """The associated key."""
         return self['key']
 
     @property
     def value(self):
-        """The associated value."""
         return self['value']
 
     @property
