@@ -504,6 +504,16 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
 
+    def test_ddoc_info(self):
+        self.db['_design/test'] = {
+            'language': 'javascript',
+            'views': {
+                'test': {'map': 'function(doc) { emit(doc.type, null); }'}
+            }
+        }
+        info = self.db.info('test')
+        self.assertEqual(info['view_index']['compact_running'], False)
+
     def test_view_compaction(self):
         for i in range(1, 6):
             self.db.save({'i': i})
