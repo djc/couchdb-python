@@ -1049,7 +1049,7 @@ class Row(dict):
 
     @property
     def value(self):
-        return self['value']
+        return self.get('value')
 
     @property
     def error(self):

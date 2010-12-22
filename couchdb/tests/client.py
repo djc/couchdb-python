@@ -477,10 +477,16 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
         row = list(self.db.view('_all_docs', keys=['blah']))[0]
         self.assertEqual(repr(row), "<Row key='blah', error='not_found'>")
+        self.assertEqual(row.id, None)
+        self.assertEqual(row.key, 'blah')
+        self.assertEqual(row.value, None)
         self.assertEqual(row.error, 'not_found')
 
         self.db.save({'_id': 'xyz', 'foo': 'bar'})
         row = list(self.db.view('_all_docs', keys=['xyz']))[0]
+        self.assertEqual(row.id, 'xyz')
+        self.assertEqual(row.key, 'xyz')
+        self.assertEqual(row.value.keys(), ['rev'])
         self.assertEqual(row.error, None)
 
     def test_view_multi_get(self):
