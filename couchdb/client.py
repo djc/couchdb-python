@@ -769,6 +769,25 @@ class Database(object):
 
         return results
 
+    def purge(self, docs):
+        """Perform purging (complete removing) of the given documents.
+
+        Uses a single HTTP request to purge all given documents. Purged
+        documents do not leave any meta-data in the storage and are not
+        replicated.
+        """
+        content = {}
+        for doc in docs:
+            if isinstance(doc, dict):
+                content[doc['_id']] = [doc['_rev']]
+            elif hasattr(doc, 'items'):
+                doc = dict(doc.items())
+                content[doc['_id']] = [doc['_rev']]
+            else:
+                raise TypeError('expected dict, got %s' % type(doc))
+        _, _, data = self.resource.post_json('_purge', body=content)
+        return data
+
     def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
 

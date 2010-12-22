@@ -470,6 +470,11 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for change in self.db.changes(feed='continuous', heartbeat=100):
             break
 
+    def test_purge(self):
+        doc = {'a': 'b'}
+        self.db['foo'] = doc
+        self.assertEqual(self.db.purge([doc])['purge_seq'], 1)
+
 
 class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
