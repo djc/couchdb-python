@@ -527,6 +527,27 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.db.view('test/multi_key')
         self.assertTrue(self.db.compact('test'))
 
+    def test_view_cleanup(self):
+
+        for i in range(1, 6):
+            self.db.save({'i': i})
+
+        self.db['_design/test'] = {
+            'language': 'javascript',
+            'views': {
+                'multi_key': {'map': 'function(doc) { emit(doc.i, null); }'}
+            }
+        }
+        self.db.view('test/multi_key')
+
+        ddoc = self.db['_design/test']
+        ddoc['views'] = {
+            'ids': {'map': 'function(doc) { emit(doc._id, null); }'}
+        }
+        self.db.update([ddoc])
+        self.db.view('test/ids')
+        self.assertTrue(self.db.cleanup())
+
     def test_view_function_objects(self):
         if 'python' not in self.server.config()['query_servers']:
             return
