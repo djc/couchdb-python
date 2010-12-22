@@ -550,18 +550,25 @@ class Database(object):
                 return
             yield revision
 
-    def info(self):
-        """Return information about the database as a dictionary.
+    def info(self, ddoc=None):
+        """Return information about the database or design document as a
+        dictionary.
+
+        Without an argument, returns database information. With an argument,
+        return information for the given design document.
 
         The returned dictionary exactly corresponds to the JSON response to
-        a ``GET`` request on the database URI.
+        a ``GET`` request on the database or design document's info URI.
 
         :return: a dictionary of database properties
         :rtype: ``dict``
         :since: 0.4
         """
-        _, _, data = self.resource.get_json()
-        self._name = data['db_name']
+        if ddoc is not None:
+            _, _, data = self.resource('_design', ddoc, '_info').get_json()
+        else:
+            _, _, data = self.resource.get_json()
+            self._name = data['db_name']
         return data
 
     def delete_attachment(self, doc, filename):
