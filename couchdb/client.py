@@ -811,10 +811,8 @@ class Database(object):
         :return: the view results
         :rtype: `ViewResults`
         """
-        if not name.startswith('_'):
-            design, name = name.split('/', 1)
-            name = '/'.join(['_design', design, '_view', name])
-        return PermanentView(self.resource(*name.split('/')), name,
+        path = _path_from_name(name, '_view')
+        return PermanentView(self.resource(*path), '/'.join(path),
                              wrapper=wrapper)(**options)
 
     def _changes(self, **opts):
@@ -838,6 +836,16 @@ class Database(object):
             return self._changes(**opts)
         _, _, data = self.resource.get_json('_changes', **opts)
         return data
+
+
+def _path_from_name(name, type):
+    """Expand a 'design/foo' style name to its full path as a list of
+    segments.
+    """
+    if name.startswith('_'):
+        return name.split('/')
+    design, name = name.split('/', 1)
+    return ['_design', design, type, name]
 
 
 class Document(dict):
