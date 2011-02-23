@@ -815,6 +815,17 @@ class Database(object):
         return PermanentView(self.resource(*path), '/'.join(path),
                              wrapper=wrapper)(**options)
 
+    def show(self, name, docid, **options):
+        path = _path_from_name(name, '_show')
+        status, headers, body = self.resource(*path).get(**options)
+        return headers, body
+
+    def list(self, name, view, **options):
+        path = _path_from_name(name, '_list')
+        path.extend(view.split('/', 1))
+        status, headers, body = self.resource(*path).get(**options)
+        return headers, body
+
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
         lines = iter(data)

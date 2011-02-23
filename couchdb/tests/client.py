@@ -618,11 +618,46 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertTrue('id' not in repr(rows[0]))
 
 
+class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    def test_show(self):
+        _, db = self.temp_db()
+        db.save({'_id': '1'})
+        db.save({'_id': '_design/foo', 'shows': {'bar': 'function(doc, req) {return {"body": req.query.r || "<default>"}}'}})
+        self.assertEqual(db.show('_design/foo/_show/bar', '1')[1].read(), '<default>')
+        self.assertEqual(db.show('foo/bar', '1')[1].read(), '<default>')
+        self.assertEqual(db.show('foo/bar', '1', r='abc')[1].read(), 'abc')
+
+    def test_list(self):
+        list_func = """
+        function(head, req) {
+            start({headers: {'Content-Type': 'text/csv'}});
+            if (req.query.include_header) {
+                send('id' + '\\r\\n');
+            }
+            var row;
+            while (row = getRow()) {
+                send(row.id + '\\r\\n');
+            }
+        }
+        """
+        _, db = self.temp_db()
+        db.save({'_id': '1'})
+        db.save({'_id': '2'})
+        db.save({'_id': '_design/foo',
+                 'views': {'view': {'map': "function(doc) {emit(doc._id, null)}"}},
+                 'lists': {'list': list_func},
+                })
+        self.assertEqual(db.list('foo/list', 'foo/view')[1].read(), '1\r\n2\r\n')
+        self.assertEqual(db.list('foo/list', 'foo/view', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ViewTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ShowListTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite
 
