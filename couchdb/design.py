@@ -70,7 +70,8 @@ class ViewDefinition(object):
     """
 
     def __init__(self, design, name, map_fun, reduce_fun=None,
-                 language='javascript', wrapper=None, **defaults):
+                 language='javascript', wrapper=None, options=None,
+                 **defaults):
         """Initialize the view definition.
         
         Note that the code in `map_fun` and `reduce_fun` is automatically
@@ -84,6 +85,7 @@ class ViewDefinition(object):
         :param language: the name of the language used
         :param wrapper: an optional callable that should be used to wrap the
                         result rows
+        :param options: view specific options (e.g. {'collation':'raw'})
         """
         if design.startswith('_design/'):
             design = design[8:]
@@ -99,6 +101,7 @@ class ViewDefinition(object):
         self.reduce_fun = reduce_fun
         self.language = language
         self.wrapper = wrapper
+        self.options = options
         self.defaults = defaults
 
     def __call__(self, db, **options):
@@ -171,6 +174,8 @@ class ViewDefinition(object):
                 funcs = {'map': view.map_fun}
                 if view.reduce_fun:
                     funcs['reduce'] = view.reduce_fun
+                if view.options:
+                    funcs['options'] = view.options
                 doc.setdefault('views', {})[view.name] = funcs
                 languages.add(view.language)
                 if view.name in missing:
