@@ -815,8 +815,10 @@ class Database(object):
         return PermanentView(self.resource(*path), '/'.join(path),
                              wrapper=wrapper)(**options)
 
-    def show(self, name, docid, **options):
+    def show(self, name, docid=None, **options):
         path = _path_from_name(name, '_show')
+        if docid:
+            path.append(docid)
         status, headers, body = self.resource(*path).get(**options)
         return headers, body
 

@@ -620,16 +620,13 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
-    def test_show(self):
-        _, db = self.temp_db()
-        db.save({'_id': '1'})
-        db.save({'_id': '_design/foo', 'shows': {'bar': 'function(doc, req) {return {"body": req.query.r || "<default>"}}'}})
-        self.assertEqual(db.show('_design/foo/_show/bar', '1')[1].read(), '<default>')
-        self.assertEqual(db.show('foo/bar', '1')[1].read(), '<default>')
-        self.assertEqual(db.show('foo/bar', '1', r='abc')[1].read(), 'abc')
+    show_func = """
+        function(doc, req) {
+            return {"body": req.id + ":" + (req.query.r || "<default>")};
+        }
+        """
 
-    def test_list(self):
-        list_func = """
+    list_func = """
         function(head, req) {
             start({headers: {'Content-Type': 'text/csv'}});
             if (req.query.include_header) {
@@ -641,15 +638,38 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
             }
         }
         """
-        _, db = self.temp_db()
-        db.save({'_id': '1'})
-        db.save({'_id': '2'})
-        db.save({'_id': '_design/foo',
-                 'views': {'view': {'map': "function(doc) {emit(doc._id, null)}"}},
-                 'lists': {'list': list_func},
-                })
-        self.assertEqual(db.list('foo/list', 'foo/view')[1].read(), '1\r\n2\r\n')
-        self.assertEqual(db.list('foo/list', 'foo/view', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+
+    design_doc = {'_id': '_design/foo',
+                  'shows': {'bar': show_func},
+                  'views': {'view': {'map': "function(doc) {emit(doc._id, null)}"}},
+                  'lists': {'list': list_func}}
+
+    def setUp(self):
+        super(ShowListTestCase, self).setUp()
+        # Workaround for possible bug in CouchDB. Adding a timestamp avoids a
+        # 409 Conflict error when pushing the same design doc that existed in a
+        # now deleted database.
+        design_doc = dict(self.design_doc)
+        design_doc['timestamp'] = time.time()
+        self.db.save(design_doc)
+
+    def test_show_urls(self):
+        self.assertEqual(self.db.show('_design/foo/_show/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+
+    def test_show_docid(self):
+        self.db.update([{'_id': '1'}, {'_id': '2'}])
+        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('foo/bar', '1')[1].read(), '1:<default>')
+        self.assertEqual(self.db.show('foo/bar', '2')[1].read(), '2:<default>')
+
+    def test_show_params(self):
+        self.assertEqual(self.db.show('foo/bar', r='abc')[1].read(), 'null:abc')
+
+    def test_list(self):
+        self.db.update([{'_id': '1'}, {'_id': '2'}])
+        self.assertEqual(self.db.list('foo/list', 'foo/view')[1].read(), '1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/view', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
 
 
 def suite():
