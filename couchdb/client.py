@@ -159,9 +159,17 @@ class Server(object):
         status, headers, data = self.resource.get_json()
         return data['version']
 
-    def stats(self):
-        """Database statistics."""
-        status, headers, data = self.resource.get_json('_stats')
+    def stats(self, name=None):
+        """Server statistics.
+
+        :param name: name of single statistic, e.g. httpd/requests
+                     (None -- return all statistics)
+        """
+        if not name:
+            resource = self.resource('_stats')
+        else:
+            resource = self.resource('_stats', *name.split('/'))
+        status, headers, data = resource.get_json()
         return data
 
     def tasks(self):

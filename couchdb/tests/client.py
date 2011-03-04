@@ -47,10 +47,15 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertTrue(isinstance(version, basestring))
         config = self.server.config()
         self.assertTrue(isinstance(config, dict))
-        stats = self.server.stats()
-        self.assertTrue(isinstance(stats, dict))
         tasks = self.server.tasks()
         self.assertTrue(isinstance(tasks, list))
+
+    def test_server_stats(self):
+        stats = self.server.stats()
+        self.assertTrue(isinstance(stats, dict))
+        stats = self.server.stats('httpd/requests')
+        self.assertTrue(isinstance(stats, dict))
+        self.assertTrue(len(stats) == 1 and len(stats['httpd']) == 1)
 
     def test_get_db_missing(self):
         self.assertRaises(http.ResourceNotFound,
