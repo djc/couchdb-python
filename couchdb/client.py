@@ -816,6 +816,16 @@ class Database(object):
                              wrapper=wrapper)(**options)
 
     def show(self, name, docid=None, **options):
+        """Call a 'show' function.
+
+        :param name: the name of the show function in the format
+                     ``designdoc/showname``
+        :param docid: optional ID of a document to pass to the show function.
+        :param options: optional query string parameters
+        :return: (headers, body) tuple, where headers is a dict of headers
+                 returned from the show function and body is a readable
+                 file-like instance
+        """
         path = _path_from_name(name, '_show')
         if docid:
             path.append(docid)
@@ -823,6 +833,16 @@ class Database(object):
         return headers, body
 
     def list(self, name, view, **options):
+        """Format a view using a 'list' function.
+
+        :param name: the name of the list function in the format
+                     ``designdoc/listname``
+        :param view: the name of the view in the format ``designdoc/viewname``
+        :param options: optional query string parameters
+        :return: (headers, body) tuple, where headers is a dict of headers
+                 returned from the list function and body is a readable
+                 file-like instance
+        """
         path = _path_from_name(name, '_list')
         path.extend(view.split('/', 1))
         status, headers, body = self.resource(*path).get(**options)
