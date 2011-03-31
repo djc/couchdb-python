@@ -31,7 +31,6 @@ class TempDatabaseMixin(object):
             name = 'couchdb-python/%d' % random.randint(0, sys.maxint)
             if name not in self.temp_dbs:
                 break
-            print '%s already used' % name
         db = self.server.create(name)
         self.temp_dbs[name] = db
         return name, db

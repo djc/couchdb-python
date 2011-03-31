@@ -623,11 +623,66 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertTrue('id' not in repr(rows[0]))
 
 
+class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    show_func = """
+        function(doc, req) {
+            return {"body": req.id + ":" + (req.query.r || "<default>")};
+        }
+        """
+
+    list_func = """
+        function(head, req) {
+            start({headers: {'Content-Type': 'text/csv'}});
+            if (req.query.include_header) {
+                send('id' + '\\r\\n');
+            }
+            var row;
+            while (row = getRow()) {
+                send(row.id + '\\r\\n');
+            }
+        }
+        """
+
+    design_doc = {'_id': '_design/foo',
+                  'shows': {'bar': show_func},
+                  'views': {'view': {'map': "function(doc) {emit(doc._id, null)}"}},
+                  'lists': {'list': list_func}}
+
+    def setUp(self):
+        super(ShowListTestCase, self).setUp()
+        # Workaround for possible bug in CouchDB. Adding a timestamp avoids a
+        # 409 Conflict error when pushing the same design doc that existed in a
+        # now deleted database.
+        design_doc = dict(self.design_doc)
+        design_doc['timestamp'] = time.time()
+        self.db.save(design_doc)
+
+    def test_show_urls(self):
+        self.assertEqual(self.db.show('_design/foo/_show/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+
+    def test_show_docid(self):
+        self.db.update([{'_id': '1'}, {'_id': '2'}])
+        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('foo/bar', '1')[1].read(), '1:<default>')
+        self.assertEqual(self.db.show('foo/bar', '2')[1].read(), '2:<default>')
+
+    def test_show_params(self):
+        self.assertEqual(self.db.show('foo/bar', r='abc')[1].read(), 'null:abc')
+
+    def test_list(self):
+        self.db.update([{'_id': '1'}, {'_id': '2'}])
+        self.assertEqual(self.db.list('foo/list', 'foo/view')[1].read(), '1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/view', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ViewTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ShowListTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite
 
