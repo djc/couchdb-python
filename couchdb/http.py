@@ -175,7 +175,10 @@ class Session(object):
                 try:
                     body = json.encode(body).encode('utf-8')
                 except TypeError:
-                    pass
+                    # Check for somethine file-like or re-raise the exception
+                    # to avoid masking real JSON encoding errors.
+                    if not hasattr(body, 'read'):
+                        raise
                 else:
                     headers.setdefault('Content-Type', 'application/json')
             if isinstance(body, basestring):

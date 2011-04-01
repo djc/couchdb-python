@@ -6,6 +6,7 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+from datetime import datetime
 import doctest
 import os
 import os.path
@@ -479,6 +480,10 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {'a': 'b'}
         self.db['foo'] = doc
         self.assertEqual(self.db.purge([doc])['purge_seq'], 1)
+
+    def test_json_encoding_error(self):
+        doc = {'now': datetime.now()}
+        self.assertRaises(TypeError, self.db.save, doc)
 
 
 class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
