@@ -651,7 +651,8 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     design_doc = {'_id': '_design/foo',
                   'shows': {'bar': show_func},
-                  'views': {'view': {'map': "function(doc) {emit(doc._id, null)}"}},
+                  'views': {'by_id': {'map': "function(doc) {emit(doc._id, null)}"},
+                            'by_name': {'map': "function(doc) {emit(doc.name, null)}"}},
                   'lists': {'list': list_func}}
 
     def setUp(self):
@@ -662,13 +663,13 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         design_doc = dict(self.design_doc)
         design_doc['timestamp'] = time.time()
         self.db.save(design_doc)
+        self.db.update([{'_id': '1', 'name': 'one'}, {'_id': '2', 'name': 'two'}])
 
     def test_show_urls(self):
         self.assertEqual(self.db.show('_design/foo/_show/bar')[1].read(), 'null:<default>')
         self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
 
     def test_show_docid(self):
-        self.db.update([{'_id': '1'}, {'_id': '2'}])
         self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
         self.assertEqual(self.db.show('foo/bar', '1')[1].read(), '1:<default>')
         self.assertEqual(self.db.show('foo/bar', '2')[1].read(), '2:<default>')
@@ -677,9 +678,12 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(self.db.show('foo/bar', r='abc')[1].read(), 'null:abc')
 
     def test_list(self):
-        self.db.update([{'_id': '1'}, {'_id': '2'}])
-        self.assertEqual(self.db.list('foo/list', 'foo/view')[1].read(), '1\r\n2\r\n')
-        self.assertEqual(self.db.list('foo/list', 'foo/view', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id')[1].read(), '1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+
+    def test_list_view_params(self):
+        self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), '1\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), '2\r\n1\r\n')
 
 
 def suite():

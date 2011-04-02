@@ -853,6 +853,7 @@ class Database(object):
         """
         path = _path_from_name(name, '_list')
         path.extend(view.split('/', 1))
+        options = _encode_view_options(options)
         status, headers, body = self.resource(*path).get(**options)
         return headers, body
 
@@ -934,15 +935,6 @@ class View(object):
     def __iter__(self):
         return iter(self())
 
-    def _encode_options(self, options):
-        retval = {}
-        for name, value in options.items():
-            if name in ('key', 'startkey', 'endkey') \
-                    or not isinstance(value, basestring):
-                value = json.encode(value)
-            retval[name] = value
-        return retval
-
     def _exec(self, options):
         raise NotImplementedError
 
@@ -962,9 +954,9 @@ class PermanentView(View):
             options = options.copy()
             keys = {'keys': options.pop('keys')}
             _, _, data = self.resource.post_json(body=keys,
-                                                 **self._encode_options(options))
+                                                 **_encode_view_options(options))
         else:
-            _, _, data = self.resource.get_json(**self._encode_options(options))
+            _, _, data = self.resource.get_json(**_encode_view_options(options))
         return data
 
 
@@ -998,8 +990,21 @@ class TemporaryView(View):
         content = json.encode(body).encode('utf-8')
         _, _, data = self.resource.post_json(body=content, headers={
             'Content-Type': 'application/json'
-        }, **self._encode_options(options))
+        }, **_encode_view_options(options))
         return data
+
+
+def _encode_view_options(options):
+    """Encode any items in the options dict that are sent as a JSON string to a
+    view/list function.
+    """
+    retval = {}
+    for name, value in options.items():
+        if name in ('key', 'startkey', 'endkey') \
+                or not isinstance(value, basestring):
+            value = json.encode(value)
+        retval[name] = value
+    return retval
 
 
 class ViewResults(object):
