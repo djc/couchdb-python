@@ -853,8 +853,7 @@ class Database(object):
         """
         path = _path_from_name(name, '_list')
         path.extend(view.split('/', 1))
-        options = _encode_view_options(options)
-        status, headers, body = self.resource(*path).get(**options)
+        _, headers, body = _call_viewlike(self.resource(*path), options)
         return headers, body
 
     def _changes(self, **opts):
@@ -950,13 +949,7 @@ class PermanentView(View):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def _exec(self, options):
-        if 'keys' in options:
-            options = options.copy()
-            keys = {'keys': options.pop('keys')}
-            _, _, data = self.resource.post_json(body=keys,
-                                                 **_encode_view_options(options))
-        else:
-            _, _, data = self.resource.get_json(**_encode_view_options(options))
+        _, _, data = _call_viewlike(self.resource, options)
         return data
 
 
@@ -1005,6 +998,17 @@ def _encode_view_options(options):
             value = json.encode(value)
         retval[name] = value
     return retval
+
+
+def _call_viewlike(resource, options):
+    """Call a resource that takes view-like options.
+    """
+    if 'keys' in options:
+        options = options.copy()
+        keys = {'keys': options.pop('keys')}
+        return resource.post_json(body=keys, **_encode_view_options(options))
+    else:
+        return resource.get_json(**_encode_view_options(options))
 
 
 class ViewResults(object):

@@ -681,6 +681,9 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(self.db.list('foo/list', 'foo/by_id')[1].read(), '1\r\n2\r\n')
         self.assertEqual(self.db.list('foo/list', 'foo/by_id', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
 
+    def test_list_keys(self):
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id', keys=['1'])[1].read(), '1\r\n')
+
     def test_list_view_params(self):
         self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), '1\r\n')
         self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), '2\r\n1\r\n')
