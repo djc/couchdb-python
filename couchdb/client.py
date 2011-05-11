@@ -290,7 +290,7 @@ class Database(object):
         :return: `True` if a document with the ID exists, `False` otherwise
         """
         try:
-            self.resource.head(id)
+            _doc_resource(self.resource, id).head()
             return True
         except http.ResourceNotFound:
             return False
@@ -317,8 +317,9 @@ class Database(object):
 
         :param id: the document ID
         """
-        status, headers, data = self.resource.head(id)
-        self.resource.delete_json(id, rev=headers['etag'].strip('"'))
+        resource = _doc_resource(self.resource, id)
+        status, headers, data = resource.head()
+        resource.delete_json(rev=headers['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -327,7 +328,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        _, _, data = self.resource.get_json(id)
+        _, _, data = _doc_resource(self.resource, id).get_json()
         return Document(data)
 
     def __setitem__(self, id, content):
@@ -338,7 +339,8 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        status, headers, data = self.resource.put_json(id, body=content)
+        resource = _doc_resource(self.resource, id)
+        status, headers, data = resource.put_json(body=content)
         content.update({'_id': data['id'], '_rev': data['rev']})
 
     @property
@@ -409,7 +411,7 @@ class Database(object):
         :rtype: `tuple`
         """
         if '_id' in doc:
-            func = self.resource(doc['_id']).put_json
+            func = _doc_resource(self.resource, doc['_id']).put_json
         else:
             func = self.resource.post_json
         _, _, data = func(body=doc, **options)
@@ -529,7 +531,7 @@ class Database(object):
         """
         if doc['_id'] is None:
             raise ValueError('document ID cannot be None')
-        self.resource.delete_json(doc['_id'], rev=doc['_rev'])
+        _doc_resource(self.resource, doc['_id']).delete_json(rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
         """Return the document with the specified ID.
@@ -542,7 +544,7 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            _, _, data = self.resource.get_json(id, **options)
+            _, _, data = _doc_resource(self.resource, id).get_json(**options)
         except http.ResourceNotFound:
             return default
         if hasattr(data, 'items'):
@@ -558,7 +560,8 @@ class Database(object):
                  in reverse chronological order, if any were found
         """
         try:
-            status, headers, data = self.resource.get_json(id, revs=True)
+            resource = _doc_resource(self.resource, id)
+            status, headers, data = resource.get_json(revs=True)
         except http.ResourceNotFound:
             return
 
@@ -603,7 +606,7 @@ class Database(object):
         :param filename: the name of the attachment file
         :since: 0.4.1
         """
-        resource = self.resource(doc['_id'])
+        resource = _doc_resource(self.resource, doc['_id'])
         _, _, data = resource.delete_json(filename, rev=doc['_rev'])
         doc['_rev'] = data['rev']
 
@@ -625,7 +628,7 @@ class Database(object):
         else:
             id = id_or_doc['_id']
         try:
-            _, _, data = self.resource(id).get(filename)
+            _, _, data = _doc_resource(self.resource, id).get(filename)
             return data
         except http.ResourceNotFound:
             return default
@@ -659,7 +662,7 @@ class Database(object):
                 filter(None, mimetypes.guess_type(filename))
             )
 
-        resource = self.resource(doc['_id'])
+        resource = _doc_resource(self.resource, doc['_id'])
         status, headers, data = resource.put_json(filename, body=content, headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
@@ -877,6 +880,16 @@ class Database(object):
             return self._changes(**opts)
         _, _, data = self.resource.get_json('_changes', **opts)
         return data
+
+
+def _doc_resource(base, doc_id):
+    """Return the resource for the given document id.
+    """
+    # Split an id that starts with a reserved segment, e.g. _design/foo, so
+    # that the / that follows the 1st segment does not get escaped.
+    if doc_id[:1] == '_':
+        return base(*doc_id.split('/', 1))
+    return base(doc_id)
 
 
 def _path_from_name(name, type):
