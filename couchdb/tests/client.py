@@ -688,6 +688,42 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), '1\r\n')
         self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), '2\r\n1\r\n')
 
+class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+    update_func = """
+        function(doc, req) {
+          if (!doc) {
+            if (req.id) {
+              return [{_id : req.id}, "new doc"]
+            }
+            return [null, "empty doc"];
+          }
+          doc.name = "hello";
+          return [doc, "hello doc"];
+        }
+    """
+
+    design_doc = {'_id': '_design/foo',
+                  'language': 'javascript',
+                  'updates': {'bar': update_func}}
+
+    def setUp(self):
+        super(UpdateHandlerTestCase, self).setUp()
+        # Workaround for possible bug in CouchDB. Adding a timestamp avoids a
+        # 409 Conflict error when pushing the same design doc that existed in a
+        # now deleted database.
+        design_doc = dict(self.design_doc)
+        design_doc['timestamp'] = time.time()
+        self.db.save(design_doc)
+        self.db.update([{'_id': 'existed', 'name': 'bar'}])
+
+    def test_empty_doc(self):
+        self.assertEqual(self.db.update_doc('foo/bar')[1].read(), 'empty doc')
+
+    def test_new_doc(self):
+        self.assertEqual(self.db.update_doc('foo/bar', 'new')[1].read(), 'new doc')
+
+    def test_update_doc(self):
+        self.assertEqual(self.db.update_doc('foo/bar', 'existed')[1].read(), 'hello doc')
 
 def suite():
     suite = unittest.TestSuite()
@@ -695,6 +731,7 @@ def suite():
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ViewTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ShowListTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(UpdateHandlerTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite
 

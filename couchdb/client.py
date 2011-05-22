@@ -859,6 +859,26 @@ class Database(object):
         _, headers, body = _call_viewlike(self.resource(*path), options)
         return headers, body
 
+    def update_doc(self, name, docid=None, **options):
+        """Calls server side update handler.
+
+        :param name: the name of the update handler function in the format
+                     ``designdoc/updatename``.
+        :param docid: optional ID of a document to pass to the update handler.
+        :param options: optional query string parameters.
+        :return: (headers, body) tuple, where headers is a dict of headers
+                 returned from the list function and body is a readable
+                 file-like instance
+        """
+        path = _path_from_name(name, '_update')
+        if docid is None:
+            func = self.resource(*path).post
+        else:
+            path.append(docid)
+            func = self.resource(*path).put
+        _, headers, body = func(**options)
+        return headers, body
+
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
         lines = iter(data)
