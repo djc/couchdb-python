@@ -146,7 +146,7 @@ class ResponseBody(object):
 
     def close(self):
         while not self.resp.isclosed():
-            self.read(CHUNK_SIZE)
+            self.resp.read(CHUNK_SIZE)
         if self.callback:
             self.callback()
             self.callback = None
