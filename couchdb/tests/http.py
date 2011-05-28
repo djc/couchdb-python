@@ -50,6 +50,22 @@ class ResponseBodyTestCase(unittest.TestCase):
 
         self.assertEqual(counter.value, 1)
 
+    def test_double_iteration_over_same_response_body(self):
+        class TestHttpResp(object):
+            msg = {'transfer-encoding': 'chunked'}
+            def __init__(self, fp):
+                self.fp = fp
+
+            def isclosed(self):
+                return len(self.fp.buf) == self.fp.tell()
+
+        data = 'foobarbaz'
+        data = '\n'.join([hex(len(data))[2:], data])
+        response = http.ResponseBody(TestHttpResp(StringIO(data)),
+                                     lambda *a, **k: None)
+        self.assertEqual(list(response), ['foobarbaz'])
+        self.assertEqual(list(response), [])
+
 
 def suite():
     suite = unittest.TestSuite()

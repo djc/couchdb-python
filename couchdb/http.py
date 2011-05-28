@@ -154,6 +154,8 @@ class ResponseBody(object):
     def __iter__(self):
         assert self.resp.msg.get('transfer-encoding') == 'chunked'
         while True:
+            if self.resp.isclosed():
+                break
             chunksz = int(self.resp.fp.readline().strip(), 16)
             if not chunksz:
                 self.resp.fp.read(2) #crlf
