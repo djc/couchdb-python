@@ -10,6 +10,7 @@ import doctest
 import socket
 import time
 import unittest
+from StringIO import StringIO
 
 from couchdb import http
 from couchdb.tests import testutil
@@ -27,10 +28,34 @@ class SessionTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.failUnless(time.time() - start < timeout * 1.3)
 
 
+class ResponseBodyTestCase(unittest.TestCase):
+    def test_close(self):
+        class TestStream(StringIO):
+            def isclosed(self):
+                return len(self.buf) == self.tell()
+
+        class Counter(object):
+            def __init__(self):
+                self.value = 0
+
+            def __call__(self):
+                self.value += 1
+
+        counter = Counter()
+
+        response = http.ResponseBody(TestStream('foobar'), counter)
+
+        response.read(10) # read more than stream has. close() is called
+        response.read() # steam ended. another close() call
+
+        self.assertEqual(counter.value, 1)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(http))
     suite.addTest(unittest.makeSuite(SessionTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ResponseBodyTestCase, 'test'))
     return suite
 
 

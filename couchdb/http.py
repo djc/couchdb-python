@@ -147,7 +147,9 @@ class ResponseBody(object):
     def close(self):
         while not self.resp.isclosed():
             self.read(CHUNK_SIZE)
-        self.callback()
+        if self.callback:
+            self.callback()
+            self.callback = None
 
     def __iter__(self):
         assert self.resp.msg.get('transfer-encoding') == 'chunked'
