@@ -93,6 +93,14 @@ class ViewServerTestCase(unittest.TestCase):
         view.run(input=input, output=output)
         self.assertEqual(output.getvalue(), '[true, [6]]\n')
 
+    def test_reduce_empty(self):
+        input = StringIO('["reduce", '
+                          '["def fun(keys, values): return sum(values)"], '
+                          '[]]\n')
+        output = StringIO()
+        view.run(input=input, output=output)
+        self.assertEqual(output.getvalue(),
+                         '[true, [0]]\n')
 
 
 def suite():
