@@ -261,16 +261,27 @@ class Session(object):
                     time.sleep(delay)
                     conn.close()
 
+        def _send_headers_and_body(body):
+            # Send the headers and body in a single packet to avoid slowdown
+            # caused by delayed ACK and the Nagle algorithm.
+            if sys.version_info < (2, 7):
+                conn.endheaders()
+                conn.send(body)
+            else:
+                conn.endheaders(body)
+
         def _try_request():
             try:
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
                     conn.putheader(header, headers[header])
-                conn.endheaders()
-                if body is not None:
+                if body is None:
+                    conn.endheaders()
+                else:
                     if isinstance(body, str):
-                        conn.send(body)
+                        _send_headers_and_body(body)
                     else: # assume a file-like object and send in chunks
+                        conn.endheaders()
                         while 1:
                             chunk = body.read(CHUNK_SIZE)
                             if not chunk:
