@@ -29,14 +29,15 @@ def _run(server, func):
     db_name = 'couchdb-python/perftest'
     db = server.create(db_name)
     try:
-        start = time.time()
-        func(db)
-        stop = time.time()
-        sys.stdout.write("%0.2fs\n" % (stop-start,))
-        sys.stdout.flush()
-    except Exception, e:
-        sys.stdout.write("FAILED - %r\n" % (unicode(e),))
-        sys.stdout.flush()
+        try:
+            start = time.time()
+            func(db)
+            stop = time.time()
+            sys.stdout.write("%0.2fs\n" % (stop - start,))
+            sys.stdout.flush()
+        except Exception, e:
+            sys.stdout.write("FAILED - %r\n" % (unicode(e),))
+            sys.stdout.flush()
     finally:
         server.delete(db_name)
 
