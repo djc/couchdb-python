@@ -33,8 +33,10 @@ CouchDB-Python to use custom decoding and encoding functions::
 
 __all__ = ['decode', 'encode', 'use']
 
+import os
+
 _initialized = False
-_using = None
+_using = os.environ.get('COUCHDB_PYTHON_JSON')
 _decode = None
 _encode = None
 
