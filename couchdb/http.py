@@ -220,23 +220,17 @@ class Session(object):
                 if etag:
                     headers['If-None-Match'] = etag
 
+        if (body is not None and not isinstance(body, basestring) and
+                not hasattr(body, 'read')):
+            body = json.encode(body).encode('utf-8')
+            headers.setdefault('Content-Type', 'application/json')
+
         if body is None:
             headers.setdefault('Content-Length', '0')
+        elif isinstance(body, basestring):
+            headers.setdefault('Content-Length', str(len(body)))
         else:
-            if not isinstance(body, basestring):
-                try:
-                    body = json.encode(body).encode('utf-8')
-                except TypeError:
-                    # Check for somethine file-like or re-raise the exception
-                    # to avoid masking real JSON encoding errors.
-                    if not hasattr(body, 'read'):
-                        raise
-                else:
-                    headers.setdefault('Content-Type', 'application/json')
-            if isinstance(body, basestring):
-                headers.setdefault('Content-Length', str(len(body)))
-            else:
-                headers['Transfer-Encoding'] = 'chunked'
+            headers['Transfer-Encoding'] = 'chunked'
 
         authorization = basic_auth(credentials)
         if authorization:
