@@ -447,29 +447,19 @@ class Resource(object):
     def put(self, path=None, body=None, headers=None, **params):
         return self._request('PUT', path, body=body, headers=headers, **params)
 
-    def delete_json(self, *a, **k):
-        status, headers, data = self.delete(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def delete_json(self, path=None, headers=None, **params):
+        return self._request_json('DELETE', path, headers=headers, **params)
 
-    def get_json(self, *a, **k):
-        status, headers, data = self.get(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def get_json(self, path=None, headers=None, **params):
+        return self._request_json('GET', path, headers=headers, **params)
 
-    def post_json(self, *a, **k):
-        status, headers, data = self.post(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def post_json(self, path=None, body=None, headers=None, **params):
+        return self._request_json('POST', path, body=body, headers=headers,
+                                  **params)
 
-    def put_json(self, *a, **k):
-        status, headers, data = self.put(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def put_json(self, path=None, body=None, headers=None, **params):
+        return self._request_json('PUT', path, body=body, headers=headers,
+                                  **params)
 
     def _request(self, method, path=None, body=None, headers=None, **params):
         all_headers = self.headers.copy()
@@ -481,6 +471,14 @@ class Resource(object):
         return self.session.request(method, url, body=body,
                                     headers=all_headers,
                                     credentials=self.credentials)
+
+    def _request_json(self, method, path=None, body=None, headers=None, **params):
+        status, headers, data = self._request(method, path, body=body,
+                                              headers=headers, **params)
+        if 'application/json' in headers.get('content-type'):
+            data = json.decode(data.read())
+        return status, headers, data
+
 
 
 def extract_credentials(url):
