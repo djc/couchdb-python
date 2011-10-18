@@ -193,11 +193,9 @@ class Session(object):
         if cache is None:
             cache = {}
         self.cache = cache
-        self.timeout = timeout
         self.max_redirects = max_redirects
         self.perm_redirects = {}
-        self.conns = {} # HTTP connections keyed by (scheme, host)
-        self.lock = Lock()
+        self.connection_pool = ConnectionPool(timeout)
         self.retry_delays = list(retry_delays) # We don't want this changing on us.
         self.retryable_errors = set(retryable_errors)
 
@@ -243,7 +241,7 @@ class Session(object):
             headers['Authorization'] = authorization
 
         path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
-        conn = self._get_connection(url)
+        conn = self.connection_pool.get(url)
 
         def _try_request_with_retries(retries):
             while True:
@@ -305,7 +303,7 @@ class Session(object):
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
             resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
             status, msg, data = cached_resp
             if data is not None:
                 data = StringIO(data)
@@ -317,7 +315,7 @@ class Session(object):
         if status == 303 or \
                 method in ('GET', 'HEAD') and status in (301, 302, 307):
             resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
             if num_redirects > self.max_redirects:
                 raise RedirectLimit('Redirection limit exceeded')
             location = resp.getheader('location')
@@ -336,18 +334,18 @@ class Session(object):
         if method == 'HEAD' or resp.getheader('content-length') == '0' or \
                 status < 200 or status in (204, 304):
             resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
 
         # Buffer small non-JSON response bodies
         elif int(resp.getheader('content-length', sys.maxint)) < CHUNK_SIZE:
             data = resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
 
         # For large or chunked response bodies, do not buffer the full body,
         # and instead return a minimal file-like object
         else:
             data = ResponseBody(resp,
-                                lambda: self._return_connection(url, conn))
+                                lambda: self.connection_pool.release(url, conn))
             streamed = True
 
         # Handle errors
@@ -358,7 +356,7 @@ class Session(object):
                 error = data.get('error'), data.get('reason')
             elif method != 'HEAD':
                 error = resp.read()
-                self._return_connection(url, conn)
+                self.connection_pool.release(url, conn)
             else:
                 error = ''
             if status == 401:
@@ -387,7 +385,16 @@ class Session(object):
         ls = sorted(self.cache.iteritems(), key=cache_sort)
         self.cache = dict(ls[-CACHE_SIZE[0]:])
 
-    def _get_connection(self, url):
+
+class ConnectionPool(object):
+    """HTTP connection pool."""
+
+    def __init__(self, timeout):
+        self.timeout = timeout
+        self.conns = {} # HTTP connections keyed by (scheme, host)
+        self.lock = Lock()
+
+    def get(self, url):
 
         scheme, host = urlsplit(url, 'http', False)[:2]
 
@@ -415,7 +422,7 @@ class Session(object):
 
         return conn
 
-    def _return_connection(self, url, conn):
+    def release(self, url, conn):
         scheme, host = urlsplit(url, 'http', False)[:2]
         self.lock.acquire()
         try:

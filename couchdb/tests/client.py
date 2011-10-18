@@ -449,7 +449,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         # that the HTTP connection made it to the pool.
         list(self.db.changes(feed='continuous', timeout=0))
         scheme, netloc = urlparse.urlsplit(client.DEFAULT_BASE_URL)[:2]
-        self.assertTrue(self.db.resource.session.conns[(scheme, netloc)])
+        self.assertTrue(self.db.resource.session.connection_pool.conns[(scheme, netloc)])
 
     def test_changes_releases_conn_when_lastseq(self):
         # Consume a changes feed, stopping at the 'last_seq' item, i.e. don't
@@ -459,7 +459,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
             if 'last_seq' in obj:
                 break
         scheme, netloc = urlparse.urlsplit(client.DEFAULT_BASE_URL)[:2]
-        self.assertTrue(self.db.resource.session.conns[(scheme, netloc)])
+        self.assertTrue(self.db.resource.session.connection_pool.conns[(scheme, netloc)])
 
     def test_changes_conn_usable(self):
         # Consume a changes feed to get a used connection in the pool.
