@@ -388,23 +388,31 @@ class Session(object):
         self.cache = dict(ls[-CACHE_SIZE[0]:])
 
     def _get_connection(self, url):
+
         scheme, host = urlsplit(url, 'http', False)[:2]
+
+        # Try to reuse an existing connection.
         self.lock.acquire()
         try:
             conns = self.conns.setdefault((scheme, host), [])
             if conns:
                 conn = conns.pop(-1)
             else:
-                if scheme == 'http':
-                    cls = HTTPConnection
-                elif scheme == 'https':
-                    cls = HTTPSConnection
-                else:
-                    raise ValueError('%s is not a supported scheme' % scheme)
-                conn = cls(host, timeout=self.timeout)
-                conn.connect()
+                conn = None
         finally:
             self.lock.release()
+
+        # Create a new connection if nothing was available.
+        if conn is None:
+            if scheme == 'http':
+                cls = HTTPConnection
+            elif scheme == 'https':
+                cls = HTTPSConnection
+            else:
+                raise ValueError('%s is not a supported scheme' % scheme)
+            conn = cls(host, timeout=self.timeout)
+            conn.connect()
+
         return conn
 
     def _return_connection(self, url, conn):
