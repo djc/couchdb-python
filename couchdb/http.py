@@ -85,6 +85,43 @@ if sys.version < '2.6':
             self.timeout = timeout
 
 
+if sys.version < '2.7':
+
+    from httplib import CannotSendHeader, _CS_REQ_STARTED, _CS_REQ_SENT
+
+    class NagleMixin:
+        """
+        Mixin to upgrade httplib connection types so headers and body can be
+        sent at the same time to avoid triggering Nagle's algorithm.
+
+        Based on code originally copied from Python 2.7's httplib module.
+        """
+        
+        def endheaders(self, message_body=None):
+            if self.__dict__['_HTTPConnection__state'] == _CS_REQ_STARTED:
+                self.__dict__['_HTTPConnection__state'] = _CS_REQ_SENT
+            else:
+                raise CannotSendHeader()
+            self._send_output(message_body)
+
+        def _send_output(self, message_body=None):
+            self._buffer.extend(("", ""))
+            msg = "\r\n".join(self._buffer)
+            del self._buffer[:]
+            if isinstance(message_body, str):
+                msg += message_body
+                message_body = None
+            self.send(msg)
+            if message_body is not None:
+                self.send(message_body)
+
+    class HTTPConnection(NagleMixin, HTTPConnection):
+        pass
+
+    class HTTPSConnection(NagleMixin, HTTPSConnection):
+        pass
+
+
 class HTTPError(Exception):
     """Base class for errors based on HTTP status codes >= 400."""
 
@@ -259,15 +296,6 @@ class Session(object):
                     time.sleep(delay)
                     conn.close()
 
-        def _send_headers_and_body(body):
-            # Send the headers and body in a single packet to avoid slowdown
-            # caused by delayed ACK and the Nagle algorithm.
-            if sys.version_info < (2, 7):
-                conn.endheaders()
-                conn.send(body)
-            else:
-                conn.endheaders(body)
-
         def _try_request():
             try:
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
@@ -277,7 +305,7 @@ class Session(object):
                     conn.endheaders()
                 else:
                     if isinstance(body, str):
-                        _send_headers_and_body(body)
+                        conn.endheaders(body)
                     else: # assume a file-like object and send in chunks
                         conn.endheaders()
                         while 1:
