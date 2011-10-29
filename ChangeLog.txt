@@ -1,3 +1,31 @@
+Version 0.9 (not released)
+--------------------------
+
+ * Use HTTP socket more efficiently to avoid the Nagle algorithm, greatly
+   improving performace. Note: add the {nodelay, true} option to the CouchDB
+   server's httpd/socket_options config.
+ * Add support for show and list functions.
+ * Add support for calling update handlers.
+ * Add support for purging documents.
+ * Add view cleanup API.
+ * Enhance Server.stats() to optionally retrieve a single set of statistics.
+ * Implement Session timeouts.
+ * Add `error` property to Row objects.
+ * Add default=None arg to mapping.Document.get() to make it a little more
+   dict-like.
+ * Enhance Database.info() so it can also be used to get info for a design
+   doc.
+ * Only use the documented API of httplib (should now work on Google App
+   Engine).
+ * Add view definition options, e.g. collation.
+ * Protect ResourceBody from being iterated/closed multiple times.
+ * JSON encoding exception are no longer masked, giving clearer errors.
+ * Fix Row.value and Row.__repr__ to never raise exceptions.
+ * Fix Python view server's reduce to handle empty map results list.
+ * Don't require setuptools/distribute to install the core package. (Still
+   needed to install the console scripts.)
+
+
 Version 0.8 (Aug 13, 2010)
 --------------------------
 
