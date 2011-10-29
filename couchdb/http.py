@@ -255,23 +255,17 @@ class Session(object):
                 if etag:
                     headers['If-None-Match'] = etag
 
+        if (body is not None and not isinstance(body, basestring) and
+                not hasattr(body, 'read')):
+            body = json.encode(body).encode('utf-8')
+            headers.setdefault('Content-Type', 'application/json')
+
         if body is None:
             headers.setdefault('Content-Length', '0')
+        elif isinstance(body, basestring):
+            headers.setdefault('Content-Length', str(len(body)))
         else:
-            if not isinstance(body, basestring):
-                try:
-                    body = json.encode(body).encode('utf-8')
-                except TypeError:
-                    # Check for somethine file-like or re-raise the exception
-                    # to avoid masking real JSON encoding errors.
-                    if not hasattr(body, 'read'):
-                        raise
-                else:
-                    headers.setdefault('Content-Type', 'application/json')
-            if isinstance(body, basestring):
-                headers.setdefault('Content-Length', str(len(body)))
-            else:
-                headers['Transfer-Encoding'] = 'chunked'
+            headers['Transfer-Encoding'] = 'chunked'
 
         authorization = basic_auth(credentials)
         if authorization:
@@ -490,29 +484,19 @@ class Resource(object):
     def put(self, path=None, body=None, headers=None, **params):
         return self._request('PUT', path, body=body, headers=headers, **params)
 
-    def delete_json(self, *a, **k):
-        status, headers, data = self.delete(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def delete_json(self, path=None, headers=None, **params):
+        return self._request_json('DELETE', path, headers=headers, **params)
 
-    def get_json(self, *a, **k):
-        status, headers, data = self.get(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def get_json(self, path=None, headers=None, **params):
+        return self._request_json('GET', path, headers=headers, **params)
 
-    def post_json(self, *a, **k):
-        status, headers, data = self.post(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def post_json(self, path=None, body=None, headers=None, **params):
+        return self._request_json('POST', path, body=body, headers=headers,
+                                  **params)
 
-    def put_json(self, *a, **k):
-        status, headers, data = self.put(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def put_json(self, path=None, body=None, headers=None, **params):
+        return self._request_json('PUT', path, body=body, headers=headers,
+                                  **params)
 
     def _request(self, method, path=None, body=None, headers=None, **params):
         all_headers = self.headers.copy()
@@ -524,6 +508,14 @@ class Resource(object):
         return self.session.request(method, url, body=body,
                                     headers=all_headers,
                                     credentials=self.credentials)
+
+    def _request_json(self, method, path=None, body=None, headers=None, **params):
+        status, headers, data = self._request(method, path, body=body,
+                                              headers=headers, **params)
+        if 'application/json' in headers.get('content-type'):
+            data = json.decode(data.read())
+        return status, headers, data
+
 
 
 def extract_credentials(url):
