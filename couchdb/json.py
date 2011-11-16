@@ -33,6 +33,7 @@ CouchDB-Python to use custom decoding and encoding functions::
 
 __all__ = ['decode', 'encode', 'use']
 
+import warnings
 import os
 
 _initialized = False
@@ -71,8 +72,8 @@ def use(module=None, decode=None, encode=None):
     """Set the JSON library that should be used, either by specifying a known
     module name, or by providing a decode and encode function.
     
-    The modules "simplejson", "cjson", and "json" are currently supported for
-    the ``module`` parameter.
+    The modules "simplejson" and "json" are currently supported for the
+    ``module`` parameter.
     
     If provided, the ``decode`` parameter must be a callable that accepts a
     JSON string and returns a corresponding Python data structure. The
@@ -130,6 +131,10 @@ def _initialize():
     if _using == 'simplejson':
         _init_simplejson()
     elif _using == 'cjson':
+        warnings.warn("Builtin cjson support is deprecated. Please use the "
+                      "default or provide custom decode/encode functions "
+                      "[2011-11-09].",
+                      DeprecationWarning, stacklevel=1)
         _init_cjson()
     elif _using == 'json':
         _init_stdlib()
