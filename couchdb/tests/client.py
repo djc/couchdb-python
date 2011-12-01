@@ -20,7 +20,7 @@ import urlparse
 
 from couchdb import client, http
 from couchdb.tests import testutil
-http.CACHE_SIZE = 2, 3
+
 
 class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
