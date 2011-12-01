@@ -163,7 +163,6 @@ class RedirectLimit(Exception):
 
 
 CHUNK_SIZE = 1024 * 8
-CACHE_SIZE = 10, 75 # some random values to limit memory use
 
 def cache_sort(i):
     t = time.mktime(time.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S'))
@@ -414,6 +413,9 @@ class Session(object):
 class Cache(object):
     """Content cache."""
 
+    # Some random values to limit memory use
+    keep_size, max_size = 10, 75
+
     def __init__(self):
         self.by_url = {}
 
@@ -422,7 +424,7 @@ class Cache(object):
 
     def put(self, url, response):
         self.by_url[url] = response
-        if len(self.by_url) > CACHE_SIZE[1]:
+        if len(self.by_url) > self.max_size:
             self._clean()
 
     def remove(self, url):
@@ -430,7 +432,7 @@ class Cache(object):
 
     def _clean(self):
         ls = sorted(self.by_url.iteritems(), key=cache_sort)
-        self.by_url = dict(ls[-CACHE_SIZE[0]:])
+        self.by_url = dict(ls[-self.keep_size:])
 
 
 class ConnectionPool(object):
