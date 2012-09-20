@@ -67,11 +67,23 @@ class ResponseBodyTestCase(unittest.TestCase):
         self.assertEqual(list(response), [])
 
 
+class CacheTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    def test_remove_miss(self):
+        """Check that a cache remove miss is handled gracefully."""
+        url = 'http://localhost:5984/foo'
+        cache = http.Cache()
+        cache.put(url, (None, None, None))
+        cache.remove(url)
+        cache.remove(url)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(http))
     suite.addTest(unittest.makeSuite(SessionTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ResponseBodyTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(CacheTestCase, 'test'))
     return suite
 
 

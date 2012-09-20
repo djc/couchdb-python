@@ -428,7 +428,7 @@ class Cache(object):
             self._clean()
 
     def remove(self, url):
-        del self.by_url[url]
+        self.by_url.pop(url, None)
 
     def _clean(self):
         ls = sorted(self.by_url.iteritems(), key=cache_sort)
