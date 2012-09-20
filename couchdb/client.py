@@ -1195,7 +1195,7 @@ class Row(dict):
             return Document(doc)
 
 
-SPECIAL_DB_NAMES = set(['_users'])
+SPECIAL_DB_NAMES = set(['_users', '_replicator'])
 VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')
 def validate_dbname(name):
     if name in SPECIAL_DB_NAMES:
