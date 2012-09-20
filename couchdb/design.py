@@ -38,8 +38,8 @@ class ViewDefinition(object):
     The view is not yet stored in the database, in fact, design doc doesn't
     even exist yet. That can be fixed using the `sync` method:
 
-    >>> view.sync(db)
-
+    >>> view.sync(db)                                       #doctest: +ELLIPSIS
+    [(True, '_design/tests', ...)]
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
     <Document '_design/tests'@'...' {...}>
@@ -54,7 +54,8 @@ class ViewDefinition(object):
     >>> def my_map(doc):
     ...     yield doc['somekey'], doc['somevalue']
     >>> view = ViewDefinition('test2', 'somename', my_map, language='python')
-    >>> view.sync(db)
+    >>> view.sync(db)                                       #doctest: +ELLIPSIS
+    [(True, '_design/test2', ...)]
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
     <Document '_design/test2'@'...' {...}>
@@ -139,7 +140,7 @@ class ViewDefinition(object):
         
         :param db: the `Database` instance
         """
-        type(self).sync_many(db, [self])
+        return type(self).sync_many(db, [self])
 
     @staticmethod
     def sync_many(db, views, remove_missing=False, callback=None):
@@ -197,7 +198,7 @@ class ViewDefinition(object):
                     callback(doc)
                 docs.append(doc)
 
-        db.update(docs)
+        return db.update(docs)
 
 
 def _strip_decorators(code):
