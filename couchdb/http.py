@@ -163,7 +163,6 @@ class RedirectLimit(Exception):
 
 
 CHUNK_SIZE = 1024 * 8
-CACHE_SIZE = 10, 75 # some random values to limit memory use
 
 def cache_sort(i):
     t = time.mktime(time.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S'))
@@ -227,8 +226,17 @@ class Session(object):
         """
         from couchdb import __version__ as VERSION
         self.user_agent = 'CouchDB-Python/%s' % VERSION
-        if cache is None:
-            cache = {}
+        # XXX We accept a `cache` dict arg, but the ref gets overwritten later
+        # during cache cleanup. Do we remove the cache arg (does using a shared
+        # Session instance cover the same use cases?) or fix the cache cleanup?
+        # For now, let's just assign the dict to the Cache instance to retain
+        # current behaviour.
+        if cache is not None:
+            cache_by_url = cache
+            cache = Cache()
+            cache.by_url = cache_by_url
+        else:
+            cache = Cache()
         self.cache = cache
         self.max_redirects = max_redirects
         self.perm_redirects = {}
@@ -331,7 +339,7 @@ class Session(object):
                 data = StringIO(data)
             return status, msg, data
         elif cached_resp:
-            del self.cache[url]
+            self.cache.remove(url)
 
         # Handle redirects
         if status == 303 or \
@@ -394,18 +402,37 @@ class Session(object):
 
         # Store cachable responses
         if not streamed and method == 'GET' and 'etag' in resp.msg:
-            self.cache[url] = (status, resp.msg, data)
-            if len(self.cache) > CACHE_SIZE[1]:
-                self._clean_cache()
+            self.cache.put(url, (status, resp.msg, data))
 
         if not streamed and data is not None:
             data = StringIO(data)
 
         return status, resp.msg, data
 
-    def _clean_cache(self):
-        ls = sorted(self.cache.iteritems(), key=cache_sort)
-        self.cache = dict(ls[-CACHE_SIZE[0]:])
+
+class Cache(object):
+    """Content cache."""
+
+    # Some random values to limit memory use
+    keep_size, max_size = 10, 75
+
+    def __init__(self):
+        self.by_url = {}
+
+    def get(self, url):
+        return self.by_url.get(url)
+
+    def put(self, url, response):
+        self.by_url[url] = response
+        if len(self.by_url) > self.max_size:
+            self._clean()
+
+    def remove(self, url):
+        del self.by_url[url]
+
+    def _clean(self):
+        ls = sorted(self.by_url.iteritems(), key=cache_sort)
+        self.by_url = dict(ls[-self.keep_size:])
 
 
 class ConnectionPool(object):
