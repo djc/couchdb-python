@@ -894,7 +894,8 @@ class Database(object):
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
 
-        Takes since, feed, heartbeat and timeout options.
+        :param opts: optional query string parameters
+        :return: an iterable over change notification dicts
         """
         if opts.get('feed') == 'continuous':
             return self._changes(**opts)
