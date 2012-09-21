@@ -18,8 +18,11 @@ Version 0.9 (not released)
  * Enhance Database.info() so it can also be used to get info for a design
    doc.
  * Add view definition options, e.g. collation.
- * Protect ResourceBody from being iterated/closed multiple times.
+ * Protect ResponseBody from being iterated/closed multiple times.
+ * Rename iteration method for ResponseBody chunks to iterchunks() to
+   prevent usage for non-chunked responses.
  * JSON encoding exception are no longer masked, giving clearer errors.
+ * cjson support is now deprecated.
  * Fix Row.value and Row.__repr__ to never raise exceptions.
  * Fix Python view server's reduce to handle empty map results list.
  * Don't require setuptools/distribute to install the core package. (Still
