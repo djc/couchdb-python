@@ -90,7 +90,7 @@ class Server(object):
         :return: `True` if a database with the name exists, `False` otherwise
         """
         try:
-            self.resource.head(validate_dbname(name))
+            self.resource.head(name)
             return True
         except http.ResourceNotFound:
             return False
@@ -122,7 +122,7 @@ class Server(object):
         :param name: the name of the database
         :raise ResourceNotFound: if no database with that name exists
         """
-        self.resource.delete_json(validate_dbname(name))
+        self.resource.delete_json(name)
 
     def __getitem__(self, name):
         """Return a `Database` object representing the database with the
@@ -133,7 +133,7 @@ class Server(object):
         :rtype: `Database`
         :raise ResourceNotFound: if no database with that name exists
         """
-        db = Database(self.resource(name), validate_dbname(name))
+        db = Database(self.resource(name), name)
         db.resource.head() # actually make a request to the database
         return db
 
@@ -198,7 +198,7 @@ class Server(object):
         :rtype: `Database`
         :raise PreconditionFailed: if a database with that name already exists
         """
-        self.resource.put_json(validate_dbname(name))
+        self.resource.put_json(name)
         return self[name]
 
     def delete(self, name):
@@ -1193,13 +1193,3 @@ class Row(dict):
         doc = self.get('doc')
         if doc:
             return Document(doc)
-
-
-SPECIAL_DB_NAMES = set(['_users', '_replicator'])
-VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')
-def validate_dbname(name):
-    if name in SPECIAL_DB_NAMES:
-        return name
-    if not VALID_DB_NAME.match(name):
-        raise ValueError('Invalid database name')
-    return name

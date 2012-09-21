@@ -1,6 +1,8 @@
 Version 0.9 (not released)
 --------------------------
 
+ * Don't validate database names on the client side. This means some methods
+   dealing with database names can return different exceptions than before.
  * Use HTTP socket more efficiently to avoid the Nagle algorithm, greatly
    improving performace. Note: add the {nodelay, true} option to the CouchDB
    server's httpd/socket_options config.
