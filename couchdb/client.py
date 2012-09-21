@@ -881,7 +881,7 @@ class Database(object):
 
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
-        lines = iter(data)
+        lines = data.iterchunks()
         for ln in lines:
             if not ln: # skip heartbeats
                 continue

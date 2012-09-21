@@ -63,8 +63,8 @@ class ResponseBodyTestCase(unittest.TestCase):
         data = '\n'.join([hex(len(data))[2:], data])
         response = http.ResponseBody(TestHttpResp(StringIO(data)),
                                      lambda *a, **k: None)
-        self.assertEqual(list(response), ['foobarbaz'])
-        self.assertEqual(list(response), [])
+        self.assertEqual(list(response.iterchunks()), ['foobarbaz'])
+        self.assertEqual(list(response.iterchunks()), [])
 
 
 class CacheTestCase(testutil.TempDatabaseMixin, unittest.TestCase):

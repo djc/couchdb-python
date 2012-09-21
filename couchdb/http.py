@@ -187,7 +187,7 @@ class ResponseBody(object):
             self.callback()
             self.callback = None
 
-    def __iter__(self):
+    def iterchunks(self):
         assert self.resp.msg.get('transfer-encoding') == 'chunked'
         while True:
             if self.resp.isclosed():
