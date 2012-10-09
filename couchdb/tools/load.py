@@ -24,7 +24,7 @@ from couchdb.multipart import read_multipart
 def load_db(fileobj, dburl, username=None, password=None, ignore_errors=False):
     db = Database(dburl)
     if username is not None and password is not None:
-        db.resource.http.add_credentials(username, password)
+        db.resource.credentials = (username, password)
 
     for headers, is_multipart, payload in read_multipart(fileobj):
         docid = headers['content-id']
