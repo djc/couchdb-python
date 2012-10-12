@@ -165,9 +165,6 @@ class RedirectLimit(Exception):
 
 CHUNK_SIZE = 1024 * 8
 
-def cache_sort(i):
-    return datetime.fromtimestamp(time.mktime(parsedate(i[1][1]['Date'])))
-
 class ResponseBody(object):
 
     def __init__(self, resp, callback):
@@ -409,6 +406,9 @@ class Session(object):
 
         return status, resp.msg, data
 
+
+def cache_sort(i):
+    return datetime.fromtimestamp(time.mktime(parsedate(i[1][1]['Date'])))
 
 class Cache(object):
     """Content cache."""
