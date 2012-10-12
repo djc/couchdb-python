@@ -28,6 +28,7 @@ except ImportError:
     from dummy_threading import Lock
 import urllib
 from urlparse import urlsplit, urlunsplit
+from email.Utils import parsedate
 
 from couchdb import json
 
@@ -165,8 +166,7 @@ class RedirectLimit(Exception):
 CHUNK_SIZE = 1024 * 8
 
 def cache_sort(i):
-    t = time.mktime(time.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S'))
-    return datetime.fromtimestamp(t)
+    return datetime.fromtimestamp(time.mktime(parsedate(i[1][1]['Date'])))
 
 class ResponseBody(object):
 
