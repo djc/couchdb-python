@@ -190,7 +190,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_disallow_nan(self):
         try:
-            self.db['foo'] = {u'number': float('nan')}
+            self.db['foo'] = {'number': float('nan')}
             self.fail('Expected ValueError')
         except ValueError:
             pass

@@ -39,8 +39,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'couchdb-python'
-copyright = u'2010, Dirkjan Ochtman'
+project = 'couchdb-python'
+copyright = '2010, Dirkjan Ochtman'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -174,8 +174,8 @@ htmlhelp_basename = 'couchdb-pythondoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'couchdb-python.tex', u'couchdb-python Documentation',
-   u'Dirkjan Ochtman', 'manual'),
+  ('index', 'couchdb-python.tex', 'couchdb-python Documentation',
+   'Dirkjan Ochtman', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

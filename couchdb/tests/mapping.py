@@ -82,7 +82,7 @@ class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_old_datetime(self):
         dt = mapping.DateTimeField()
-        assert dt._to_python(u'1880-01-01T00:00:00Z')
+        assert dt._to_python('1880-01-01T00:00:00Z')
 
     def test_get_has_default(self):
         doc = mapping.Document()
