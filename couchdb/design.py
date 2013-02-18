@@ -164,6 +164,7 @@ class ViewDefinition(object):
         """
         docs = []
 
+        views = sorted(views, key=attrgetter('design'))
         for design, views in groupby(views, key=attrgetter('design')):
             doc_id = '_design/%s' % design
             doc = db.get(doc_id, {'_id': doc_id})
