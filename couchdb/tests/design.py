@@ -27,7 +27,7 @@ class DesignTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertTrue(design_doc['views']['foo']['options'] == options)
 
     def test_retrieve_view_defn(self):
-    	'''see issue 183'''
+        '''see issue 183'''
         view_def = design.ViewDefinition('foo', 'bar', 'baz')
         result = view_def.sync(self.db)
         self.assertTrue(isinstance(result, list))
