@@ -856,8 +856,11 @@ class Database(object):
         while True:
             loop_limit = min(limit or batch, batch)
             # Get rows in batches, with one extra for start of next batch.
-            options.update(limit=loop_limit + 1, startkey=startkey,
-                           startkey_docid=startkey_docid)
+            options.update(limit=loop_limit + 1)
+            # Add start keys, if any.
+            if startkey is not None: # XXX todo: None is a valid key value
+                options.update(startkey=startkey,
+                               startkey_docid=startkey_docid)
             rows = list(self.view(name, wrapper, **options))
             # Yield rows from this batch.
             for row in itertools.islice(rows, loop_limit):
