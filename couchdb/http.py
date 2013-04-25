@@ -479,6 +479,11 @@ class ConnectionPool(object):
         finally:
             self.lock.release()
 
+    def __del__(self):
+        for key, conns in list(self.conns.items()):
+            for conn in conns:
+                conn.close()
+
 
 class Resource(object):
 
