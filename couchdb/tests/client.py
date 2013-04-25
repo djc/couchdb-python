@@ -306,7 +306,8 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         f.close()
         doc = {}
         self.db['foo'] = doc
-        self.db.put_attachment(doc, open(tmpfile))
+        with open(tmpfile) as f:
+            self.db.put_attachment(doc, f)
         doc = self.db.get('foo')
         self.assertTrue(doc['_attachments']['test.txt']['content_type'] == 'text/plain')
         shutil.rmtree(tmpdir)
