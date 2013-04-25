@@ -36,6 +36,18 @@ class DesignTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = self.db[result[0][1]]
         self.assertEqual(result[0][2], doc['_rev'])
 
+    def test_sync_many(self):
+        '''see issue 218'''
+        func = 'function(doc) { emit(doc._id, doc._rev); }'
+        first_view = design.ViewDefinition('design_doc', 'view_one', func)
+        second_view = design.ViewDefinition('design_doc_two', 'view_one', func)
+        third_view = design.ViewDefinition('design_doc', 'view_two', func)
+        _, db = self.temp_db()
+        results = design.ViewDefinition.sync_many(
+            db, (first_view, second_view, third_view))
+        self.assertEqual(
+            len(results), 2, 'There should only be two design documents')
+
 
 def suite():
     suite = unittest.TestSuite()
