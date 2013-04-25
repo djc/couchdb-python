@@ -11,8 +11,10 @@
 import unittest
 from StringIO import StringIO
 
-from couchdb.tools import load
+from couchdb import Unauthorized
+from couchdb.tools import load, dump
 from couchdb.tests import testutil
+
 
 class ToolLoadTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
@@ -20,6 +22,18 @@ class ToolLoadTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         # Issue 194: couchdb-load attribute error: 'Resource' object has no attribute 'http'
         # http://code.google.com/p/couchdb-python/issues/detail?id=194
         load.load_db(StringIO(''), self.db.resource.url, 'foo', 'bar')
+
+
+class ToolDumpTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    def test_handle_credentials(self):
+        # Similar to issue 194
+        # Fixing: AttributeError: 'Resource' object has no attribute 'http'
+        try:
+            dump.dump_db(self.db.resource.url, 'foo', 'bar', output=StringIO())
+        except Unauthorized:
+            # This is ok, since we provided dummy credentials.
+            pass
 
 
 def suite():

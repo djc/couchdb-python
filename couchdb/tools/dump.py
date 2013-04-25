@@ -25,7 +25,7 @@ def dump_db(dburl, username=None, password=None, boundary=None,
             output=sys.stdout):
     db = Database(dburl)
     if username is not None and password is not None:
-        db.resource.http.add_credentials(username, password)
+        db.resource.credentials = username, password
 
     envelope = write_multipart(output, boundary=boundary)
     for docid in db:
