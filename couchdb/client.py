@@ -852,17 +852,10 @@ class Database(object):
         limit = options.get('limit')
         if limit is not None and limit <= 0:
             raise ValueError('limit must be 1 or more')
-        startkey, startkey_docid = (options.get('startkey'),
-                                    options.get('startkey_docid'))
         while True:
             loop_limit = min(limit or batch, batch)
             # Get rows in batches, with one extra for start of next batch.
             options['limit'] = loop_limit + 1
-            # Add start keys, if any.
-            if startkey is not None: # XXX todo: None is a valid key value
-                options['startkey'] = startkey
-            if startkey_docid is not None:
-                options['startkey_docid'] = startkey_docid
             rows = list(self.view(name, wrapper, **options))
             # Yield rows from this batch.
             for row in itertools.islice(rows, loop_limit):
@@ -873,8 +866,8 @@ class Database(object):
             # Check if there is nothing else to yield.
             if len(rows) <= batch or (limit is not None and limit == 0):
                 break
-            # Save start keys for next loop.
-            startkey, startkey_docid = rows[-1]['key'], rows[-1]['id']
+            # Update options with start keys for next loop.
+            options.update(startkey=rows[-1]['key'], startkey_docid=rows[-1]['id'])
 
     def show(self, name, docid=None, **options):
         """Call a 'show' function.

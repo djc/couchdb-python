@@ -741,7 +741,8 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def setUp(self):
         super(ViewIterationTestCase, self).setUp()
         design_doc = {'_id': '_design/test',
-                      'views': {'nums': {'map': 'function(doc) {emit(doc.num, null);}'}}}
+                      'views': {'nums': {'map': 'function(doc) {emit(doc.num, null);}'},
+                                'nulls': {'map': 'function(doc) {emit(null, null);}'}}}
         self.db.save(design_doc)
         self.db.update([self.docfromnum(num) for num in xrange(self.num_docs)])
 
@@ -787,6 +788,9 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
                          [self.docfromnum(x) for x in xrange(self.num_docs - 2, self.num_docs)])
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=1, descending=True)],
                          [self.docfromnum(x) for x in xrange(3, -1, -1)])
+
+    def test_nullkeys(self):
+        self.assertEqual(len(list(self.db.iterview('test/nulls', 10))), self.num_docs)
 
 
 def suite():
