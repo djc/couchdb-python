@@ -25,7 +25,7 @@ class SessionTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         start = time.time()
         status, headers, body = session.request('GET', db.resource.url + '/_changes?feed=longpoll&since=1000&timeout=%s' % (timeout*2*1000,))
         self.assertRaises(socket.timeout, body.read)
-        self.failUnless(time.time() - start < timeout * 1.3)
+        self.assertTrue(time.time() - start < timeout * 1.3)
 
 
 class ResponseBodyTestCase(unittest.TestCase):

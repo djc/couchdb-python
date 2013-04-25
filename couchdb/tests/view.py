@@ -19,13 +19,13 @@ class ViewServerTestCase(unittest.TestCase):
         input = StringIO('["reset"]\n')
         output = StringIO()
         view.run(input=input, output=output)
-        self.assertEquals(output.getvalue(), 'true\n')
+        self.assertEqual(output.getvalue(), 'true\n')
 
     def test_add_fun(self):
         input = StringIO('["add_fun", "def fun(doc): yield None, doc"]\n')
         output = StringIO()
         view.run(input=input, output=output)
-        self.assertEquals(output.getvalue(), 'true\n')
+        self.assertEqual(output.getvalue(), 'true\n')
 
     def test_map_doc(self):
         input = StringIO('["add_fun", "def fun(doc): yield None, doc"]\n'

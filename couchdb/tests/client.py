@@ -82,21 +82,21 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         bname, b = self.temp_db()
         id, rev = a.save({'test': 'a'})
         result = self.server.replicate(aname, bname)
-        self.assertEquals(result['ok'], True)
-        self.assertEquals(b[id]['test'], 'a')
+        self.assertEqual(result['ok'], True)
+        self.assertEqual(b[id]['test'], 'a')
 
         doc = b[id]
         doc['test'] = 'b'
         b.update([doc])
         self.server.replicate(bname, aname)
-        self.assertEquals(a[id]['test'], 'b')
-        self.assertEquals(b[id]['test'], 'b')
+        self.assertEqual(a[id]['test'], 'b')
+        self.assertEqual(b[id]['test'], 'b')
 
     def test_replicate_continuous(self):
         aname, a = self.temp_db()
         bname, b = self.temp_db()
         result = self.server.replicate(aname, bname, continuous=True)
-        self.assertEquals(result['ok'], True)
+        self.assertEqual(result['ok'], True)
         version = tuple(int(i) for i in self.server.version().split('.')[:2])
         if version >= (0, 10):
             self.assertTrue('_local_id' in result)
@@ -238,7 +238,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         old_rev = doc['_rev']
 
         self.db.put_attachment(doc, 'Foo bar', 'foo.txt', 'text/plain')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
 
         doc = self.db['foo']
         attachment = doc['_attachments']['foo.txt']
@@ -252,7 +252,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
         old_rev = doc['_rev']
         self.db.delete_attachment(doc, 'foo.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
 
     def test_attachment_crud_with_files(self):
@@ -262,7 +262,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         fileobj = StringIO('Foo bar baz')
 
         self.db.put_attachment(doc, fileobj, 'foo.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
 
         doc = self.db['foo']
         attachment = doc['_attachments']['foo.txt']
@@ -276,7 +276,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
         old_rev = doc['_rev']
         self.db.delete_attachment(doc, 'foo.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
 
     def test_empty_attachment(self):
@@ -285,7 +285,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         old_rev = doc['_rev']
 
         self.db.put_attachment(doc, '', 'empty.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
 
         doc = self.db['foo']
         attachment = doc['_attachments']['empty.txt']
@@ -320,7 +320,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {}
         self.db['foo'] = doc
         self.db.put_attachment(doc, '{}', 'test.json', 'application/json')
-        self.assertEquals(self.db.get_attachment(doc, 'test.json').read(), '{}')
+        self.assertEqual(self.db.get_attachment(doc, 'test.json').read(), '{}')
 
     def test_include_docs(self):
         doc = {'foo': 42, 'bar': 40}
@@ -587,12 +587,12 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_init_with_resource(self):
         self.db['foo'] = {}
         view = client.PermanentView(self.db.resource('_all_docs').url, '_all_docs')
-        self.assertEquals(len(list(view())), 1)
+        self.assertEqual(len(list(view())), 1)
 
     def test_iter_view(self):
         self.db['foo'] = {}
         view = client.PermanentView(self.db.resource('_all_docs').url, '_all_docs')
-        self.assertEquals(len(list(view)), 1)
+        self.assertEqual(len(list(view)), 1)
 
     def test_tmpview_repr(self):
         mapfunc = "function(doc) {emit(null, null);}"
