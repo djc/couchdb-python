@@ -15,7 +15,8 @@
 To define a document mapping, you declare a Python class inherited from
 `Document`, and add any number of `Field` attributes:
 
->>> from couchdb.mapping import TextField, IntegerField, DateField
+>>> from datetime import datetime
+>>> from couchdb.mapping import Document, TextField, IntegerField, DateTimeField
 >>> class Person(Document):
 ...     name = TextField()
 ...     age = IntegerField()
@@ -153,7 +154,7 @@ class Mapping(object):
     def __setitem__(self, name, value):
         self._data[name] = value
 
-    def get(self, name, default):
+    def get(self, name, default=None):
         return self._data.get(name, default)
 
     def setdefault(self, name, default):

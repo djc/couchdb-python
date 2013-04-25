@@ -23,6 +23,7 @@ False
 >>> del server['python-tests']
 """
 
+import itertools
 import mimetypes
 import os
 from types import FunctionType
@@ -90,7 +91,7 @@ class Server(object):
         :return: `True` if a database with the name exists, `False` otherwise
         """
         try:
-            self.resource.head(validate_dbname(name))
+            self.resource.head(name)
             return True
         except http.ResourceNotFound:
             return False
@@ -122,7 +123,7 @@ class Server(object):
         :param name: the name of the database
         :raise ResourceNotFound: if no database with that name exists
         """
-        self.resource.delete_json(validate_dbname(name))
+        self.resource.delete_json(name)
 
     def __getitem__(self, name):
         """Return a `Database` object representing the database with the
@@ -133,7 +134,7 @@ class Server(object):
         :rtype: `Database`
         :raise ResourceNotFound: if no database with that name exists
         """
-        db = Database(self.resource(name), validate_dbname(name))
+        db = Database(self.resource(name), name)
         db.resource.head() # actually make a request to the database
         return db
 
@@ -159,9 +160,17 @@ class Server(object):
         status, headers, data = self.resource.get_json()
         return data['version']
 
-    def stats(self):
-        """Database statistics."""
-        status, headers, data = self.resource.get_json('_stats')
+    def stats(self, name=None):
+        """Server statistics.
+
+        :param name: name of single statistic, e.g. httpd/requests
+                     (None -- return all statistics)
+        """
+        if not name:
+            resource = self.resource('_stats')
+        else:
+            resource = self.resource('_stats', *name.split('/'))
+        status, headers, data = resource.get_json()
         return data
 
     def tasks(self):
@@ -190,7 +199,7 @@ class Server(object):
         :rtype: `Database`
         :raise PreconditionFailed: if a database with that name already exists
         """
-        self.resource.put_json(validate_dbname(name))
+        self.resource.put_json(name)
         return self[name]
 
     def delete(self, name):
@@ -282,7 +291,7 @@ class Database(object):
         :return: `True` if a document with the ID exists, `False` otherwise
         """
         try:
-            self.resource.head(id)
+            _doc_resource(self.resource, id).head()
             return True
         except http.ResourceNotFound:
             return False
@@ -309,8 +318,9 @@ class Database(object):
 
         :param id: the document ID
         """
-        status, headers, data = self.resource.head(id)
-        self.resource.delete_json(id, rev=headers['etag'].strip('"'))
+        resource = _doc_resource(self.resource, id)
+        status, headers, data = resource.head()
+        resource.delete_json(rev=headers['etag'].strip('"'))
 
     def __getitem__(self, id):
         """Return the document with the specified ID.
@@ -319,7 +329,7 @@ class Database(object):
         :return: a `Row` object representing the requested document
         :rtype: `Document`
         """
-        _, _, data = self.resource.get_json(id)
+        _, _, data = _doc_resource(self.resource, id).get_json()
         return Document(data)
 
     def __setitem__(self, id, content):
@@ -330,7 +340,8 @@ class Database(object):
                         new documents, or a `Row` object for existing
                         documents
         """
-        status, headers, data = self.resource.put_json(id, body=content)
+        resource = _doc_resource(self.resource, id)
+        status, headers, data = resource.put_json(body=content)
         content.update({'_id': data['id'], '_rev': data['rev']})
 
     @property
@@ -401,7 +412,7 @@ class Database(object):
         :rtype: `tuple`
         """
         if '_id' in doc:
-            func = self.resource(doc['_id']).put_json
+            func = _doc_resource(self.resource, doc['_id']).put_json
         else:
             func = self.resource.post_json
         _, _, data = func(body=doc, **options)
@@ -410,6 +421,18 @@ class Database(object):
         if rev is not None: # Not present for batch='ok'
             doc['_rev'] = rev
         return id, rev
+
+    def cleanup(self):
+        """Clean up old design document indexes.
+
+        Remove all unused index files from the database storage area.
+
+        :return: a boolean to indicate successful cleanup initiation
+        :rtype: `bool`
+        """
+        headers = {'Content-Type': 'application/json'}
+        _, _, data = self.resource('_view_cleanup').post_json(headers=headers)
+        return data['ok']
 
     def commit(self):
         """If the server is configured to delay commits, or previous requests
@@ -509,7 +532,7 @@ class Database(object):
         """
         if doc['_id'] is None:
             raise ValueError('document ID cannot be None')
-        self.resource.delete_json(doc['_id'], rev=doc['_rev'])
+        _doc_resource(self.resource, doc['_id']).delete_json(rev=doc['_rev'])
 
     def get(self, id, default=None, **options):
         """Return the document with the specified ID.
@@ -522,7 +545,7 @@ class Database(object):
         :rtype: `Document`
         """
         try:
-            _, _, data = self.resource.get_json(id, **options)
+            _, _, data = _doc_resource(self.resource, id).get_json(**options)
         except http.ResourceNotFound:
             return default
         if hasattr(data, 'items'):
@@ -538,7 +561,8 @@ class Database(object):
                  in reverse chronological order, if any were found
         """
         try:
-            status, headers, data = self.resource.get_json(id, revs=True)
+            resource = _doc_resource(self.resource, id)
+            status, headers, data = resource.get_json(revs=True)
         except http.ResourceNotFound:
             return
 
@@ -550,18 +574,25 @@ class Database(object):
                 return
             yield revision
 
-    def info(self):
-        """Return information about the database as a dictionary.
+    def info(self, ddoc=None):
+        """Return information about the database or design document as a
+        dictionary.
+
+        Without an argument, returns database information. With an argument,
+        return information for the given design document.
 
         The returned dictionary exactly corresponds to the JSON response to
-        a ``GET`` request on the database URI.
+        a ``GET`` request on the database or design document's info URI.
 
         :return: a dictionary of database properties
         :rtype: ``dict``
         :since: 0.4
         """
-        _, _, data = self.resource.get_json()
-        self._name = data['db_name']
+        if ddoc is not None:
+            _, _, data = self.resource('_design', ddoc, '_info').get_json()
+        else:
+            _, _, data = self.resource.get_json()
+            self._name = data['db_name']
         return data
 
     def delete_attachment(self, doc, filename):
@@ -576,7 +607,7 @@ class Database(object):
         :param filename: the name of the attachment file
         :since: 0.4.1
         """
-        resource = self.resource(doc['_id'])
+        resource = _doc_resource(self.resource, doc['_id'])
         _, _, data = resource.delete_json(filename, rev=doc['_rev'])
         doc['_rev'] = data['rev']
 
@@ -598,7 +629,7 @@ class Database(object):
         else:
             id = id_or_doc['_id']
         try:
-            _, _, data = self.resource(id).get(filename)
+            _, _, data = _doc_resource(self.resource, id).get(filename)
             return data
         except http.ResourceNotFound:
             return default
@@ -632,7 +663,7 @@ class Database(object):
                 filter(None, mimetypes.guess_type(filename))
             )
 
-        resource = self.resource(doc['_id'])
+        resource = _doc_resource(self.resource, doc['_id'])
         status, headers, data = resource.put_json(filename, body=content, headers={
             'Content-Type': content_type
         }, rev=doc['_rev'])
@@ -750,6 +781,25 @@ class Database(object):
 
         return results
 
+    def purge(self, docs):
+        """Perform purging (complete removing) of the given documents.
+
+        Uses a single HTTP request to purge all given documents. Purged
+        documents do not leave any meta-data in the storage and are not
+        replicated.
+        """
+        content = {}
+        for doc in docs:
+            if isinstance(doc, dict):
+                content[doc['_id']] = [doc['_rev']]
+            elif hasattr(doc, 'items'):
+                doc = dict(doc.items())
+                content[doc['_id']] = [doc['_rev']]
+            else:
+                raise TypeError('expected dict, got %s' % type(doc))
+        _, _, data = self.resource.post_json('_purge', body=content)
+        return data
+
     def view(self, name, wrapper=None, **options):
         """Execute a predefined view.
 
@@ -773,15 +823,108 @@ class Database(object):
         :return: the view results
         :rtype: `ViewResults`
         """
-        if not name.startswith('_'):
-            design, name = name.split('/', 1)
-            name = '/'.join(['_design', design, '_view', name])
-        return PermanentView(self.resource(*name.split('/')), name,
+        path = _path_from_name(name, '_view')
+        return PermanentView(self.resource(*path), '/'.join(path),
                              wrapper=wrapper)(**options)
+
+    def iterview(self, name, batch, wrapper=None, **options):
+        """Iterate the rows in a view, fetching rows in batches and yielding
+        one row at a time.
+
+        Since the view's rows are fetched in batches any rows emitted for
+        documents added, changed or deleted between requests may be missed or
+        repeated.
+
+        :param name: the name of the view; for custom views, use the format
+                     ``design_docid/viewname``, that is, the document ID of the
+                     design document and the name of the view, separated by a
+                     slash.
+        :param batch: number of rows to fetch per HTTP request.
+        :param wrapper: an optional callable that should be used to wrap the
+                        result rows
+        :param options: optional query string parameters
+        :return: row generator
+        """
+        # Check sane batch size.
+        if batch <= 0:
+            raise ValueError('batch must be 1 or more')
+        # Save caller's limit, it must be handled manually.
+        limit = options.get('limit')
+        if limit is not None and limit <= 0:
+            raise ValueError('limit must be 1 or more')
+        while True:
+            loop_limit = min(limit or batch, batch)
+            # Get rows in batches, with one extra for start of next batch.
+            options['limit'] = loop_limit + 1
+            rows = list(self.view(name, wrapper, **options))
+            # Yield rows from this batch.
+            for row in itertools.islice(rows, loop_limit):
+                yield row
+            # Decrement limit counter.
+            if limit is not None:
+                limit -= min(len(rows), batch)
+            # Check if there is nothing else to yield.
+            if len(rows) <= batch or (limit is not None and limit == 0):
+                break
+            # Update options with start keys for next loop.
+            options.update(startkey=rows[-1]['key'], startkey_docid=rows[-1]['id'])
+
+    def show(self, name, docid=None, **options):
+        """Call a 'show' function.
+
+        :param name: the name of the show function in the format
+                     ``designdoc/showname``
+        :param docid: optional ID of a document to pass to the show function.
+        :param options: optional query string parameters
+        :return: (headers, body) tuple, where headers is a dict of headers
+                 returned from the show function and body is a readable
+                 file-like instance
+        """
+        path = _path_from_name(name, '_show')
+        if docid:
+            path.append(docid)
+        status, headers, body = self.resource(*path).get(**options)
+        return headers, body
+
+    def list(self, name, view, **options):
+        """Format a view using a 'list' function.
+
+        :param name: the name of the list function in the format
+                     ``designdoc/listname``
+        :param view: the name of the view in the format ``designdoc/viewname``
+        :param options: optional query string parameters
+        :return: (headers, body) tuple, where headers is a dict of headers
+                 returned from the list function and body is a readable
+                 file-like instance
+        """
+        path = _path_from_name(name, '_list')
+        path.extend(view.split('/', 1))
+        _, headers, body = _call_viewlike(self.resource(*path), options)
+        return headers, body
+
+    def update_doc(self, name, docid=None, **options):
+        """Calls server side update handler.
+
+        :param name: the name of the update handler function in the format
+                     ``designdoc/updatename``.
+        :param docid: optional ID of a document to pass to the update handler.
+        :param options: optional query string parameters.
+        :return: (headers, body) tuple, where headers is a dict of headers
+                 returned from the list function and body is a readable
+                 file-like instance
+        """
+        path = _path_from_name(name, '_update')
+        if docid is None:
+            func = self.resource(*path).post
+        else:
+            path.append(docid)
+            func = self.resource(*path).put
+        _, headers, body = func(**options)
+        return headers, body
 
     def _changes(self, **opts):
         _, _, data = self.resource.get('_changes', **opts)
-        lines = iter(data)
+        lines = data.iterchunks()
         for ln in lines:
             if not ln: # skip heartbeats
                 continue
@@ -794,12 +937,33 @@ class Database(object):
     def changes(self, **opts):
         """Retrieve a changes feed from the database.
 
-        Takes since, feed, heartbeat and timeout options.
+        :param opts: optional query string parameters
+        :return: an iterable over change notification dicts
         """
         if opts.get('feed') == 'continuous':
             return self._changes(**opts)
         _, _, data = self.resource.get_json('_changes', **opts)
         return data
+
+
+def _doc_resource(base, doc_id):
+    """Return the resource for the given document id.
+    """
+    # Split an id that starts with a reserved segment, e.g. _design/foo, so
+    # that the / that follows the 1st segment does not get escaped.
+    if doc_id[:1] == '_':
+        return base(*doc_id.split('/', 1))
+    return base(doc_id)
+
+
+def _path_from_name(name, type):
+    """Expand a 'design/foo' style name to its full path as a list of
+    segments.
+    """
+    if name.startswith('_'):
+        return name.split('/')
+    design, name = name.split('/', 1)
+    return ['_design', design, type, name]
 
 
 class Document(dict):
@@ -847,15 +1011,6 @@ class View(object):
     def __iter__(self):
         return iter(self())
 
-    def _encode_options(self, options):
-        retval = {}
-        for name, value in options.items():
-            if name in ('key', 'startkey', 'endkey') \
-                    or not isinstance(value, basestring):
-                value = json.encode(value)
-            retval[name] = value
-        return retval
-
     def _exec(self, options):
         raise NotImplementedError
 
@@ -871,13 +1026,7 @@ class PermanentView(View):
         return '<%s %r>' % (type(self).__name__, self.name)
 
     def _exec(self, options):
-        if 'keys' in options:
-            options = options.copy()
-            keys = {'keys': options.pop('keys')}
-            _, _, data = self.resource.post_json(body=keys,
-                                                 **self._encode_options(options))
-        else:
-            _, _, data = self.resource.get_json(**self._encode_options(options))
+        _, _, data = _call_viewlike(self.resource, options)
         return data
 
 
@@ -911,8 +1060,32 @@ class TemporaryView(View):
         content = json.encode(body).encode('utf-8')
         _, _, data = self.resource.post_json(body=content, headers={
             'Content-Type': 'application/json'
-        }, **self._encode_options(options))
+        }, **_encode_view_options(options))
         return data
+
+
+def _encode_view_options(options):
+    """Encode any items in the options dict that are sent as a JSON string to a
+    view/list function.
+    """
+    retval = {}
+    for name, value in options.items():
+        if name in ('key', 'startkey', 'endkey') \
+                or not isinstance(value, basestring):
+            value = json.encode(value)
+        retval[name] = value
+    return retval
+
+
+def _call_viewlike(resource, options):
+    """Call a resource that takes view-like options.
+    """
+    if 'keys' in options:
+        options = options.copy()
+        keys = {'keys': options.pop('keys')}
+        return resource.post_json(body=keys, **_encode_view_options(options))
+    else:
+        return resource.get_json(**_encode_view_options(options))
 
 
 class ViewResults(object):
@@ -1032,11 +1205,9 @@ class Row(dict):
     """Representation of a row as returned by database views."""
 
     def __repr__(self):
-        if self.id is None:
-            return '<%s key=%r, value=%r>' % (type(self).__name__, self.key,
-                                              self.value)
-        return '<%s id=%r, key=%r, value=%r>' % (type(self).__name__, self.id,
-                                                 self.key, self.value)
+        keys = 'id', 'key', 'error', 'value'
+        items = ['%s=%r' % (k, self[k]) for k in keys if k in self]
+        return '<%s %s>' % (type(self).__name__, ', '.join(items))
 
     @property
     def id(self):
@@ -1047,13 +1218,15 @@ class Row(dict):
 
     @property
     def key(self):
-        """The associated key."""
         return self['key']
 
     @property
     def value(self):
-        """The associated value."""
-        return self['value']
+        return self.get('value')
+
+    @property
+    def error(self):
+        return self.get('error')
 
     @property
     def doc(self):
@@ -1064,13 +1237,3 @@ class Row(dict):
         doc = self.get('doc')
         if doc:
             return Document(doc)
-
-
-SPECIAL_DB_NAMES = set(['_users'])
-VALID_DB_NAME = re.compile(r'^[a-z][a-z0-9_$()+-/]*$')
-def validate_dbname(name):
-    if name in SPECIAL_DB_NAMES:
-        return name
-    if not VALID_DB_NAME.match(name):
-        raise ValueError('Invalid database name')
-    return name

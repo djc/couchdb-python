@@ -10,6 +10,7 @@
 
 from base64 import b64encode
 from cgi import parse_header
+from email import header
 try:
     from hashlib import md5
 except ImportError:
@@ -67,8 +68,13 @@ def read_multipart(fileobj, boundary=None):
         if in_headers:
             line = line.replace(CRLF, '\n')
             if line != '\n':
-                name, value = line.split(':', 1)
-                headers[name.lower().strip()] = value.strip()
+                name, value = [item.strip() for item in line.split(':', 1)]
+                name = name.lower()
+                value, charset = header.decode_header(value)[0]
+                if charset is None:
+                    headers[name] = value
+                else:
+                    headers[name] = value.decode(charset)
             else:
                 in_headers = False
                 mimetype, params = parse_header(headers.get('content-type'))
@@ -170,9 +176,12 @@ class MultipartWriter(object):
     def _write_headers(self, headers):
         if headers:
             for name in sorted(headers.keys()):
+                value = headers[name]
+                if isinstance(value, unicode):
+                    value = str(header.make_header([(value, 'utf-8')]))
                 self.fileobj.write(name)
                 self.fileobj.write(': ')
-                self.fileobj.write(headers[name])
+                self.fileobj.write(value)
                 self.fileobj.write(CRLF)
         self.fileobj.write(CRLF)
 

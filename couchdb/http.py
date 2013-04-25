@@ -28,6 +28,7 @@ except ImportError:
     from dummy_threading import Lock
 import urllib
 from urlparse import urlsplit, urlunsplit
+from email.Utils import parsedate
 
 from couchdb import json
 
@@ -35,6 +36,91 @@ __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
            'ResourceConflict', 'ServerError', 'Unauthorized', 'RedirectLimit',
            'Session', 'Resource']
 __docformat__ = 'restructuredtext en'
+
+
+if sys.version < '2.6':
+
+    class TimeoutMixin:
+        """Helper mixin to add timeout before socket connection"""
+
+        # taken from original python2.5 httplib source code with timeout setting added
+        def connect(self):
+            """Connect to the host and port specified in __init__."""
+            msg = "getaddrinfo returns an empty list"
+            for res in socket.getaddrinfo(self.host, self.port, 0,
+                                          socket.SOCK_STREAM):
+                af, socktype, proto, canonname, sa = res
+                try:
+                    self.sock = socket.socket(af, socktype, proto)
+                    if self.debuglevel > 0:
+                        print "connect: (%s, %s)" % (self.host, self.port)
+
+                    # setting socket timeout
+                    self.sock.settimeout(self.timeout)
+
+                    self.sock.connect(sa)
+                except socket.error, msg:
+                    if self.debuglevel > 0:
+                        print 'connect fail:', (self.host, self.port)
+                    if self.sock:
+                        self.sock.close()
+                    self.sock = None
+                    continue
+                break
+            if not self.sock:
+                raise socket.error, msg
+
+    _HTTPConnection = HTTPConnection
+    _HTTPSConnection = HTTPSConnection
+
+    class HTTPConnection(TimeoutMixin, _HTTPConnection):
+        def __init__(self, *a, **k):
+            timeout = k.pop('timeout', None)
+            _HTTPConnection.__init__(self, *a, **k)
+            self.timeout = timeout
+
+    class HTTPSConnection(TimeoutMixin, _HTTPSConnection):
+        def __init__(self, *a, **k):
+            timeout = k.pop('timeout', None)
+            _HTTPSConnection.__init__(self, *a, **k)
+            self.timeout = timeout
+
+
+if sys.version < '2.7':
+
+    from httplib import CannotSendHeader, _CS_REQ_STARTED, _CS_REQ_SENT
+
+    class NagleMixin:
+        """
+        Mixin to upgrade httplib connection types so headers and body can be
+        sent at the same time to avoid triggering Nagle's algorithm.
+
+        Based on code originally copied from Python 2.7's httplib module.
+        """
+        
+        def endheaders(self, message_body=None):
+            if self.__dict__['_HTTPConnection__state'] == _CS_REQ_STARTED:
+                self.__dict__['_HTTPConnection__state'] = _CS_REQ_SENT
+            else:
+                raise CannotSendHeader()
+            self._send_output(message_body)
+
+        def _send_output(self, message_body=None):
+            self._buffer.extend(("", ""))
+            msg = "\r\n".join(self._buffer)
+            del self._buffer[:]
+            if isinstance(message_body, str):
+                msg += message_body
+                message_body = None
+            self.send(msg)
+            if message_body is not None:
+                self.send(message_body)
+
+    class HTTPConnection(NagleMixin, HTTPConnection):
+        pass
+
+    class HTTPSConnection(NagleMixin, HTTPSConnection):
+        pass
 
 
 class HTTPError(Exception):
@@ -78,11 +164,6 @@ class RedirectLimit(Exception):
 
 
 CHUNK_SIZE = 1024 * 8
-CACHE_SIZE = 10, 75 # some random values to limit memory use
-
-def cache_sort(i):
-    t = time.mktime(time.strptime(i[1][1]['Date'][5:-4], '%d %b %Y %H:%M:%S'))
-    return datetime.fromtimestamp(t)
 
 class ResponseBody(object):
 
@@ -98,12 +179,16 @@ class ResponseBody(object):
 
     def close(self):
         while not self.resp.isclosed():
-            self.read(CHUNK_SIZE)
-        self.callback()
+            self.resp.read(CHUNK_SIZE)
+        if self.callback:
+            self.callback()
+            self.callback = None
 
-    def __iter__(self):
+    def iterchunks(self):
         assert self.resp.msg.get('transfer-encoding') == 'chunked'
         while True:
+            if self.resp.isclosed():
+                break
             chunksz = int(self.resp.fp.readline().strip(), 16)
             if not chunksz:
                 self.resp.fp.read(2) #crlf
@@ -133,19 +218,26 @@ class Session(object):
         :param cache: an instance with a dict-like interface or None to allow
                       Session to create a dict for caching.
         :param timeout: socket timeout in number of seconds, or `None` for no
-                        timeout
+                        timeout (the default)
         :param retry_delays: list of request retry delays.
         """
         from couchdb import __version__ as VERSION
         self.user_agent = 'CouchDB-Python/%s' % VERSION
-        if cache is None:
-            cache = {}
+        # XXX We accept a `cache` dict arg, but the ref gets overwritten later
+        # during cache cleanup. Do we remove the cache arg (does using a shared
+        # Session instance cover the same use cases?) or fix the cache cleanup?
+        # For now, let's just assign the dict to the Cache instance to retain
+        # current behaviour.
+        if cache is not None:
+            cache_by_url = cache
+            cache = Cache()
+            cache.by_url = cache_by_url
+        else:
+            cache = Cache()
         self.cache = cache
-        self.timeout = timeout
         self.max_redirects = max_redirects
         self.perm_redirects = {}
-        self.conns = {} # HTTP connections keyed by (scheme, host)
-        self.lock = Lock()
+        self.connection_pool = ConnectionPool(timeout)
         self.retry_delays = list(retry_delays) # We don't want this changing on us.
         self.retryable_errors = set(retryable_errors)
 
@@ -168,27 +260,24 @@ class Session(object):
                 if etag:
                     headers['If-None-Match'] = etag
 
+        if (body is not None and not isinstance(body, basestring) and
+                not hasattr(body, 'read')):
+            body = json.encode(body).encode('utf-8')
+            headers.setdefault('Content-Type', 'application/json')
+
         if body is None:
             headers.setdefault('Content-Length', '0')
+        elif isinstance(body, basestring):
+            headers.setdefault('Content-Length', str(len(body)))
         else:
-            if not isinstance(body, basestring):
-                try:
-                    body = json.encode(body).encode('utf-8')
-                except TypeError:
-                    pass
-                else:
-                    headers.setdefault('Content-Type', 'application/json')
-            if isinstance(body, basestring):
-                headers.setdefault('Content-Length', str(len(body)))
-            else:
-                headers['Transfer-Encoding'] = 'chunked'
+            headers['Transfer-Encoding'] = 'chunked'
 
         authorization = basic_auth(credentials)
         if authorization:
             headers['Authorization'] = authorization
 
         path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
-        conn = self._get_connection(url)
+        conn = self.connection_pool.get(url)
 
         def _try_request_with_retries(retries):
             while True:
@@ -208,23 +297,22 @@ class Session(object):
 
         def _try_request():
             try:
-                if conn.sock is None:
-                    conn.connect()
                 conn.putrequest(method, path_query, skip_accept_encoding=True)
                 for header in headers:
                     conn.putheader(header, headers[header])
-                conn.endheaders()
-                if body is not None:
+                if body is None:
+                    conn.endheaders()
+                else:
                     if isinstance(body, str):
-                        conn.sock.sendall(body)
+                        conn.endheaders(body)
                     else: # assume a file-like object and send in chunks
+                        conn.endheaders()
                         while 1:
                             chunk = body.read(CHUNK_SIZE)
                             if not chunk:
                                 break
-                            conn.sock.sendall(('%x\r\n' % len(chunk)) +
-                                              chunk + '\r\n')
-                        conn.sock.sendall('0\r\n\r\n')
+                            conn.send(('%x\r\n' % len(chunk)) + chunk + '\r\n')
+                        conn.send('0\r\n\r\n')
                 return conn.getresponse()
             except BadStatusLine, e:
                 # httplib raises a BadStatusLine when it cannot read the status
@@ -242,19 +330,19 @@ class Session(object):
         # Handle conditional response
         if status == 304 and method in ('GET', 'HEAD'):
             resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
             status, msg, data = cached_resp
             if data is not None:
                 data = StringIO(data)
             return status, msg, data
         elif cached_resp:
-            del self.cache[url]
+            self.cache.remove(url)
 
         # Handle redirects
         if status == 303 or \
                 method in ('GET', 'HEAD') and status in (301, 302, 307):
             resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
             if num_redirects > self.max_redirects:
                 raise RedirectLimit('Redirection limit exceeded')
             location = resp.getheader('location')
@@ -273,18 +361,18 @@ class Session(object):
         if method == 'HEAD' or resp.getheader('content-length') == '0' or \
                 status < 200 or status in (204, 304):
             resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
 
         # Buffer small non-JSON response bodies
         elif int(resp.getheader('content-length', sys.maxint)) < CHUNK_SIZE:
             data = resp.read()
-            self._return_connection(url, conn)
+            self.connection_pool.release(url, conn)
 
         # For large or chunked response bodies, do not buffer the full body,
         # and instead return a minimal file-like object
         else:
             data = ResponseBody(resp,
-                                lambda: self._return_connection(url, conn))
+                                lambda: self.connection_pool.release(url, conn))
             streamed = True
 
         # Handle errors
@@ -295,7 +383,7 @@ class Session(object):
                 error = data.get('error'), data.get('reason')
             elif method != 'HEAD':
                 error = resp.read()
-                self._return_connection(url, conn)
+                self.connection_pool.release(url, conn)
             else:
                 error = ''
             if status == 401:
@@ -311,45 +399,90 @@ class Session(object):
 
         # Store cachable responses
         if not streamed and method == 'GET' and 'etag' in resp.msg:
-            self.cache[url] = (status, resp.msg, data)
-            if len(self.cache) > CACHE_SIZE[1]:
-                self._clean_cache()
+            self.cache.put(url, (status, resp.msg, data))
 
         if not streamed and data is not None:
             data = StringIO(data)
 
         return status, resp.msg, data
 
-    def _clean_cache(self):
-        ls = sorted(self.cache.iteritems(), key=cache_sort)
-        self.cache = dict(ls[-CACHE_SIZE[0]:])
 
-    def _get_connection(self, url):
+def cache_sort(i):
+    return datetime.fromtimestamp(time.mktime(parsedate(i[1][1]['Date'])))
+
+class Cache(object):
+    """Content cache."""
+
+    # Some random values to limit memory use
+    keep_size, max_size = 10, 75
+
+    def __init__(self):
+        self.by_url = {}
+
+    def get(self, url):
+        return self.by_url.get(url)
+
+    def put(self, url, response):
+        self.by_url[url] = response
+        if len(self.by_url) > self.max_size:
+            self._clean()
+
+    def remove(self, url):
+        self.by_url.pop(url, None)
+
+    def _clean(self):
+        ls = sorted(self.by_url.iteritems(), key=cache_sort)
+        self.by_url = dict(ls[-self.keep_size:])
+
+
+class ConnectionPool(object):
+    """HTTP connection pool."""
+
+    def __init__(self, timeout):
+        self.timeout = timeout
+        self.conns = {} # HTTP connections keyed by (scheme, host)
+        self.lock = Lock()
+
+    def get(self, url):
+
         scheme, host = urlsplit(url, 'http', False)[:2]
+
+        # Try to reuse an existing connection.
         self.lock.acquire()
         try:
             conns = self.conns.setdefault((scheme, host), [])
             if conns:
                 conn = conns.pop(-1)
             else:
-                if scheme == 'http':
-                    cls = HTTPConnection
-                elif scheme == 'https':
-                    cls = HTTPSConnection
-                else:
-                    raise ValueError('%s is not a supported scheme' % scheme)
-                conn = cls(host)
+                conn = None
         finally:
             self.lock.release()
+
+        # Create a new connection if nothing was available.
+        if conn is None:
+            if scheme == 'http':
+                cls = HTTPConnection
+            elif scheme == 'https':
+                cls = HTTPSConnection
+            else:
+                raise ValueError('%s is not a supported scheme' % scheme)
+            conn = cls(host, timeout=self.timeout)
+            conn.connect()
+
         return conn
 
-    def _return_connection(self, url, conn):
+    def release(self, url, conn):
         scheme, host = urlsplit(url, 'http', False)[:2]
         self.lock.acquire()
         try:
             self.conns.setdefault((scheme, host), []).append(conn)
         finally:
             self.lock.release()
+
+    def __del__(self):
+        for key, conns in list(self.conns.items()):
+            for conn in conns:
+                conn.close()
 
 
 class Resource(object):
@@ -383,29 +516,19 @@ class Resource(object):
     def put(self, path=None, body=None, headers=None, **params):
         return self._request('PUT', path, body=body, headers=headers, **params)
 
-    def delete_json(self, *a, **k):
-        status, headers, data = self.delete(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def delete_json(self, path=None, headers=None, **params):
+        return self._request_json('DELETE', path, headers=headers, **params)
 
-    def get_json(self, *a, **k):
-        status, headers, data = self.get(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def get_json(self, path=None, headers=None, **params):
+        return self._request_json('GET', path, headers=headers, **params)
 
-    def post_json(self, *a, **k):
-        status, headers, data = self.post(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def post_json(self, path=None, body=None, headers=None, **params):
+        return self._request_json('POST', path, body=body, headers=headers,
+                                  **params)
 
-    def put_json(self, *a, **k):
-        status, headers, data = self.put(*a, **k)
-        if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
-        return status, headers, data
+    def put_json(self, path=None, body=None, headers=None, **params):
+        return self._request_json('PUT', path, body=body, headers=headers,
+                                  **params)
 
     def _request(self, method, path=None, body=None, headers=None, **params):
         all_headers = self.headers.copy()
@@ -417,6 +540,14 @@ class Resource(object):
         return self.session.request(method, url, body=body,
                                     headers=all_headers,
                                     credentials=self.credentials)
+
+    def _request_json(self, method, path=None, body=None, headers=None, **params):
+        status, headers, data = self._request(method, path, body=body,
+                                              headers=headers, **params)
+        if 'application/json' in headers.get('content-type'):
+            data = json.decode(data.read())
+        return status, headers, data
+
 
 
 def extract_credentials(url):

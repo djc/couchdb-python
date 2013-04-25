@@ -19,13 +19,13 @@ class ViewServerTestCase(unittest.TestCase):
         input = StringIO('["reset"]\n')
         output = StringIO()
         view.run(input=input, output=output)
-        self.assertEquals(output.getvalue(), 'true\n')
+        self.assertEqual(output.getvalue(), 'true\n')
 
     def test_add_fun(self):
         input = StringIO('["add_fun", "def fun(doc): yield None, doc"]\n')
         output = StringIO()
         view.run(input=input, output=output)
-        self.assertEquals(output.getvalue(), 'true\n')
+        self.assertEqual(output.getvalue(), 'true\n')
 
     def test_map_doc(self):
         input = StringIO('["add_fun", "def fun(doc): yield None, doc"]\n'
@@ -93,6 +93,14 @@ class ViewServerTestCase(unittest.TestCase):
         view.run(input=input, output=output)
         self.assertEqual(output.getvalue(), '[true, [6]]\n')
 
+    def test_reduce_empty(self):
+        input = StringIO('["reduce", '
+                          '["def fun(keys, values): return sum(values)"], '
+                          '[]]\n')
+        output = StringIO()
+        view.run(input=input, output=output)
+        self.assertEqual(output.getvalue(),
+                         '[true, [0]]\n')
 
 
 def suite():

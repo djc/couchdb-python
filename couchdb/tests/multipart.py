@@ -148,6 +148,23 @@ ETag: "1-3482142493"
             num += 1
         self.assertEqual(num, 3)
 
+    def test_unicode_headers(self):
+        # http://code.google.com/p/couchdb-python/issues/detail?id=179
+        dump = '''Content-Type: multipart/mixed; boundary="==123456789=="
+
+--==123456789==
+Content-ID: =?utf-8?b?5paH5qGj?=
+Content-Length: 63
+Content-MD5: Cpw3iC3xPua8YzKeWLzwvw==
+Content-Type: application/json
+
+{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09", "_id": "文档"}
+'''
+        parts = multipart.read_multipart(StringIO(dump))
+        for headers, is_multipart, payload in parts:
+            self.assertEqual(headers['content-id'], u'文档')
+            break
+
 
 class WriteMultipartTestCase(unittest.TestCase):
 
@@ -172,6 +189,25 @@ Iñtërnâtiônàlizætiøn
         envelope = multipart.write_multipart(buf, boundary='==123456789==')
         self.assertRaises(UnicodeEncodeError, envelope.add,
                           'text/plain;charset=ascii', u'Iñtërnâtiônàlizætiøn')
+
+    def test_unicode_headers(self):
+        # http://code.google.com/p/couchdb-python/issues/detail?id=179
+        buf = StringIO()
+        envelope = multipart.write_multipart(buf, boundary='==123456789==')
+        envelope.add('application/json',
+                     '{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09",'
+                     ' "_id": "文档"}',
+                     headers={'Content-ID': u"文档"})
+        self.assertEqual('''Content-Type: multipart/mixed; boundary="==123456789=="
+
+--==123456789==
+Content-ID: =?utf-8?b?5paH5qGj?=
+Content-Length: 63
+Content-MD5: Cpw3iC3xPua8YzKeWLzwvw==
+Content-Type: application/json
+
+{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09", "_id": "文档"}
+''', buf.getvalue().replace('\r\n', '\n'))
 
 
 def suite():

@@ -6,6 +6,7 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+from datetime import datetime
 import doctest
 import os
 import os.path
@@ -19,7 +20,6 @@ import urlparse
 
 from couchdb import client, http
 from couchdb.tests import testutil
-http.CACHE_SIZE = 2, 3
 
 
 class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
@@ -48,10 +48,15 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertTrue(isinstance(version, basestring))
         config = self.server.config()
         self.assertTrue(isinstance(config, dict))
-        stats = self.server.stats()
-        self.assertTrue(isinstance(stats, dict))
         tasks = self.server.tasks()
         self.assertTrue(isinstance(tasks, list))
+
+    def test_server_stats(self):
+        stats = self.server.stats()
+        self.assertTrue(isinstance(stats, dict))
+        stats = self.server.stats('httpd/requests')
+        self.assertTrue(isinstance(stats, dict))
+        self.assertTrue(len(stats) == 1 and len(stats['httpd']) == 1)
 
     def test_get_db_missing(self):
         self.assertRaises(http.ResourceNotFound,
@@ -77,21 +82,21 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         bname, b = self.temp_db()
         id, rev = a.save({'test': 'a'})
         result = self.server.replicate(aname, bname)
-        self.assertEquals(result['ok'], True)
-        self.assertEquals(b[id]['test'], 'a')
+        self.assertEqual(result['ok'], True)
+        self.assertEqual(b[id]['test'], 'a')
 
         doc = b[id]
         doc['test'] = 'b'
         b.update([doc])
         self.server.replicate(bname, aname)
-        self.assertEquals(a[id]['test'], 'b')
-        self.assertEquals(b[id]['test'], 'b')
+        self.assertEqual(a[id]['test'], 'b')
+        self.assertEqual(b[id]['test'], 'b')
 
     def test_replicate_continuous(self):
         aname, a = self.temp_db()
         bname, b = self.temp_db()
         result = self.server.replicate(aname, bname, continuous=True)
-        self.assertEquals(result['ok'], True)
+        self.assertEqual(result['ok'], True)
         version = tuple(int(i) for i in self.server.version().split('.')[:2])
         if version >= (0, 10):
             self.assertTrue('_local_id' in result)
@@ -185,7 +190,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_disallow_nan(self):
         try:
-            self.db['foo'] = {u'number': float('nan')}
+            self.db['foo'] = {'number': float('nan')}
             self.fail('Expected ValueError')
         except ValueError:
             pass
@@ -233,7 +238,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         old_rev = doc['_rev']
 
         self.db.put_attachment(doc, 'Foo bar', 'foo.txt', 'text/plain')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
 
         doc = self.db['foo']
         attachment = doc['_attachments']['foo.txt']
@@ -247,7 +252,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
         old_rev = doc['_rev']
         self.db.delete_attachment(doc, 'foo.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
 
     def test_attachment_crud_with_files(self):
@@ -257,7 +262,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         fileobj = StringIO('Foo bar baz')
 
         self.db.put_attachment(doc, fileobj, 'foo.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
 
         doc = self.db['foo']
         attachment = doc['_attachments']['foo.txt']
@@ -271,7 +276,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
         old_rev = doc['_rev']
         self.db.delete_attachment(doc, 'foo.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
         self.assertEqual(None, self.db['foo'].get('_attachments'))
 
     def test_empty_attachment(self):
@@ -280,7 +285,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         old_rev = doc['_rev']
 
         self.db.put_attachment(doc, '', 'empty.txt')
-        self.assertNotEquals(old_rev, doc['_rev'])
+        self.assertNotEqual(old_rev, doc['_rev'])
 
         doc = self.db['foo']
         attachment = doc['_attachments']['empty.txt']
@@ -301,7 +306,8 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         f.close()
         doc = {}
         self.db['foo'] = doc
-        self.db.put_attachment(doc, open(tmpfile))
+        with open(tmpfile) as f:
+            self.db.put_attachment(doc, f)
         doc = self.db.get('foo')
         self.assertTrue(doc['_attachments']['test.txt']['content_type'] == 'text/plain')
         shutil.rmtree(tmpdir)
@@ -315,7 +321,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {}
         self.db['foo'] = doc
         self.db.put_attachment(doc, '{}', 'test.json', 'application/json')
-        self.assertEquals(self.db.get_attachment(doc, 'test.json').read(), '{}')
+        self.assertEqual(self.db.get_attachment(doc, 'test.json').read(), '{}')
 
     def test_include_docs(self):
         doc = {'foo': 42, 'bar': 40}
@@ -444,7 +450,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         # that the HTTP connection made it to the pool.
         list(self.db.changes(feed='continuous', timeout=0))
         scheme, netloc = urlparse.urlsplit(client.DEFAULT_BASE_URL)[:2]
-        self.assertTrue(self.db.resource.session.conns[(scheme, netloc)])
+        self.assertTrue(self.db.resource.session.connection_pool.conns[(scheme, netloc)])
 
     def test_changes_releases_conn_when_lastseq(self):
         # Consume a changes feed, stopping at the 'last_seq' item, i.e. don't
@@ -454,7 +460,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
             if 'last_seq' in obj:
                 break
         scheme, netloc = urlparse.urlsplit(client.DEFAULT_BASE_URL)[:2]
-        self.assertTrue(self.db.resource.session.conns[(scheme, netloc)])
+        self.assertTrue(self.db.resource.session.connection_pool.conns[(scheme, netloc)])
 
     def test_changes_conn_usable(self):
         # Consume a changes feed to get a used connection in the pool.
@@ -471,8 +477,33 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for change in self.db.changes(feed='continuous', heartbeat=100):
             break
 
+    def test_purge(self):
+        doc = {'a': 'b'}
+        self.db['foo'] = doc
+        self.assertEqual(self.db.purge([doc])['purge_seq'], 1)
+
+    def test_json_encoding_error(self):
+        doc = {'now': datetime.now()}
+        self.assertRaises(TypeError, self.db.save, doc)
+
 
 class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    def test_row_object(self):
+
+        row = list(self.db.view('_all_docs', keys=['blah']))[0]
+        self.assertEqual(repr(row), "<Row key='blah', error='not_found'>")
+        self.assertEqual(row.id, None)
+        self.assertEqual(row.key, 'blah')
+        self.assertEqual(row.value, None)
+        self.assertEqual(row.error, 'not_found')
+
+        self.db.save({'_id': 'xyz', 'foo': 'bar'})
+        row = list(self.db.view('_all_docs', keys=['xyz']))[0]
+        self.assertEqual(row.id, 'xyz')
+        self.assertEqual(row.key, 'xyz')
+        self.assertEqual(row.value.keys(), ['rev'])
+        self.assertEqual(row.error, None)
 
     def test_view_multi_get(self):
         for i in range(1, 6):
@@ -489,6 +520,16 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
 
+    def test_ddoc_info(self):
+        self.db['_design/test'] = {
+            'language': 'javascript',
+            'views': {
+                'test': {'map': 'function(doc) { emit(doc.type, null); }'}
+            }
+        }
+        info = self.db.info('test')
+        self.assertEqual(info['view_index']['compact_running'], False)
+
     def test_view_compaction(self):
         for i in range(1, 6):
             self.db.save({'i': i})
@@ -501,6 +542,27 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
         self.db.view('test/multi_key')
         self.assertTrue(self.db.compact('test'))
+
+    def test_view_cleanup(self):
+
+        for i in range(1, 6):
+            self.db.save({'i': i})
+
+        self.db['_design/test'] = {
+            'language': 'javascript',
+            'views': {
+                'multi_key': {'map': 'function(doc) { emit(doc.i, null); }'}
+            }
+        }
+        self.db.view('test/multi_key')
+
+        ddoc = self.db['_design/test']
+        ddoc['views'] = {
+            'ids': {'map': 'function(doc) { emit(doc._id, null); }'}
+        }
+        self.db.update([ddoc])
+        self.db.view('test/ids')
+        self.assertTrue(self.db.cleanup())
 
     def test_view_function_objects(self):
         if 'python' not in self.server.config()['query_servers']:
@@ -526,12 +588,12 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_init_with_resource(self):
         self.db['foo'] = {}
         view = client.PermanentView(self.db.resource('_all_docs').url, '_all_docs')
-        self.assertEquals(len(list(view())), 1)
+        self.assertEqual(len(list(view())), 1)
 
     def test_iter_view(self):
         self.db['foo'] = {}
         view = client.PermanentView(self.db.resource('_all_docs').url, '_all_docs')
-        self.assertEquals(len(list(view)), 1)
+        self.assertEqual(len(list(view)), 1)
 
     def test_tmpview_repr(self):
         mapfunc = "function(doc) {emit(null, null);}"
@@ -567,11 +629,178 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertTrue('id' not in repr(rows[0]))
 
 
+class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    show_func = """
+        function(doc, req) {
+            return {"body": req.id + ":" + (req.query.r || "<default>")};
+        }
+        """
+
+    list_func = """
+        function(head, req) {
+            start({headers: {'Content-Type': 'text/csv'}});
+            if (req.query.include_header) {
+                send('id' + '\\r\\n');
+            }
+            var row;
+            while (row = getRow()) {
+                send(row.id + '\\r\\n');
+            }
+        }
+        """
+
+    design_doc = {'_id': '_design/foo',
+                  'shows': {'bar': show_func},
+                  'views': {'by_id': {'map': "function(doc) {emit(doc._id, null)}"},
+                            'by_name': {'map': "function(doc) {emit(doc.name, null)}"}},
+                  'lists': {'list': list_func}}
+
+    def setUp(self):
+        super(ShowListTestCase, self).setUp()
+        # Workaround for possible bug in CouchDB. Adding a timestamp avoids a
+        # 409 Conflict error when pushing the same design doc that existed in a
+        # now deleted database.
+        design_doc = dict(self.design_doc)
+        design_doc['timestamp'] = time.time()
+        self.db.save(design_doc)
+        self.db.update([{'_id': '1', 'name': 'one'}, {'_id': '2', 'name': 'two'}])
+
+    def test_show_urls(self):
+        self.assertEqual(self.db.show('_design/foo/_show/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+
+    def test_show_docid(self):
+        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('foo/bar', '1')[1].read(), '1:<default>')
+        self.assertEqual(self.db.show('foo/bar', '2')[1].read(), '2:<default>')
+
+    def test_show_params(self):
+        self.assertEqual(self.db.show('foo/bar', r='abc')[1].read(), 'null:abc')
+
+    def test_list(self):
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id')[1].read(), '1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+
+    def test_list_keys(self):
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id', keys=['1'])[1].read(), '1\r\n')
+
+    def test_list_view_params(self):
+        self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), '1\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), '2\r\n1\r\n')
+
+
+class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+    update_func = """
+        function(doc, req) {
+          if (!doc) {
+            if (req.id) {
+              return [{_id : req.id}, "new doc"]
+            }
+            return [null, "empty doc"];
+          }
+          doc.name = "hello";
+          return [doc, "hello doc"];
+        }
+    """
+
+    design_doc = {'_id': '_design/foo',
+                  'language': 'javascript',
+                  'updates': {'bar': update_func}}
+
+    def setUp(self):
+        super(UpdateHandlerTestCase, self).setUp()
+        # Workaround for possible bug in CouchDB. Adding a timestamp avoids a
+        # 409 Conflict error when pushing the same design doc that existed in a
+        # now deleted database.
+        design_doc = dict(self.design_doc)
+        design_doc['timestamp'] = time.time()
+        self.db.save(design_doc)
+        self.db.update([{'_id': 'existed', 'name': 'bar'}])
+
+    def test_empty_doc(self):
+        self.assertEqual(self.db.update_doc('foo/bar')[1].read(), 'empty doc')
+
+    def test_new_doc(self):
+        self.assertEqual(self.db.update_doc('foo/bar', 'new')[1].read(), 'new doc')
+
+    def test_update_doc(self):
+        self.assertEqual(self.db.update_doc('foo/bar', 'existed')[1].read(), 'hello doc')
+
+
+class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    num_docs = 100
+
+    def docfromnum(self, num):
+        return {'_id': unicode(num), 'num': int(num / 2)}
+
+    def docfromrow(self, row):
+        return {'_id': row['id'], 'num': row['key']}
+
+    def setUp(self):
+        super(ViewIterationTestCase, self).setUp()
+        design_doc = {'_id': '_design/test',
+                      'views': {'nums': {'map': 'function(doc) {emit(doc.num, null);}'},
+                                'nulls': {'map': 'function(doc) {emit(null, null);}'}}}
+        self.db.save(design_doc)
+        self.db.update([self.docfromnum(num) for num in xrange(self.num_docs)])
+
+    def test_allrows(self):
+        rows = list(self.db.iterview('test/nums', 10))
+        self.assertEqual(len(rows), self.num_docs)
+        self.assertEqual([self.docfromrow(row) for row in rows],
+                         [self.docfromnum(num) for num in xrange(self.num_docs)])
+
+    def test_batchsizes(self):
+        # Check silly _batch values.
+        self.assertRaises(ValueError, self.db.iterview('test/nums', 0).next)
+        self.assertRaises(ValueError, self.db.iterview('test/nums', -1).next)
+        # Test various _batch sizes that are likely to cause trouble.
+        self.assertEqual(len(list(self.db.iterview('test/nums', 1))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', int(self.num_docs / 2)))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs * 2))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs - 1))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs + 1))), self.num_docs)
+
+    def test_limit(self):
+        # limit=0 doesn't make sense for iterview.
+        self.assertRaises(ValueError, self.db.iterview('test/nums', 10, limit=0).next)
+        # Test various limit sizes that are likely to cause trouble.
+        for limit in [1, int(self.num_docs / 4), self.num_docs - 1, self.num_docs,
+                      self.num_docs + 1]:
+            self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, limit=limit)],
+                             [self.docfromnum(x) for x in xrange(min(limit, self.num_docs))])
+        # Test limit same as batch size, in case of weird edge cases.
+        limit = int(self.num_docs / 4)
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', limit, limit=limit)],
+                         [self.docfromnum(x) for x in xrange(limit)])
+
+    def test_descending(self):
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, descending=True)],
+                         [self.docfromnum(x) for x in xrange(self.num_docs - 1, -1, -1)])
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, limit=int(self.num_docs / 4), descending=True)],
+                         [self.docfromnum(x) for x in xrange(self.num_docs - 1, int(self.num_docs * 3 / 4) - 1, -1)])
+
+    def test_startkey(self):
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=int(self.num_docs / 2) - 1)],
+                         [self.docfromnum(x) for x in xrange(self.num_docs - 2, self.num_docs)])
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=1, descending=True)],
+                         [self.docfromnum(x) for x in xrange(3, -1, -1)])
+
+    def test_nullkeys(self):
+        self.assertEqual(len(list(self.db.iterview('test/nulls', 10))), self.num_docs)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DatabaseTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ViewTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ShowListTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(UpdateHandlerTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ViewIterationTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite
 

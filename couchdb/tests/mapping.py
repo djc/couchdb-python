@@ -82,7 +82,13 @@ class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_old_datetime(self):
         dt = mapping.DateTimeField()
-        assert dt._to_python(u'1880-01-01T00:00:00Z')
+        assert dt._to_python('1880-01-01T00:00:00Z')
+
+    def test_get_has_default(self):
+        doc = mapping.Document()
+        doc.get('foo')
+        doc.get('foo', None)
+
 
 class ListFieldTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
@@ -195,7 +201,7 @@ class ListFieldTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(thing.numbers[4], Decimal('4.0'))
         self.assertEqual(len(thing.numbers), 5)
         del thing.numbers[3:]
-        self.assertEquals(len(thing.numbers), 3)
+        self.assertEqual(len(thing.numbers), 3)
 
     def test_mutable_fields(self):
         class Thing(mapping.Document):
@@ -225,24 +231,24 @@ class WrappingTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_viewfield_property(self):
         self.Item().store(self.db)
         results = self.Item.with_include_docs(self.db)
-        self.assertEquals(type(results.rows[0]), self.Item)
+        self.assertEqual(type(results.rows[0]), self.Item)
         results = self.Item.without_include_docs(self.db)
-        self.assertEquals(type(results.rows[0]), self.Item)
+        self.assertEqual(type(results.rows[0]), self.Item)
 
     def test_view(self):
         self.Item().store(self.db)
         results = self.Item.view(self.db, 'test/without_include_docs')
-        self.assertEquals(type(results.rows[0]), self.Item)
+        self.assertEqual(type(results.rows[0]), self.Item)
         results = self.Item.view(self.db, 'test/without_include_docs',
                                  include_docs=True)
-        self.assertEquals(type(results.rows[0]), self.Item)
+        self.assertEqual(type(results.rows[0]), self.Item)
 
     def test_query(self):
         self.Item().store(self.db)
         results = self.Item.query(self.db, all_map_func, None)
-        self.assertEquals(type(results.rows[0]), self.Item)
+        self.assertEqual(type(results.rows[0]), self.Item)
         results = self.Item.query(self.db, all_map_func, None, include_docs=True)
-        self.assertEquals(type(results.rows[0]), self.Item)
+        self.assertEqual(type(results.rows[0]), self.Item)
 
 
 def suite():

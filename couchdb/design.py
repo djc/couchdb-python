@@ -38,8 +38,8 @@ class ViewDefinition(object):
     The view is not yet stored in the database, in fact, design doc doesn't
     even exist yet. That can be fixed using the `sync` method:
 
-    >>> view.sync(db)
-
+    >>> view.sync(db)                                       #doctest: +ELLIPSIS
+    [(True, '_design/tests', ...)]
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
     <Document '_design/tests'@'...' {...}>
@@ -54,7 +54,8 @@ class ViewDefinition(object):
     >>> def my_map(doc):
     ...     yield doc['somekey'], doc['somevalue']
     >>> view = ViewDefinition('test2', 'somename', my_map, language='python')
-    >>> view.sync(db)
+    >>> view.sync(db)                                       #doctest: +ELLIPSIS
+    [(True, '_design/test2', ...)]
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
     <Document '_design/test2'@'...' {...}>
@@ -70,7 +71,8 @@ class ViewDefinition(object):
     """
 
     def __init__(self, design, name, map_fun, reduce_fun=None,
-                 language='javascript', wrapper=None, **defaults):
+                 language='javascript', wrapper=None, options=None,
+                 **defaults):
         """Initialize the view definition.
         
         Note that the code in `map_fun` and `reduce_fun` is automatically
@@ -84,6 +86,7 @@ class ViewDefinition(object):
         :param language: the name of the language used
         :param wrapper: an optional callable that should be used to wrap the
                         result rows
+        :param options: view specific options (e.g. {'collation':'raw'})
         """
         if design.startswith('_design/'):
             design = design[8:]
@@ -99,6 +102,7 @@ class ViewDefinition(object):
         self.reduce_fun = reduce_fun
         self.language = language
         self.wrapper = wrapper
+        self.options = options
         self.defaults = defaults
 
     def __call__(self, db, **options):
@@ -136,7 +140,7 @@ class ViewDefinition(object):
         
         :param db: the `Database` instance
         """
-        type(self).sync_many(db, [self])
+        return type(self).sync_many(db, [self])
 
     @staticmethod
     def sync_many(db, views, remove_missing=False, callback=None):
@@ -160,6 +164,7 @@ class ViewDefinition(object):
         """
         docs = []
 
+        views = sorted(views, key=attrgetter('design'))
         for design, views in groupby(views, key=attrgetter('design')):
             doc_id = '_design/%s' % design
             doc = db.get(doc_id, {'_id': doc_id})
@@ -171,6 +176,8 @@ class ViewDefinition(object):
                 funcs = {'map': view.map_fun}
                 if view.reduce_fun:
                     funcs['reduce'] = view.reduce_fun
+                if view.options:
+                    funcs['options'] = view.options
                 doc.setdefault('views', {})[view.name] = funcs
                 languages.add(view.language)
                 if view.name in missing:
@@ -192,7 +199,7 @@ class ViewDefinition(object):
                     callback(doc)
                 docs.append(doc)
 
-        db.update(docs)
+        return db.update(docs)
 
 
 def _strip_decorators(code):

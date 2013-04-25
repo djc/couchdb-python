@@ -114,7 +114,10 @@ def run(input=sys.stdin, output=sys.stdout):
             keys = None
             vals = args
         else:
-            keys, vals = zip(*args)
+            if args:
+                keys, vals = zip(*args)
+            else:
+                keys, vals = [], []
         if function.func_code.co_argcount == 3:
             results = function(keys, vals, rereduce)
         else:
