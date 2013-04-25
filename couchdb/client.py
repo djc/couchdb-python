@@ -23,6 +23,7 @@ False
 >>> del server['python-tests']
 """
 
+import itertools
 import mimetypes
 import os
 from types import FunctionType
@@ -844,19 +845,30 @@ class Database(object):
         :param options: optional query string parameters
         :return: row generator
         """
+        # Check sane batch size.
         if batch <= 0:
             raise ValueError('batch must be 1 or more')
-        options['limit'] = batch + 1 # XXX todo: don't overwrite caller's limit
+        # Save caller's limit, it must be handled manually.
+        limit = options.get('limit')
+        if limit is not None and limit <= 0:
+            raise ValueError('limit must be 1 or more')
         startkey, startkey_docid = None, None # XXX todo: honour caller's startkey
         while True:
-            options.update(startkey=startkey, startkey_docid=startkey_docid)
-            # Get a batch of rows, with one extra for start of next batch.
+            loop_limit = min(limit or batch, batch)
+            # Get rows in batches, with one extra for start of next batch.
+            options.update(limit=loop_limit + 1, startkey=startkey,
+                           startkey_docid=startkey_docid)
             rows = list(self.view(name, wrapper, **options))
-            # Yield at most 'batch' rows.
-            for row in rows[:batch]:
+            # Yield rows from this batch.
+            for row in itertools.islice(rows, loop_limit):
                 yield row
-            if len(rows) <= batch:
+            # Decrement limit counter.
+            if limit is not None:
+                limit -= min(len(rows), batch)
+            # Check if there is nothing else to yield.
+            if len(rows) <= batch or (limit is not None and limit == 0):
                 break
+            # Save start keys for next loop.
             startkey, startkey_docid = rows[-1]['key'], rows[-1]['id']
 
     def show(self, name, docid=None, **options):

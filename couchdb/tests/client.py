@@ -730,7 +730,7 @@ class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
-    num_docs = 10
+    num_docs = 100
 
     def docfromnum(self, num):
         return {'_id': unicode(num), 'num': int(num / 2)}
@@ -762,6 +762,19 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs - 1))), self.num_docs)
         self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs))), self.num_docs)
         self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs + 1))), self.num_docs)
+
+    def test_limit(self):
+        # limit=0 doesn't make sense for iterview.
+        self.assertRaises(ValueError, self.db.iterview('test/nums', 10, limit=0).next)
+        # Test various limit sizes that are likely to cause trouble.
+        for limit in [1, int(self.num_docs / 4), self.num_docs - 1, self.num_docs,
+                      self.num_docs + 1]:
+            self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, limit=limit)],
+                             [self.docfromnum(x) for x in xrange(min(limit, self.num_docs))])
+        # Test limit same as batch size, in case of weird edge cases.
+        limit = int(self.num_docs / 4)
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', limit, limit=limit)],
+                         [self.docfromnum(x) for x in xrange(limit)])
 
 
 def suite():
