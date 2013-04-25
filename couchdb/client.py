@@ -826,6 +826,39 @@ class Database(object):
         return PermanentView(self.resource(*path), '/'.join(path),
                              wrapper=wrapper)(**options)
 
+    def iterview(self, name, batch, wrapper=None, **options):
+        """Iterate the rows in a view, fetching rows in batches and yielding
+        one row at a time.
+
+        Since the view's rows are fetched in batches any rows emitted for
+        documents added, changed or deleted between requests may be missed or
+        repeated.
+
+        :param name: the name of the view; for custom views, use the format
+                     ``design_docid/viewname``, that is, the document ID of the
+                     design document and the name of the view, separated by a
+                     slash.
+        :param batch: number of rows to fetch per HTTP request.
+        :param wrapper: an optional callable that should be used to wrap the
+                        result rows
+        :param options: optional query string parameters
+        :return: row generator
+        """
+        if batch <= 0:
+            raise ValueError('batch must be 1 or more')
+        options['limit'] = batch + 1 # XXX todo: don't overwrite caller's limit
+        startkey, startkey_docid = None, None # XXX todo: honour caller's startkey
+        while True:
+            options.update(startkey=startkey, startkey_docid=startkey_docid)
+            # Get a batch of rows, with one extra for start of next batch.
+            rows = list(self.view(name, wrapper, **options))
+            # Yield at most 'batch' rows.
+            for row in rows[:batch]:
+                yield row
+            if len(rows) <= batch:
+                break
+            startkey, startkey_docid = rows[-1]['key'], rows[-1]['id']
+
     def show(self, name, docid=None, **options):
         """Call a 'show' function.
 

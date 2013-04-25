@@ -689,6 +689,7 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), '1\r\n')
         self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), '2\r\n1\r\n')
 
+
 class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     update_func = """
         function(doc, req) {
@@ -726,6 +727,43 @@ class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_update_doc(self):
         self.assertEqual(self.db.update_doc('foo/bar', 'existed')[1].read(), 'hello doc')
 
+
+class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
+
+    num_docs = 10
+
+    def docfromnum(self, num):
+        return {'_id': unicode(num), 'num': int(num / 2)}
+
+    def docfromrow(self, row):
+        return {'_id': row['id'], 'num': row['key']}
+
+    def setUp(self):
+        super(ViewIterationTestCase, self).setUp()
+        design_doc = {'_id': '_design/test',
+                      'views': {'nums': {'map': 'function(doc) {emit(doc.num, null);}'}}}
+        self.db.save(design_doc)
+        self.db.update([self.docfromnum(num) for num in xrange(self.num_docs)])
+
+    def test_allrows(self):
+        rows = list(self.db.iterview('test/nums', 10))
+        self.assertEqual(len(rows), self.num_docs)
+        self.assertEqual([self.docfromrow(row) for row in rows],
+                         [self.docfromnum(num) for num in xrange(self.num_docs)])
+
+    def test_batchsizes(self):
+        # Check silly _batch values.
+        self.assertRaises(ValueError, self.db.iterview('test/nums', 0).next)
+        self.assertRaises(ValueError, self.db.iterview('test/nums', -1).next)
+        # Test various _batch sizes that are likely to cause trouble.
+        self.assertEqual(len(list(self.db.iterview('test/nums', 1))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', int(self.num_docs / 2)))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs * 2))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs - 1))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs))), self.num_docs)
+        self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs + 1))), self.num_docs)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
@@ -733,6 +771,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ViewTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ShowListTestCase, 'test'))
     suite.addTest(unittest.makeSuite(UpdateHandlerTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ViewIterationTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(client))
     return suite
 
