@@ -4,27 +4,32 @@ Version 0.9 (not released)
  * Don't validate database names on the client side. This means some methods
    dealing with database names can return different exceptions than before.
  * Use HTTP socket more efficiently to avoid the Nagle algorithm, greatly
-   improving performace. Note: add the {nodelay, true} option to the CouchDB
+   improving performace. Note: add the `{nodelay, true}` option to the CouchDB
    server's httpd/socket_options config.
  * Add support for show and list functions.
  * Add support for calling update handlers.
  * Add support for purging documents.
+ * Add `iterview()` for more efficient iteration over large view results.
  * Add view cleanup API.
- * Enhance Server.stats() to optionally retrieve a single set of statistics.
- * Implement Session timeouts.
- * Add `error` property to Row objects.
- * Add default=None arg to mapping.Document.get() to make it a little more
+ * Enhance `Server.stats()` to optionally retrieve a single set of statistics.
+ * Implement `Session` timeouts.
+ * Add `error` property to `Row` objects.
+ * Add `default=None` arg to `mapping.Document.get()` to make it a little more
    dict-like.
- * Enhance Database.info() so it can also be used to get info for a design
+ * Enhance `Database.info()` so it can also be used to get info for a design
    doc.
  * Add view definition options, e.g. collation.
- * Protect ResponseBody from being iterated/closed multiple times.
- * Rename iteration method for ResponseBody chunks to iterchunks() to
+ * Fix support for authentication in dump/load tools.
+ * Support non-ASCII document IDs in serialization format.
+ * Protect `ResponseBody` from being iterated/closed multiple times.
+ * Rename iteration method for ResponseBody chunks to `iterchunks()` to
    prevent usage for non-chunked responses.
- * JSON encoding exception are no longer masked, giving clearer errors.
- * cjson support is now deprecated.
- * Fix Row.value and Row.__repr__ to never raise exceptions.
+ * JSON encoding exceptions are no longer masked, resulting in better error
+   messages.
+ * `cjson` support is now deprecated.
+ * Fix `Row.value` and `Row.__repr__` to never raise exceptions.
  * Fix Python view server's reduce to handle empty map results list.
+ * Use locale-independent timestamp identifiers for HTTP cache.
  * Don't require setuptools/distribute to install the core package. (Still
    needed to install the console scripts.)
 
