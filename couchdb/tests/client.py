@@ -782,6 +782,12 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, limit=int(self.num_docs / 4), descending=True)],
                          [self.docfromnum(x) for x in xrange(self.num_docs - 1, int(self.num_docs * 3 / 4) - 1, -1)])
 
+    def test_startkey(self):
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=int(self.num_docs / 2) - 1)],
+                         [self.docfromnum(x) for x in xrange(self.num_docs - 2, self.num_docs)])
+        self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=1, descending=True)],
+                         [self.docfromnum(x) for x in xrange(3, -1, -1)])
+
 
 def suite():
     suite = unittest.TestSuite()
