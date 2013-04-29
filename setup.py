@@ -125,7 +125,7 @@ else:
             ],
         },
         'install_requires': requirements,
-        'test_suite': 'couchdb.tests.suite',
+        'test_suite': 'couchdb.tests.__main__.suite',
         'zip_safe': True,
     }
 
