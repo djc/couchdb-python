@@ -20,17 +20,9 @@ from couchdb import json
 from couchdb.client import Database
 from couchdb.multipart import write_multipart
 
+def dump_docs(envelope, docs):
+    for doc in docs:
 
-def dump_db(dburl, username=None, password=None, boundary=None,
-            output=sys.stdout):
-    db = Database(dburl)
-    if username is not None and password is not None:
-        db.resource.credentials = username, password
-
-    envelope = write_multipart(output, boundary=boundary)
-    for docid in db:
-
-        doc = db.get(docid, attachments=True)
         print >> sys.stderr, 'Dumping document %r' % doc.id
         attachments = doc.pop('_attachments', {})
         jsondoc = json.encode(doc)
@@ -56,6 +48,18 @@ def dump_db(dburl, username=None, password=None, boundary=None,
                 'Content-ID': doc.id,
                 'ETag': '"%s"' % doc.rev
             })
+
+def dump_db(dburl, username=None, password=None, boundary=None,
+            output=sys.stdout):
+
+    db = Database(dburl)
+    if username is not None and password is not None:
+        db.resource.credentials = username, password
+
+    envelope = write_multipart(output, boundary=boundary)
+    for docid in db:
+        doc = db.get(docid, attachments=True)
+        dump_docs([doc])
 
     envelope.close()
 
