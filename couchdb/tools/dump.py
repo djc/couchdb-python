@@ -20,6 +20,8 @@ from couchdb import json
 from couchdb.client import Database
 from couchdb.multipart import write_multipart
 
+BULK_SIZE = 1000
+
 def dump_docs(envelope, docs):
     for doc in docs:
 
@@ -50,16 +52,18 @@ def dump_docs(envelope, docs):
             })
 
 def dump_db(dburl, username=None, password=None, boundary=None,
-            output=sys.stdout):
+            output=sys.stdout, bulk_size=BULK_SIZE):
 
     db = Database(dburl)
     if username is not None and password is not None:
         db.resource.credentials = username, password
 
     envelope = write_multipart(output, boundary=boundary)
-    for docid in db:
-        doc = db.get(docid, attachments=True)
-        dump_docs([doc])
+    start, num = 0, db.info()['doc_count']
+    while start < num:
+        opts = {'limit': bulk_size, 'skip': start, 'include_docs': True}
+        dump_docs(envelope, [row.doc for row in db.view('_all_docs', **opts)])
+        start += bulk_size
 
     envelope.close()
 
@@ -73,6 +77,9 @@ def main():
                       help='the username to use for authentication')
     parser.add_option('-p', '--password', action='store', dest='password',
                       help='the password to use for authentication')
+    parser.add_option('-b', '--bulk-size', action='store', dest='bulk_size',
+                      type='int', default=BULK_SIZE,
+                      help='number of docs retrieved from database')
     parser.set_defaults()
     options, args = parser.parse_args()
 
@@ -82,7 +89,8 @@ def main():
     if options.json_module:
         json.use(options.json_module)
 
-    dump_db(args[0], username=options.username, password=options.password)
+    dump_db(args[0], username=options.username, password=options.password,
+            bulk_size=options.bulk_size)
 
 
 if __name__ == '__main__':
