@@ -113,10 +113,11 @@ class ViewDefinition(object):
         :return: the view results
         :rtype: `ViewResults`
         """
+        wrapper = options.pop('wrapper', self.wrapper)
         merged_options = self.defaults.copy()
         merged_options.update(options)
         return db.view('/'.join([self.design, self.name]),
-                       wrapper=self.wrapper, **merged_options)
+                       wrapper=wrapper, **merged_options)
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, '/'.join([
