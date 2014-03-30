@@ -243,9 +243,9 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(len('Foo bar'), attachment['length'])
         self.assertEqual('text/plain', attachment['content_type'])
 
-        self.assertEqual('Foo bar',
+        self.assertEqual(b'Foo bar',
                          self.db.get_attachment(doc, 'foo.txt').read())
-        self.assertEqual('Foo bar',
+        self.assertEqual(b'Foo bar',
                          self.db.get_attachment('foo', 'foo.txt').read())
 
         old_rev = doc['_rev']
@@ -257,7 +257,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {'bar': 42}
         self.db['foo'] = doc
         old_rev = doc['_rev']
-        fileobj = util.StringIO('Foo bar baz')
+        fileobj = util.StringIO(b'Foo bar baz')
 
         self.db.put_attachment(doc, fileobj, 'foo.txt')
         self.assertNotEqual(old_rev, doc['_rev'])
@@ -267,9 +267,9 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(len('Foo bar baz'), attachment['length'])
         self.assertEqual('text/plain', attachment['content_type'])
 
-        self.assertEqual('Foo bar baz',
+        self.assertEqual(b'Foo bar baz',
                          self.db.get_attachment(doc, 'foo.txt').read())
-        self.assertEqual('Foo bar baz',
+        self.assertEqual(b'Foo bar baz',
                          self.db.get_attachment('foo', 'foo.txt').read())
 
         old_rev = doc['_rev']
@@ -319,7 +319,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {}
         self.db['foo'] = doc
         self.db.put_attachment(doc, '{}', 'test.json', 'application/json')
-        self.assertEqual(self.db.get_attachment(doc, 'test.json').read(), '{}')
+        self.assertEqual(self.db.get_attachment(doc, 'test.json').read(), b'{}')
 
     def test_include_docs(self):
         doc = {'foo': 42, 'bar': 40}
@@ -664,27 +664,27 @@ class ShowListTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.db.update([{'_id': '1', 'name': 'one'}, {'_id': '2', 'name': 'two'}])
 
     def test_show_urls(self):
-        self.assertEqual(self.db.show('_design/foo/_show/bar')[1].read(), 'null:<default>')
-        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
+        self.assertEqual(self.db.show('_design/foo/_show/bar')[1].read(), b'null:<default>')
+        self.assertEqual(self.db.show('foo/bar')[1].read(), b'null:<default>')
 
     def test_show_docid(self):
-        self.assertEqual(self.db.show('foo/bar')[1].read(), 'null:<default>')
-        self.assertEqual(self.db.show('foo/bar', '1')[1].read(), '1:<default>')
-        self.assertEqual(self.db.show('foo/bar', '2')[1].read(), '2:<default>')
+        self.assertEqual(self.db.show('foo/bar')[1].read(), b'null:<default>')
+        self.assertEqual(self.db.show('foo/bar', '1')[1].read(), b'1:<default>')
+        self.assertEqual(self.db.show('foo/bar', '2')[1].read(), b'2:<default>')
 
     def test_show_params(self):
-        self.assertEqual(self.db.show('foo/bar', r='abc')[1].read(), 'null:abc')
+        self.assertEqual(self.db.show('foo/bar', r='abc')[1].read(), b'null:abc')
 
     def test_list(self):
-        self.assertEqual(self.db.list('foo/list', 'foo/by_id')[1].read(), '1\r\n2\r\n')
-        self.assertEqual(self.db.list('foo/list', 'foo/by_id', include_header='true')[1].read(), 'id\r\n1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id')[1].read(), b'1\r\n2\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id', include_header='true')[1].read(), b'id\r\n1\r\n2\r\n')
 
     def test_list_keys(self):
-        self.assertEqual(self.db.list('foo/list', 'foo/by_id', keys=['1'])[1].read(), '1\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_id', keys=['1'])[1].read(), b'1\r\n')
 
     def test_list_view_params(self):
-        self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), '1\r\n')
-        self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), '2\r\n1\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_name', startkey='o', endkey='p')[1].read(), b'1\r\n')
+        self.assertEqual(self.db.list('foo/list', 'foo/by_name', descending=True)[1].read(), b'2\r\n1\r\n')
 
 
 class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
@@ -716,13 +716,13 @@ class UpdateHandlerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.db.update([{'_id': 'existed', 'name': 'bar'}])
 
     def test_empty_doc(self):
-        self.assertEqual(self.db.update_doc('foo/bar')[1].read(), 'empty doc')
+        self.assertEqual(self.db.update_doc('foo/bar')[1].read(), b'empty doc')
 
     def test_new_doc(self):
-        self.assertEqual(self.db.update_doc('foo/bar', 'new')[1].read(), 'new doc')
+        self.assertEqual(self.db.update_doc('foo/bar', 'new')[1].read(), b'new doc')
 
     def test_update_doc(self):
-        self.assertEqual(self.db.update_doc('foo/bar', 'existed')[1].read(), 'hello doc')
+        self.assertEqual(self.db.update_doc('foo/bar', 'existed')[1].read(), b'hello doc')
 
 
 class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
