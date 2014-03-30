@@ -14,22 +14,34 @@ standard library.
 from base64 import b64encode
 from datetime import datetime
 import errno
-from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
 import socket
 import time
+
 try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+
 import sys
+
 try:
     from threading import Lock
 except ImportError:
     from dummy_threading import Lock
-import urllib
-from urlparse import urlsplit, urlunsplit
-from email.Utils import parsedate
 
+try:
+    from http.client import BadStatusLine, HTTPConnection, HTTPSConnection
+except ImportError:
+    from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
+
+import urllib
+
+try:
+    from email.Utils import parsedate
+except ImportError:
+    from email.utils import parsedate
+
+from urlparse import urlsplit, urlunsplit
 from couchdb import json
 
 __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
