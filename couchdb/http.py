@@ -28,8 +28,6 @@ try:
 except ImportError:
     from httplib import BadStatusLine, HTTPConnection, HTTPSConnection
 
-import urllib
-
 try:
     from email.Utils import parsedate
 except ImportError:
@@ -571,7 +569,7 @@ def extract_credentials(url):
     netloc = parts[1]
     if '@' in netloc:
         creds, netloc = netloc.split('@')
-        credentials = tuple(urllib.unquote(i) for i in creds.split(':'))
+        credentials = tuple(util.urlunquote(i) for i in creds.split(':'))
         parts = list(parts)
         parts[1] = netloc
     else:
@@ -587,7 +585,7 @@ def basic_auth(credentials):
 def quote(string, safe=''):
     if isinstance(string, util.utype):
         string = string.encode('utf-8')
-    return urllib.quote(string, safe)
+    return util.urlquote(string, safe)
 
 
 def urlencode(data):
@@ -598,7 +596,7 @@ def urlencode(data):
         if isinstance(value, util.utype):
             value = value.encode('utf-8')
         params.append((name, value))
-    return urllib.urlencode(params)
+    return util.urlencode(params)
 
 
 def urljoin(base, *path, **query):

@@ -17,11 +17,10 @@ CouchDB versions.
 Use 'python replicate.py --help' to get more detailed usage instructions.
 """
 
-from couchdb import http, client
+from couchdb import http, client, util
 import optparse
 import sys
 import time
-import urllib
 import urlparse
 import fnmatch
 
@@ -107,7 +106,7 @@ def main():
             print "created",
             sys.stdout.flush()
 
-        sdb = '%s%s' % (sbase, urllib.quote(sdb, ''))
+        sdb = '%s%s' % (sbase, util.urlquote(sdb, ''))
         if options.continuous:
             target.replicate(sdb, tdb, continuous=options.continuous)
         else:
