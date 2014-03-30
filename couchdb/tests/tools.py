@@ -21,7 +21,7 @@ class ToolLoadTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_handle_credentials(self):
         # Issue 194: couchdb-load attribute error: 'Resource' object has no attribute 'http'
         # http://code.google.com/p/couchdb-python/issues/detail?id=194
-        load.load_db(StringIO(''), self.db.resource.url, 'foo', 'bar')
+        load.load_db(StringIO(b''), self.db.resource.url, 'foo', 'bar')
 
 
 class ToolDumpTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
