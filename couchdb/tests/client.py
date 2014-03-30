@@ -15,7 +15,6 @@ import time
 import tempfile
 import threading
 import unittest
-import urlparse
 
 from couchdb import client, http, util
 from couchdb.tests import testutil
@@ -448,7 +447,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         # Consume an entire changes feed to read the whole response, then check
         # that the HTTP connection made it to the pool.
         list(self.db.changes(feed='continuous', timeout=0))
-        scheme, netloc = urlparse.urlsplit(client.DEFAULT_BASE_URL)[:2]
+        scheme, netloc = util.urlsplit(client.DEFAULT_BASE_URL)[:2]
         self.assertTrue(self.db.resource.session.connection_pool.conns[(scheme, netloc)])
 
     def test_changes_releases_conn_when_lastseq(self):
@@ -458,7 +457,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for obj in self.db.changes(feed='continuous', timeout=0):
             if 'last_seq' in obj:
                 break
-        scheme, netloc = urlparse.urlsplit(client.DEFAULT_BASE_URL)[:2]
+        scheme, netloc = util.urlsplit(client.DEFAULT_BASE_URL)[:2]
         self.assertTrue(self.db.resource.session.connection_pool.conns[(scheme, netloc)])
 
     def test_changes_conn_usable(self):

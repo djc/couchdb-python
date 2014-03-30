@@ -35,7 +35,6 @@ try:
 except ImportError:
     from email.utils import parsedate
 
-from urlparse import urlsplit, urlunsplit
 from couchdb import json
 from couchdb import util
 
@@ -283,7 +282,7 @@ class Session(object):
         if authorization:
             headers['Authorization'] = authorization
 
-        path_query = urlunsplit(('', '') + urlsplit(url)[2:4] + ('',))
+        path_query = util.urlunsplit(('', '') + util.urlsplit(url)[2:4] + ('',))
         conn = self.connection_pool.get(url)
 
         def _try_request_with_retries(retries):
@@ -452,7 +451,7 @@ class ConnectionPool(object):
 
     def get(self, url):
 
-        scheme, host = urlsplit(url, 'http', False)[:2]
+        scheme, host = util.urlsplit(url, 'http', False)[:2]
 
         # Try to reuse an existing connection.
         self.lock.acquire()
@@ -479,7 +478,7 @@ class ConnectionPool(object):
         return conn
 
     def release(self, url, conn):
-        scheme, host = urlsplit(url, 'http', False)[:2]
+        scheme, host = util.urlsplit(url, 'http', False)[:2]
         self.lock.acquire()
         try:
             self.conns.setdefault((scheme, host), []).append(conn)
@@ -568,7 +567,7 @@ def extract_credentials(url):
     >>> extract_credentials('http://joe%40example.com:secret@localhost:5984/_config/')
     ('http://localhost:5984/_config/', ('joe@example.com', 'secret'))
     """
-    parts = urlsplit(url)
+    parts = util.urlsplit(url)
     netloc = parts[1]
     if '@' in netloc:
         creds, netloc = netloc.split('@')
@@ -577,7 +576,7 @@ def extract_credentials(url):
         parts[1] = netloc
     else:
         credentials = None
-    return urlunsplit(parts), credentials
+    return util.urlunsplit(parts), credentials
 
 
 def basic_auth(credentials):
