@@ -8,15 +8,15 @@
 
 import unittest
 
-from couchdb.tests import client, couch_tests, design, http, multipart, \
-                          mapping, view, package, tools
+from couchdb.tests import client, couch_tests, design, couchhttp, \
+                          multipart, mapping, view, package, tools
 
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(client.suite())
     suite.addTest(design.suite())
-    suite.addTest(http.suite())
+    suite.addTest(couchhttp.suite())
     suite.addTest(multipart.suite())
     suite.addTest(mapping.suite())
     suite.addTest(view.suite())
