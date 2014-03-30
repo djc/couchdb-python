@@ -59,7 +59,7 @@ if sys.version < '2.6':
                     self.sock.settimeout(self.timeout)
 
                     self.sock.connect(sa)
-                except socket.error, msg:
+                except socket.error as msg:
                     if self.debuglevel > 0:
                         print('connect fail:', self.host, self.port)
                     if self.sock:
@@ -283,7 +283,7 @@ class Session(object):
             while True:
                 try:
                     return _try_request()
-                except socket.error, e:
+                except socket.error as e:
                     ecode = e.args[0]
                     if ecode not in self.retryable_errors:
                         raise
@@ -314,7 +314,7 @@ class Session(object):
                             conn.send(('%x\r\n' % len(chunk)) + chunk + '\r\n')
                         conn.send('0\r\n\r\n')
                 return conn.getresponse()
-            except BadStatusLine, e:
+            except BadStatusLine as e:
                 # httplib raises a BadStatusLine when it cannot read the status
                 # line saying, "Presumably, the server closed the connection
                 # before sending a valid response."

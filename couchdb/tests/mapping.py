@@ -59,7 +59,7 @@ class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         try:
             post.id = 'foo_bar'
             self.fail('Excepted AttributeError')
-        except AttributeError, e:
+        except AttributeError as e:
             self.assertEqual('id can only be set on new documents', e.args[0])
 
     def test_batch_update(self):

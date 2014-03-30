@@ -48,7 +48,7 @@ def load_db(fileobj, dburl, username=None, password=None, ignore_errors=False):
         print>>sys.stderr, 'Loading document %r' % docid
         try:
             db[docid] = doc
-        except Exception, e:
+        except Exception as e:
             if not ignore_errors:
                 raise
             print>>sys.stderr, 'Error: %s' % e

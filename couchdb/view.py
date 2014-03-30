@@ -54,7 +54,7 @@ def run(input=sys.stdin, output=sys.stdout):
         globals_ = {}
         try:
             exec string in {'log': _log}, globals_
-        except Exception, e:
+        except Exception as e:
             return {'error': {
                 'id': 'map_compilation_error',
                 'reason': e.args[0]
@@ -77,7 +77,7 @@ def run(input=sys.stdin, output=sys.stdout):
         for function in functions:
             try:
                 results.append([[key, value] for key, value in function(doc)])
-            except Exception, e:
+            except Exception as e:
                 log.error('runtime error in map function: %s', e,
                           exc_info=True)
                 results.append([])
@@ -90,7 +90,7 @@ def run(input=sys.stdin, output=sys.stdout):
         globals_ = {}
         try:
             exec code in {'log': _log}, globals_
-        except Exception, e:
+        except Exception as e:
             log.error('runtime error in reduce function: %s', e,
                       exc_info=True)
             return {'error': {
@@ -139,7 +139,7 @@ def run(input=sys.stdin, output=sys.stdout):
             try:
                 cmd = json.decode(line)
                 log.debug('Processing %r', cmd)
-            except ValueError, e:
+            except ValueError as e:
                 log.error('Error: %s', e, exc_info=True)
                 return 1
             else:
@@ -148,7 +148,7 @@ def run(input=sys.stdin, output=sys.stdout):
                 _writejson(retval)
     except KeyboardInterrupt:
         return 0
-    except Exception, e:
+    except Exception as e:
         log.error('Error: %s', e, exc_info=True)
         return 1
 
@@ -218,7 +218,7 @@ def main():
             sys.stdout.flush()
             sys.exit(0)
 
-    except getopt.GetoptError, error:
+    except getopt.GetoptError as error:
         message = '%s\n\nTry `%s --help` for more information.\n' % (
             str(error), os.path.basename(sys.argv[0])
         )

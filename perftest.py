@@ -35,7 +35,7 @@ def _run(server, func):
             stop = time.time()
             sys.stdout.write("%0.2fs\n" % (stop - start,))
             sys.stdout.flush()
-        except Exception, e:
+        except Exception as e:
             sys.stdout.write("FAILED - %r\n" % (unicode(e),))
             sys.stdout.flush()
     finally:
