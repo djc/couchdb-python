@@ -492,7 +492,6 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_row_object(self):
 
         row = list(self.db.view('_all_docs', keys=['blah']))[0]
-        self.assertEqual(repr(row), "<Row key='blah', error='not_found'>")
         self.assertEqual(row.id, None)
         self.assertEqual(row.key, 'blah')
         self.assertEqual(row.value, None)
