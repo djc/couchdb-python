@@ -223,7 +223,7 @@ class CouchTests(testutil.TempDatabaseMixin, unittest.TestCase):
             }
         }"""
         rows = iter(self.db.query(query))
-        self.assertEqual(None, rows.next().value)
+        self.assertEqual(None, next(rows).value)
         for idx, row in enumerate(rows):
             self.assertEqual(values[idx + 1], row.key)
 

@@ -216,7 +216,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(revs[0]['_rev'], new_rev)
         self.assertEqual(revs[1]['_rev'], old_rev)
         gen = self.db.revisions('crap')
-        self.assertRaises(StopIteration, lambda: gen.next())
+        self.assertRaises(StopIteration, lambda: next(gen))
 
         self.assertTrue(self.db.compact())
         while self.db.info()['compact_running']:
@@ -439,7 +439,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_changes(self):
         self.db['foo'] = {'bar': True}
         self.assertEqual(self.db.changes(since=0)['last_seq'], 1)
-        first = self.db.changes(feed='continuous').next()
+        first = next(self.db.changes(feed='continuous'))
         self.assertEqual(first['seq'], 1)
         self.assertEqual(first['id'], 'foo')
 
@@ -751,8 +751,8 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_batchsizes(self):
         # Check silly _batch values.
-        self.assertRaises(ValueError, self.db.iterview('test/nums', 0).next)
-        self.assertRaises(ValueError, self.db.iterview('test/nums', -1).next)
+        self.assertRaises(ValueError, lambda: next(self.db.iterview('test/nums', 0)))
+        self.assertRaises(ValueError, lambda: next(self.db.iterview('test/nums', -1)))
         # Test various _batch sizes that are likely to cause trouble.
         self.assertEqual(len(list(self.db.iterview('test/nums', 1))), self.num_docs)
         self.assertEqual(len(list(self.db.iterview('test/nums', int(self.num_docs / 2)))), self.num_docs)
@@ -763,7 +763,7 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_limit(self):
         # limit=0 doesn't make sense for iterview.
-        self.assertRaises(ValueError, self.db.iterview('test/nums', 10, limit=0).next)
+        self.assertRaises(ValueError, lambda: next(self.db.iterview('test/nums', 10, limit=0)))
         # Test various limit sizes that are likely to cause trouble.
         for limit in [1, int(self.num_docs / 4), self.num_docs - 1, self.num_docs,
                       self.num_docs + 1]:
