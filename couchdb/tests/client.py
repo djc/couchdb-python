@@ -741,13 +741,13 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
                       'views': {'nums': {'map': 'function(doc) {emit(doc.num, null);}'},
                                 'nulls': {'map': 'function(doc) {emit(null, null);}'}}}
         self.db.save(design_doc)
-        self.db.update([self.docfromnum(num) for num in xrange(self.num_docs)])
+        self.db.update([self.docfromnum(num) for num in range(self.num_docs)])
 
     def test_allrows(self):
         rows = list(self.db.iterview('test/nums', 10))
         self.assertEqual(len(rows), self.num_docs)
         self.assertEqual([self.docfromrow(row) for row in rows],
-                         [self.docfromnum(num) for num in xrange(self.num_docs)])
+                         [self.docfromnum(num) for num in range(self.num_docs)])
 
     def test_batchsizes(self):
         # Check silly _batch values.
@@ -768,23 +768,23 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for limit in [1, int(self.num_docs / 4), self.num_docs - 1, self.num_docs,
                       self.num_docs + 1]:
             self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, limit=limit)],
-                             [self.docfromnum(x) for x in xrange(min(limit, self.num_docs))])
+                             [self.docfromnum(x) for x in range(min(limit, self.num_docs))])
         # Test limit same as batch size, in case of weird edge cases.
         limit = int(self.num_docs / 4)
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', limit, limit=limit)],
-                         [self.docfromnum(x) for x in xrange(limit)])
+                         [self.docfromnum(x) for x in range(limit)])
 
     def test_descending(self):
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, descending=True)],
-                         [self.docfromnum(x) for x in xrange(self.num_docs - 1, -1, -1)])
+                         [self.docfromnum(x) for x in range(self.num_docs - 1, -1, -1)])
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, limit=int(self.num_docs / 4), descending=True)],
-                         [self.docfromnum(x) for x in xrange(self.num_docs - 1, int(self.num_docs * 3 / 4) - 1, -1)])
+                         [self.docfromnum(x) for x in range(self.num_docs - 1, int(self.num_docs * 3 / 4) - 1, -1)])
 
     def test_startkey(self):
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=int(self.num_docs / 2) - 1)],
-                         [self.docfromnum(x) for x in xrange(self.num_docs - 2, self.num_docs)])
+                         [self.docfromnum(x) for x in range(self.num_docs - 2, self.num_docs)])
         self.assertEqual([self.docfromrow(doc) for doc in self.db.iterview('test/nums', 10, startkey=1, descending=True)],
-                         [self.docfromnum(x) for x in xrange(3, -1, -1)])
+                         [self.docfromnum(x) for x in range(3, -1, -1)])
 
     def test_nullkeys(self):
         self.assertEqual(len(list(self.db.iterview('test/nulls', 10))), self.num_docs)
