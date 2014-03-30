@@ -114,6 +114,9 @@ class Server(object):
         except:
             return False
 
+    def __bool__(self):
+        return self.__nonzero__()
+
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.resource.url)
 
@@ -312,6 +315,9 @@ class Database(object):
             return True
         except:
             return False
+
+    def __bool__(self):
+        return self.__nonzero__()
 
     def __delitem__(self, id):
         """Remove the document with the specified ID from the database.
