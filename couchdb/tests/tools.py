@@ -9,8 +9,8 @@
 
 
 import unittest
-from StringIO import StringIO
 
+from couchdb.util import StringIO
 from couchdb import Unauthorized
 from couchdb.tools import load, dump
 from couchdb.tests import testutil

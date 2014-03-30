@@ -11,14 +11,13 @@ import doctest
 import os
 import os.path
 import shutil
-from StringIO import StringIO
 import time
 import tempfile
 import threading
 import unittest
 import urlparse
 
-from couchdb import client, http
+from couchdb import client, http, util
 from couchdb.tests import testutil
 
 
@@ -259,7 +258,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {'bar': 42}
         self.db['foo'] = doc
         old_rev = doc['_rev']
-        fileobj = StringIO('Foo bar baz')
+        fileobj = util.StringIO('Foo bar baz')
 
         self.db.put_attachment(doc, fileobj, 'foo.txt')
         self.assertNotEqual(old_rev, doc['_rev'])

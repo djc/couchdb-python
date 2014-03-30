@@ -10,9 +10,8 @@ import doctest
 import socket
 import time
 import unittest
-from StringIO import StringIO
 
-from couchdb import http
+from couchdb import http, util
 from couchdb.tests import testutil
 
 
@@ -30,9 +29,9 @@ class SessionTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 class ResponseBodyTestCase(unittest.TestCase):
     def test_close(self):
-        class TestStream(StringIO):
+        class TestStream(util.StringIO):
             def isclosed(self):
-                return len(self.buf) == self.tell()
+                return len(self.getvalue()) == self.tell()
 
         class Counter(object):
             def __init__(self):
@@ -57,11 +56,11 @@ class ResponseBodyTestCase(unittest.TestCase):
                 self.fp = fp
 
             def isclosed(self):
-                return len(self.fp.buf) == self.fp.tell()
+                return len(self.fp.getvalue()) == self.fp.tell()
 
         data = 'foobarbaz'
         data = '\n'.join([hex(len(data))[2:], data])
-        response = http.ResponseBody(TestHttpResp(StringIO(data)),
+        response = http.ResponseBody(TestHttpResp(util.StringIO(data)),
                                      lambda *a, **k: None)
         self.assertEqual(list(response.iterchunks()), ['foobarbaz'])
         self.assertEqual(list(response.iterchunks()), [])

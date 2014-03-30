@@ -16,12 +16,6 @@ from datetime import datetime
 import errno
 import socket
 import time
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
-
 import sys
 
 try:
@@ -43,6 +37,7 @@ except ImportError:
 
 from urlparse import urlsplit, urlunsplit
 from couchdb import json
+from couchdb import util
 
 __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
            'ResourceConflict', 'ServerError', 'Unauthorized', 'RedirectLimit',
@@ -345,7 +340,7 @@ class Session(object):
             self.connection_pool.release(url, conn)
             status, msg, data = cached_resp
             if data is not None:
-                data = StringIO(data)
+                data = util.StringIO(data)
             return status, msg, data
         elif cached_resp:
             self.cache.remove(url)
@@ -414,7 +409,7 @@ class Session(object):
             self.cache.put(url, (status, resp.msg, data))
 
         if not streamed and data is not None:
-            data = StringIO(data)
+            data = util.StringIO(data)
 
         return status, resp.msg, data
 
