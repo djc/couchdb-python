@@ -39,10 +39,10 @@ class ViewDefinition(object):
     even exist yet. That can be fixed using the `sync` method:
 
     >>> view.sync(db)                                       #doctest: +ELLIPSIS
-    [(True, '_design/tests', ...)]
+    [(True, u'_design/tests', ...)]
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
-    <Document '_design/tests'@'...' {...}>
+    <Document u'_design/tests'@u'...' {...}>
     >>> print design_doc['views']['all']['map']
     function(doc) {
         emit(doc._id, null);
@@ -55,10 +55,10 @@ class ViewDefinition(object):
     ...     yield doc['somekey'], doc['somevalue']
     >>> view = ViewDefinition('test2', 'somename', my_map, language='python')
     >>> view.sync(db)                                       #doctest: +ELLIPSIS
-    [(True, '_design/test2', ...)]
+    [(True, u'_design/test2', ...)]
     >>> design_doc = view.get_doc(db)
     >>> design_doc                                          #doctest: +ELLIPSIS
-    <Document '_design/test2'@'...' {...}>
+    <Document u'_design/test2'@u'...' {...}>
     >>> print design_doc['views']['somename']['map']
     def my_map(doc):
         yield doc['somekey'], doc['somevalue']

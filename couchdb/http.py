@@ -383,7 +383,7 @@ class Session(object):
         if status >= 400:
             ctype = resp.getheader('content-type')
             if data is not None and 'application/json' in ctype:
-                data = json.decode(data)
+                data = json.decode(data.decode('utf-8'))
                 error = data.get('error'), data.get('reason')
             elif method != 'HEAD':
                 error = resp.read()
@@ -549,7 +549,7 @@ class Resource(object):
         status, headers, data = self._request(method, path, body=body,
                                               headers=headers, **params)
         if 'application/json' in headers.get('content-type'):
-            data = json.decode(data.read())
+            data = json.decode(data.read().decode('utf-8'))
         return status, headers, data
 
 

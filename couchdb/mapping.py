@@ -557,7 +557,7 @@ class DictField(Field):
     >>> post.author.email
     u'john@doe.com'
     >>> post.extra
-    {'foo': 'bar'}
+    {u'foo': u'bar'}
 
     >>> del server['python-tests']
     """
@@ -607,11 +607,11 @@ class ListField(Field):
     >>> post = Post.load(db, post.id)
     >>> comment = post.comments[0]
     >>> comment['author']
-    'myself'
+    u'myself'
     >>> comment['content']
-    'Bla bla'
+    u'Bla bla'
     >>> comment['time'] #doctest: +ELLIPSIS
-    '...T...Z'
+    u'...T...Z'
 
     >>> del server['python-tests']
     """

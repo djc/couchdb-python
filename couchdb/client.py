@@ -13,9 +13,9 @@
 >>> doc_id, doc_rev = db.save({'type': 'Person', 'name': 'John Doe'})
 >>> doc = db[doc_id]
 >>> doc['type']
-'Person'
+u'Person'
 >>> doc['name']
-'John Doe'
+u'John Doe'
 >>> del db[doc.id]
 >>> doc.id in db
 False
@@ -242,18 +242,18 @@ class Database(object):
 
     >>> doc = db[doc_id]
     >>> doc                 #doctest: +ELLIPSIS
-    <Document '...'@... {...}>
+    <Document u'...'@... {...}>
 
     Documents are represented as instances of the `Row` class, which is
     basically just a normal dictionary with the additional attributes ``id`` and
     ``rev``:
 
     >>> doc.id, doc.rev     #doctest: +ELLIPSIS
-    ('...', ...)
+    (u'...', ...)
     >>> doc['type']
-    'Person'
+    u'Person'
     >>> doc['name']
-    'John Doe'
+    u'John Doe'
 
     To update an existing document, you use item access, too:
 
@@ -506,7 +506,7 @@ class Database(object):
 
         _, _, data = self.resource._request('COPY', src,
                                             headers={'Destination': dest})
-        data = json.decode(data.read())
+        data = json.decode(data.read().decode('utf-8'))
         return data['rev']
 
     def delete(self, doc):
@@ -528,7 +528,7 @@ class Database(object):
         >>> db.delete(doc)
         Traceback (most recent call last):
           ...
-        ResourceConflict: ('conflict', 'Document update conflict.')
+        ResourceConflict: (u'conflict', u'Document update conflict.')
 
         >>> del server['python-tests']
 
@@ -730,9 +730,9 @@ class Database(object):
         ...     Document(type='City', name='Gotham City')
         ... ]):
         ...     print repr(doc) #doctest: +ELLIPSIS
-        (True, '...', '...')
-        (True, '...', '...')
-        (True, '...', '...')
+        (True, u'...', u'...')
+        (True, u'...', u'...')
+        (True, u'...', u'...')
 
         >>> del server['python-tests']
 
@@ -934,7 +934,7 @@ class Database(object):
         for ln in lines:
             if not ln: # skip heartbeats
                 continue
-            doc = json.decode(ln)
+            doc = json.decode(ln.decode('utf-8'))
             if 'last_seq' in doc: # consume the rest of the response if this
                 for ln in lines:  # was the last line, allows conn reuse
                     pass
@@ -1134,7 +1134,7 @@ class ViewResults(object):
     can still return multiple rows:
 
     >>> list(results[['City', 'Gotham City']])
-    [<Row id='gotham', key=['City', 'Gotham City'], value='Gotham City'>]
+    [<Row id=u'gotham', key=[u'City', u'Gotham City'], value=u'Gotham City'>]
 
     >>> del server['python-tests']
     """
