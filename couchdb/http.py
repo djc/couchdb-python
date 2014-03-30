@@ -370,7 +370,7 @@ class Session(object):
             self.connection_pool.release(url, conn)
 
         # Buffer small non-JSON response bodies
-        elif int(resp.getheader('content-length', sys.maxint)) < CHUNK_SIZE:
+        elif int(resp.getheader('content-length', sys.maxsize)) < CHUNK_SIZE:
             data = resp.read()
             self.connection_pool.release(url, conn)
 

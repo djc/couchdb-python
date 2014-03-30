@@ -28,7 +28,7 @@ class TempDatabaseMixin(object):
             self.temp_dbs = {}
         # Find an unused database name
         while True:
-            name = 'couchdb-python/%d' % random.randint(0, sys.maxint)
+            name = 'couchdb-python/%d' % random.randint(0, sys.maxsize)
             if name not in self.temp_dbs:
                 break
         db = self.server.create(name)

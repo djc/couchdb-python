@@ -171,8 +171,8 @@ class MultipartWriter(object):
             return '==' + uuid4().hex + '=='
         except ImportError:
             from random import randrange
-            token = randrange(sys.maxint)
-            format = '%%0%dd' % len(repr(sys.maxint - 1))
+            token = randrange(sys.maxsize)
+            format = '%%0%dd' % len(repr(sys.maxsize - 1))
             return '===============' + (format % token) + '=='
 
     def _write_headers(self, headers):
