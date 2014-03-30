@@ -667,13 +667,21 @@ class ListField(Field):
             return util.utype(self.list)
 
         def __delitem__(self, index):
-            del self.list[index]
+            if isinstance(index, slice):
+                self.__delslice__(index.start, index.stop)
+            else:
+                del self.list[index]
 
         def __getitem__(self, index):
+            if isinstance(index, slice):
+                return self.__getslice__(index.start, index.stop)
             return self.field._to_python(self.list[index])
 
         def __setitem__(self, index, value):
-            self.list[index] = self.field._to_json(value)
+            if isinstance(index, slice):
+                self.__setslice__(index.start, index.stop, value)
+            else:
+                self.list[index] = self.field._to_json(value)
 
         def __delslice__(self, i, j):
             del self.list[i:j]
