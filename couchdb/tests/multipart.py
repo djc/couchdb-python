@@ -15,7 +15,7 @@ from couchdb.util import StringIO
 class ReadMultipartTestCase(unittest.TestCase):
 
     def test_flat(self):
-        text = '''\
+        text = b'''\
 Content-Type: multipart/mixed; boundary="===============1946781859=="
 
 --===============1946781859==
@@ -47,18 +47,18 @@ ETag: "1-2182689334"
             if num == 0:
                 self.assertEqual('bar', headers['content-id'])
                 self.assertEqual('"1-4229094393"', headers['etag'])
-                self.assertEqual('{\n  "_id": "bar",\n  '
-                                 '"_rev": "1-4229094393"\n}', payload)
+                self.assertEqual(b'{\n  "_id": "bar",\n  '
+                                 b'"_rev": "1-4229094393"\n}', payload)
             elif num == 1:
                 self.assertEqual('foo', headers['content-id'])
                 self.assertEqual('"1-2182689334"', headers['etag'])
-                self.assertEqual('{\n  "_id": "foo",\n  "_rev": "1-2182689334",'
-                                 '\n  "something": "cool"\n}', payload)
+                self.assertEqual(b'{\n  "_id": "foo",\n  "_rev": "1-2182689334",'
+                                 b'\n  "something": "cool"\n}', payload)
             num += 1
         self.assertEqual(num, 2)
 
     def test_nested(self):
-        text = '''\
+        text = b'''\
 Content-Type: multipart/mixed; boundary="===============1946781859=="
 
 --===============1946781859==
@@ -111,8 +111,8 @@ ETag: "1-3482142493"
                 self.assertEqual('application/json', headers['content-type'])
                 self.assertEqual('bar', headers['content-id'])
                 self.assertEqual('"1-4229094393"', headers['etag'])
-                self.assertEqual('{\n  "_id": "bar", \n  '
-                                 '"_rev": "1-4229094393"\n}', payload)
+                self.assertEqual(b'{\n  "_id": "bar", \n  '
+                                 b'"_rev": "1-4229094393"\n}', payload)
             elif num == 1:
                 self.assertEqual(is_multipart, True)
                 self.assertEqual('foo', headers['content-id'])
@@ -124,14 +124,14 @@ ETag: "1-3482142493"
                     if partnum == 0:
                         self.assertEqual('application/json',
                                          headers['content-type'])
-                        self.assertEqual('{\n  "_id": "foo", \n  "_rev": '
-                                         '"1-919589747", \n  "something": '
-                                         '"cool"\n}', payload)
+                        self.assertEqual(b'{\n  "_id": "foo", \n  "_rev": '
+                                         b'"1-919589747", \n  "something": '
+                                         b'"cool"\n}', payload)
                     elif partnum == 1:
                         self.assertEqual('text/plain', headers['content-type'])
                         self.assertEqual('mail.txt', headers['content-id'])
-                        self.assertEqual('Hello, friends.\nHow are you doing?'
-                                         '\n\nRegards, Chris', payload)
+                        self.assertEqual(b'Hello, friends.\nHow are you doing?'
+                                         b'\n\nRegards, Chris', payload)
 
                     partnum += 1
 
@@ -140,8 +140,8 @@ ETag: "1-3482142493"
                 self.assertEqual('application/json', headers['content-type'])
                 self.assertEqual('baz', headers['content-id'])
                 self.assertEqual('"1-3482142493"', headers['etag'])
-                self.assertEqual('{\n  "_id": "baz", \n  '
-                                 '"_rev": "1-3482142493"\n}', payload)
+                self.assertEqual(b'{\n  "_id": "baz", \n  '
+                                 b'"_rev": "1-3482142493"\n}', payload)
 
 
             num += 1
@@ -149,7 +149,7 @@ ETag: "1-3482142493"
 
     def test_unicode_headers(self):
         # http://code.google.com/p/couchdb-python/issues/detail?id=179
-        dump = '''Content-Type: multipart/mixed; boundary="==123456789=="
+        dump = u'''Content-Type: multipart/mixed; boundary="==123456789=="
 
 --==123456789==
 Content-ID: =?utf-8?b?5paH5qGj?=
@@ -159,7 +159,7 @@ Content-Type: application/json
 
 {"_rev": "3-bc27b6930ca514527d8954c7c43e6a09", "_id": "文档"}
 '''
-        parts = multipart.read_multipart(StringIO(dump))
+        parts = multipart.read_multipart(StringIO(dump.encode('utf-8')))
         for headers, is_multipart, payload in parts:
             self.assertEqual(headers['content-id'], u'文档')
             break
@@ -172,7 +172,7 @@ class WriteMultipartTestCase(unittest.TestCase):
         envelope = multipart.write_multipart(buf, boundary='==123456789==')
         envelope.add('text/plain', u'Iñtërnâtiônàlizætiøn')
         envelope.close()
-        self.assertEqual('''Content-Type: multipart/mixed; boundary="==123456789=="
+        self.assertEqual(u'''Content-Type: multipart/mixed; boundary="==123456789=="
 
 --==123456789==
 Content-Length: 27
@@ -181,7 +181,7 @@ Content-Type: text/plain;charset=utf-8
 
 Iñtërnâtiônàlizætiøn
 --==123456789==--
-''', buf.getvalue().replace('\r\n', '\n'))
+'''.encode('utf-8'), buf.getvalue().replace(b'\r\n', b'\n'))
 
     def test_unicode_content_ascii(self):
         buf = StringIO()
@@ -197,7 +197,7 @@ Iñtërnâtiônàlizætiøn
                      '{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09",'
                      ' "_id": "文档"}',
                      headers={'Content-ID': u"文档"})
-        self.assertEqual('''Content-Type: multipart/mixed; boundary="==123456789=="
+        self.assertEqual(u'''Content-Type: multipart/mixed; boundary="==123456789=="
 
 --==123456789==
 Content-ID: =?utf-8?b?5paH5qGj?=
@@ -206,7 +206,7 @@ Content-MD5: Cpw3iC3xPua8YzKeWLzwvw==
 Content-Type: application/json;charset=utf-8
 
 {"_rev": "3-bc27b6930ca514527d8954c7c43e6a09", "_id": "文档"}
-''', buf.getvalue().replace('\r\n', '\n'))
+'''.encode('utf-8'), buf.getvalue().replace(b'\r\n', b'\n'))
 
 
 def suite():
