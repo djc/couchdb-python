@@ -66,7 +66,7 @@ def run(input=sys.stdin, output=sys.stdout):
         }}
         if len(globals_) != 1:
             return err
-        function = globals_.values()[0]
+        function = list(globals_.values())[0]
         if type(function) is not FunctionType:
             return err
         functions.append(function)
@@ -104,7 +104,7 @@ def run(input=sys.stdin, output=sys.stdout):
         }}
         if len(globals_) != 1:
             return err
-        function = globals_.values()[0]
+        function = list(globals_.values())[0]
         if type(function) is not FunctionType:
             return err
 
