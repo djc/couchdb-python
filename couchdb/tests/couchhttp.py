@@ -42,7 +42,7 @@ class ResponseBodyTestCase(unittest.TestCase):
 
         counter = Counter()
 
-        response = http.ResponseBody(TestStream('foobar'), counter)
+        response = http.ResponseBody(TestStream(b'foobar'), counter)
 
         response.read(10) # read more than stream has. close() is called
         response.read() # steam ended. another close() call
@@ -58,11 +58,11 @@ class ResponseBodyTestCase(unittest.TestCase):
             def isclosed(self):
                 return len(self.fp.getvalue()) == self.fp.tell()
 
-        data = 'foobarbaz'
-        data = '\n'.join([hex(len(data))[2:], data])
+        data = b'foobarbaz'
+        data = b'\n'.join([hex(len(data))[2:].encode('utf-8'), data])
         response = http.ResponseBody(TestHttpResp(util.StringIO(data)),
                                      lambda *a, **k: None)
-        self.assertEqual(list(response.iterchunks()), ['foobarbaz'])
+        self.assertEqual(list(response.iterchunks()), [b'foobarbaz'])
         self.assertEqual(list(response.iterchunks()), [])
 
 
