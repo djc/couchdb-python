@@ -53,7 +53,7 @@ if sys.version < '2.6':
                 try:
                     self.sock = socket.socket(af, socktype, proto)
                     if self.debuglevel > 0:
-                        print "connect: (%s, %s)" % (self.host, self.port)
+                        print("connect: (%s, %s)" % (self.host, self.port))
 
                     # setting socket timeout
                     self.sock.settimeout(self.timeout)
@@ -61,7 +61,7 @@ if sys.version < '2.6':
                     self.sock.connect(sa)
                 except socket.error, msg:
                     if self.debuglevel > 0:
-                        print 'connect fail:', (self.host, self.port)
+                        print('connect fail:', self.host, self.port)
                     if self.sock:
                         self.sock.close()
                     self.sock = None
