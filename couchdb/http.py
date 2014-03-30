@@ -266,14 +266,14 @@ class Session(object):
                 if etag:
                     headers['If-None-Match'] = etag
 
-        if (body is not None and not isinstance(body, basestring) and
+        if (body is not None and not isinstance(body, util.strbase) and
                 not hasattr(body, 'read')):
             body = json.encode(body).encode('utf-8')
             headers.setdefault('Content-Type', 'application/json')
 
         if body is None:
             headers.setdefault('Content-Length', '0')
-        elif isinstance(body, basestring):
+        elif isinstance(body, util.strbase):
             headers.setdefault('Content-Length', str(len(body)))
         else:
             headers['Transfer-Encoding'] = 'chunked'
@@ -309,7 +309,7 @@ class Session(object):
                 if body is None:
                     conn.endheaders()
                 else:
-                    if isinstance(body, str):
+                    if isinstance(body, util.strbase):
                         conn.endheaders(body)
                     else: # assume a file-like object and send in chunks
                         conn.endheaders()

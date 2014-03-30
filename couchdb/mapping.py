@@ -455,7 +455,7 @@ class DateField(Field):
     """
 
     def _to_python(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, util.strbase):
             try:
                 value = date(*strptime(value, '%Y-%m-%d')[:3])
             except ValueError:
@@ -481,7 +481,7 @@ class DateTimeField(Field):
     """
 
     def _to_python(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, util.strbase):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
                 value = value.rstrip('Z') # remove timezone separator
@@ -511,7 +511,7 @@ class TimeField(Field):
     """
 
     def _to_python(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, util.strbase):
             try:
                 value = value.split('.', 1)[0] # strip out microseconds
                 value = time(*strptime(value, '%H:%M:%S')[3:6])

@@ -33,6 +33,7 @@ CouchDB-Python to use custom decoding and encoding functions::
 
 __all__ = ['decode', 'encode', 'use']
 
+from couchdb import util
 import warnings
 import os
 
@@ -91,7 +92,7 @@ def use(module=None, decode=None, encode=None):
     """
     global _decode, _encode, _initialized, _using
     if module is not None:
-        if not isinstance(module, basestring):
+        if not isinstance(module, util.strbase):
             module = module.__name__
         if module not in ('cjson', 'json', 'simplejson'):
             raise ValueError('Unsupported JSON module %s' % module)

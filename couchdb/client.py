@@ -32,7 +32,7 @@ from textwrap import dedent
 import re
 import warnings
 
-from couchdb import http, json
+from couchdb import http, json, util
 
 __all__ = ['Server', 'Database', 'Document', 'ViewResults', 'Row']
 __docformat__ = 'restructuredtext en'
@@ -76,7 +76,7 @@ class Server(object):
         :param full_commit: turn on the X-Couch-Full-Commit header
         :param session: an http.Session instance or None for a default session
         """
-        if isinstance(url, basestring):
+        if isinstance(url, util.strbase):
             self.resource = http.Resource(url, session or http.Session())
         else:
             self.resource = url # treat as a Resource object
@@ -272,7 +272,7 @@ class Database(object):
     """
 
     def __init__(self, url, name=None, session=None):
-        if isinstance(url, basestring):
+        if isinstance(url, util.strbase):
             if not url.startswith('http'):
                 url = DEFAULT_BASE_URL + url
             self.resource = http.Resource(url, session)
@@ -476,7 +476,7 @@ class Database(object):
         :rtype: `str`
         :since: 0.6
         """
-        if not isinstance(src, basestring):
+        if not isinstance(src, util.strbase):
             if not isinstance(src, dict):
                 if hasattr(src, 'items'):
                     src = dict(src.items())
@@ -485,7 +485,7 @@ class Database(object):
                                     type(src))
             src = src['_id']
 
-        if not isinstance(dest, basestring):
+        if not isinstance(dest, util.strbase):
             if not isinstance(dest, dict):
                 if hasattr(dest, 'items'):
                     dest = dict(dest.items())
@@ -624,7 +624,7 @@ class Database(object):
                  of the `default` argument if the attachment is not found
         :since: 0.4.1
         """
-        if isinstance(id_or_doc, basestring):
+        if isinstance(id_or_doc, util.strbase):
             id = id_or_doc
         else:
             id = id_or_doc['_id']
@@ -999,7 +999,7 @@ class View(object):
     """Abstract representation of a view or query."""
 
     def __init__(self, url, wrapper=None, session=None):
-        if isinstance(url, basestring):
+        if isinstance(url, util.strbase):
             self.resource = http.Resource(url, session)
         else:
             self.resource = url
@@ -1071,7 +1071,7 @@ def _encode_view_options(options):
     retval = {}
     for name, value in options.items():
         if name in ('key', 'startkey', 'endkey') \
-                or not isinstance(value, basestring):
+                or not isinstance(value, util.strbase):
             value = json.encode(value)
         retval[name] = value
     return retval

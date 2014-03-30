@@ -41,7 +41,7 @@ def run(input=sys.stdin, output=sys.stdout):
         output.flush()
 
     def _log(message):
-        if not isinstance(message, basestring):
+        if not isinstance(message, util.strbase):
             message = json.encode(message)
         _writejson({'log': message})
 

@@ -43,7 +43,7 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
     def test_server_vars(self):
         version = self.server.version()
-        self.assertTrue(isinstance(version, basestring))
+        self.assertTrue(isinstance(version, util.strbase))
         config = self.server.config()
         self.assertTrue(isinstance(config, dict))
         tasks = self.server.tasks()
