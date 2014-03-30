@@ -1,7 +1,7 @@
 
 __all__ = [
     'StringIO', 'urlsplit', 'urlunsplit', 'urlquote', 'urlunquote',
-    'urlencode', 'utype', 'ltype', 'pyexec', 'strbase',
+    'urlencode', 'utype', 'ltype', 'pyexec', 'strbase', 'funcode',
 ]
 
 utype = str
@@ -14,3 +14,6 @@ from urllib.parse import quote as urlquote
 from urllib.parse import unquote as urlunquote
 
 pyexec = exec
+
+def funcode(fun):
+    return fun.__code__

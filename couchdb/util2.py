@@ -1,7 +1,7 @@
 
 __all__ = [
     'StringIO', 'urlsplit', 'urlunsplit', 'urlquote', 'urlunquote',
-    'urlencode', 'utype', 'ltype', 'pyexec', 'strbase',
+    'urlencode', 'utype', 'ltype', 'pyexec', 'strbase', 'funcode',
 ]
 
 utype = unicode
@@ -16,3 +16,6 @@ from urllib import urlencode
 
 def pyexec(code, gns, lns):
     exec code in gns, lns
+
+def funcode(fun):
+    return fun.func_code
