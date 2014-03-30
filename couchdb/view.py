@@ -37,7 +37,7 @@ def run(input=sys.stdin, output=sys.stdout):
         if isinstance(obj, util.utype):
             obj = obj.encode('utf-8')
         output.write(obj)
-        output.write('\n')
+        output.write(b'\n')
         output.flush()
 
     def _log(message):
