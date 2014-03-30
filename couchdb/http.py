@@ -68,7 +68,7 @@ if sys.version < '2.6':
                     continue
                 break
             if not self.sock:
-                raise socket.error, msg
+                raise socket.error(msg)
 
     _HTTPConnection = HTTPConnection
     _HTTPSConnection = HTTPSConnection
