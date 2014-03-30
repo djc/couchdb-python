@@ -202,7 +202,7 @@ class ViewField(object):
     >>> Person.by_name
     <ViewDefinition '_design/people/_view/by_name'>
     
-    >>> print Person.by_name.map_fun
+    >>> print(Person.by_name.map_fun)
     function(doc) {
         emit(doc.name, doc);
     }
@@ -237,7 +237,7 @@ class ViewField(object):
     >>> Person.by_name
     <ViewDefinition '_design/people/_view/by_name'>
 
-    >>> print Person.by_name.map_fun
+    >>> print(Person.by_name.map_fun)
     def by_name(doc):
         yield doc['name'], doc
     """

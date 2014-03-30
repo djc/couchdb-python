@@ -689,17 +689,17 @@ class Database(object):
         ...         emit(doc.name, null);
         ... }'''
         >>> for row in db.query(map_fun):
-        ...     print row.key
+        ...     print(row.key)
         John Doe
         Mary Jane
 
         >>> for row in db.query(map_fun, descending=True):
-        ...     print row.key
+        ...     print(row.key)
         Mary Jane
         John Doe
 
         >>> for row in db.query(map_fun, key='John Doe'):
-        ...     print row.key
+        ...     print(row.key)
         John Doe
 
         >>> del server['python-tests']
@@ -729,7 +729,7 @@ class Database(object):
         ...     Document(type='Person', name='Mary Jane'),
         ...     Document(type='City', name='Gotham City')
         ... ]):
-        ...     print repr(doc) #doctest: +ELLIPSIS
+        ...     print(repr(doc)) #doctest: +ELLIPSIS
         (True, u'...', u'...')
         (True, u'...', u'...')
         (True, u'...', u'...')
@@ -814,7 +814,7 @@ class Database(object):
         >>> db['gotham'] = dict(type='City', name='Gotham City')
 
         >>> for row in db.view('_all_docs'):
-        ...     print row.id
+        ...     print(row.id)
         gotham
 
         >>> del server['python-tests']
@@ -1123,7 +1123,7 @@ class ViewResults(object):
 
     >>> people = results[['Person']:['Person','ZZZZ']]
     >>> for person in people:
-    ...     print person.value
+    ...     print(person.value)
     John Doe
     Mary Jane
     >>> people.total_rows, people.offset
