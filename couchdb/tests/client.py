@@ -336,7 +336,7 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         for i in range(1, 6):
             self.db.save({'i': i})
         res = list(self.db.query('function(doc) { emit(doc.i, null); }',
-                                 keys=range(1, 6, 2)))
+                                 keys=list(range(1, 6, 2))))
         self.assertEqual(3, len(res))
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
@@ -499,7 +499,7 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         row = list(self.db.view('_all_docs', keys=['xyz']))[0]
         self.assertEqual(row.id, 'xyz')
         self.assertEqual(row.key, 'xyz')
-        self.assertEqual(row.value.keys(), ['rev'])
+        self.assertEqual(list(row.value.keys()), ['rev'])
         self.assertEqual(row.error, None)
 
     def test_view_multi_get(self):
@@ -512,7 +512,7 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
             }
         }
 
-        res = list(self.db.view('test/multi_key', keys=range(1, 6, 2)))
+        res = list(self.db.view('test/multi_key', keys=list(range(1, 6, 2))))
         self.assertEqual(3, len(res))
         for idx, i in enumerate(range(1, 6, 2)):
             self.assertEqual(i, res[idx].key)
