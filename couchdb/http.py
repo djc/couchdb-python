@@ -308,15 +308,21 @@ class Session(object):
                     conn.endheaders()
                 else:
                     if isinstance(body, util.strbase):
-                        conn.endheaders(body)
+                        if isinstance(body, util.utype):
+                            conn.endheaders(body.encode('utf-8'))
+                        else:
+                            conn.endheaders(body)
                     else: # assume a file-like object and send in chunks
                         conn.endheaders()
                         while 1:
                             chunk = body.read(CHUNK_SIZE)
                             if not chunk:
                                 break
-                            conn.send(('%x\r\n' % len(chunk)) + chunk + '\r\n')
-                        conn.send('0\r\n\r\n')
+                            if isinstance(chunk, util.utype):
+                                chunk = chunk.encode('utf-8')
+                            status = ('%x\r\n' % len(chunk)).encode('utf-8')
+                            conn.send(status + chunk + b'\r\n')
+                        conn.send(b'0\r\n\r\n')
                 return conn.getresponse()
             except BadStatusLine as e:
                 # httplib raises a BadStatusLine when it cannot read the status
