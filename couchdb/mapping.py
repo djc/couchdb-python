@@ -128,9 +128,10 @@ class MappingMeta(type):
         d['_fields'] = fields
         return type.__new__(cls, name, bases, d)
 
+MappingMetaClass = MappingMeta('MappingMetaClass', (object,), {})
 
-class Mapping(object):
-    __metaclass__ = MappingMeta
+
+class Mapping(MappingMetaClass):
 
     def __init__(self, **values):
         self._data = {}
@@ -293,9 +294,10 @@ class DocumentMeta(MappingMeta):
                     attrval.name = attrname
         return MappingMeta.__new__(cls, name, bases, d)
 
+DocumentMetaClass = DocumentMeta('DocumentMetaClass', (object,), {})
 
-class Document(Mapping):
-    __metaclass__ = DocumentMeta
+
+class Document(DocumentMetaClass, Mapping):
 
     def __init__(self, id=None, **values):
         Mapping.__init__(self, **values)
