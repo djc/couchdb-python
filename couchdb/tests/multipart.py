@@ -203,7 +203,7 @@ Iñtërnâtiônàlizætiøn
 Content-ID: =?utf-8?b?5paH5qGj?=
 Content-Length: 63
 Content-MD5: Cpw3iC3xPua8YzKeWLzwvw==
-Content-Type: application/json
+Content-Type: application/json;charset=utf-8
 
 {"_rev": "3-bc27b6930ca514527d8954c7c43e6a09", "_id": "文档"}
 ''', buf.getvalue().replace('\r\n', '\n'))
