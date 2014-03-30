@@ -730,7 +730,7 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     num_docs = 100
 
     def docfromnum(self, num):
-        return {'_id': unicode(num), 'num': int(num / 2)}
+        return {'_id': util.utype(num), 'num': int(num / 2)}
 
     def docfromrow(self, row):
         return {'_id': row['id'], 'num': row['key']}

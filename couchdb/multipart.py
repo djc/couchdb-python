@@ -17,6 +17,8 @@ except ImportError:
     from md5 import new as md5
 import sys
 
+from couchdb import util
+
 __all__ = ['read_multipart', 'write_multipart']
 __docformat__ = 'restructuredtext en'
 
@@ -140,7 +142,7 @@ class MultipartWriter(object):
         self.fileobj.write(CRLF)
         if headers is None:
             headers = {}
-        if isinstance(content, unicode):
+        if isinstance(content, util.utype):
             ctype, params = parse_header(mimetype)
             if 'charset' in params:
                 content = content.encode(params['charset'])
@@ -177,7 +179,7 @@ class MultipartWriter(object):
         if headers:
             for name in sorted(headers.keys()):
                 value = headers[name]
-                if isinstance(value, unicode):
+                if isinstance(value, util.utype):
                     value = str(header.make_header([(value, 'utf-8')]))
                 self.fileobj.write(name)
                 self.fileobj.write(': ')

@@ -16,7 +16,7 @@ import sys
 import traceback
 from types import FunctionType
 
-from couchdb import json
+from couchdb import json, util
 
 __all__ = ['main', 'run']
 __docformat__ = 'restructuredtext en'
@@ -34,7 +34,7 @@ def run(input=sys.stdin, output=sys.stdout):
 
     def _writejson(obj):
         obj = json.encode(obj)
-        if isinstance(obj, unicode):
+        if isinstance(obj, util.utype):
             obj = obj.encode('utf-8')
         output.write(obj)
         output.write('\n')

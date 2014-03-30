@@ -58,7 +58,7 @@ True
 >>> del server['python-tests']
 """
 
-import copy
+import copy, sys
 
 from calendar import timegm
 from datetime import date, datetime, time
@@ -66,6 +66,7 @@ from decimal import Decimal
 from time import strptime, struct_time
 
 from couchdb.design import ViewDefinition
+from couchdb import util
 
 __all__ = ['Mapping', 'Document', 'Field', 'TextField', 'FloatField',
            'IntegerField', 'LongField', 'BooleanField', 'DecimalField',
@@ -106,7 +107,7 @@ class Field(object):
         instance._data[self.name] = value
 
     def _to_python(self, value):
-        return unicode(value)
+        return util.utype(value)
 
     def _to_json(self, value):
         return self._to_python(value)
@@ -408,7 +409,7 @@ class Document(Mapping):
 
 class TextField(Field):
     """Mapping field for string values."""
-    _to_python = unicode
+    _to_python = util.utype
 
 
 class FloatField(Field):
@@ -423,7 +424,7 @@ class IntegerField(Field):
 
 class LongField(Field):
     """Mapping field for long integer values."""
-    _to_python = long
+    _to_python = util.ltype
 
 
 class BooleanField(Field):
@@ -438,7 +439,7 @@ class DecimalField(Field):
         return Decimal(value)
 
     def _to_json(self, value):
-        return unicode(value)
+        return util.utype(value)
 
 
 class DateField(Field):
@@ -661,7 +662,7 @@ class ListField(Field):
             return str(self.list)
 
         def __unicode__(self):
-            return unicode(self.list)
+            return util.utype(self.list)
 
         def __delitem__(self, index):
             del self.list[index]

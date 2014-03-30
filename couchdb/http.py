@@ -585,7 +585,7 @@ def basic_auth(credentials):
 
 
 def quote(string, safe=''):
-    if isinstance(string, unicode):
+    if isinstance(string, util.utype):
         string = string.encode('utf-8')
     return urllib.quote(string, safe)
 
@@ -595,7 +595,7 @@ def urlencode(data):
         data = data.items()
     params = []
     for name, value in data:
-        if isinstance(value, unicode):
+        if isinstance(value, util.utype):
             value = value.encode('utf-8')
         params.append((name, value))
     return urllib.urlencode(params)
