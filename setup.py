@@ -61,13 +61,13 @@ class build_doc(Command):
             code_block.content = 1
             rst.directives.register_directive('code-block', code_block)
         except ImportError:
-            print 'Pygments not installed, syntax highlighting disabled'
+            print('Pygments not installed, syntax highlighting disabled')
 
         for source in glob('doc/*.txt'):
             dest = os.path.splitext(source)[0] + '.html'
             if self.force or not os.path.exists(dest) or \
                     os.path.getmtime(dest) < os.path.getmtime(source):
-                print 'building documentation file %s' % dest
+                print('building documentation file %s' % dest)
                 publish_cmdline(writer_name='html',
                                 argv=['--config=%s' % docutils_conf, source,
                                       dest])
@@ -86,7 +86,7 @@ class build_doc(Command):
                 sys.argv[1:] = old_argv
 
             except ImportError:
-                print 'epydoc not installed, skipping API documentation.'
+                print( 'epydoc not installed, skipping API documentation.')
 
 
 class test_doc(Command):
@@ -101,7 +101,7 @@ class test_doc(Command):
 
     def run(self):
         for filename in glob('doc/*.txt'):
-            print 'testing documentation file %s' % filename
+            print('testing documentation file %s' % filename)
             doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
@@ -112,7 +112,7 @@ if sys.version_info < (2, 6):
 
 # Build setuptools-specific options (if installed).
 if not has_setuptools:
-    print "WARNING: setuptools/distribute not available. Console scripts will not be installed."
+    print("WARNING: setuptools/distribute not available. Console scripts will not be installed.")
     setuptools_options = {}
 else:
     setuptools_options = {
