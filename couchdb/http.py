@@ -554,7 +554,7 @@ class Resource(object):
     def _request_json(self, method, path=None, body=None, headers=None, **params):
         status, headers, data = self._request(method, path, body=body,
                                               headers=headers, **params)
-        if 'application/json' in headers.get('content-type'):
+        if 'application/json' in headers.get('content-type', ''):
             data = json.decode(data.read().decode('utf-8'))
         return status, headers, data
 
