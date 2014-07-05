@@ -6,11 +6,11 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import doctest
 import unittest
 
 from couchdb import multipart
 from couchdb.util import StringIO
+from couchdb.tests import testutil
 
 class ReadMultipartTestCase(unittest.TestCase):
 
@@ -211,7 +211,7 @@ Content-Type: application/json;charset=utf-8
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(multipart))
+    suite.addTest(testutil.doctest_suite(multipart))
     suite.addTest(unittest.makeSuite(ReadMultipartTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WriteMultipartTestCase, 'test'))
     return suite

@@ -6,7 +6,6 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import doctest
 import unittest
 
 from couchdb import design
@@ -52,7 +51,7 @@ class DesignTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(DesignTestCase))
-    suite.addTest(doctest.DocTestSuite(design))
+    suite.addTest(testutil.doctest_suite(design))
     return suite
 
 

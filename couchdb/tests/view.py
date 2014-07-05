@@ -6,11 +6,11 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import doctest
 import unittest
 
 from couchdb.util import StringIO
 from couchdb import view
+from couchdb.tests import testutil
 
 
 class ViewServerTestCase(unittest.TestCase):
@@ -105,7 +105,7 @@ class ViewServerTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(view))
+    suite.addTest(testutil.doctest_suite(view))
     suite.addTest(unittest.makeSuite(ViewServerTestCase, 'test'))
     return suite
 

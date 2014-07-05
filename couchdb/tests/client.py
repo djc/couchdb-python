@@ -7,7 +7,6 @@
 # you should have received as part of this distribution.
 
 from datetime import datetime
-import doctest
 import os
 import os.path
 import shutil
@@ -789,7 +788,6 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_nullkeys(self):
         self.assertEqual(len(list(self.db.iterview('test/nulls', 10))), self.num_docs)
 
-
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(ServerTestCase, 'test'))
@@ -798,7 +796,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ShowListTestCase, 'test'))
     suite.addTest(unittest.makeSuite(UpdateHandlerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ViewIterationTestCase, 'test'))
-    suite.addTest(doctest.DocTestSuite(client))
+    suite.addTest(testutil.doctest_suite(client))
     return suite
 
 

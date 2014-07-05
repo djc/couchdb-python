@@ -6,7 +6,6 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
-import doctest
 import socket
 import time
 import unittest
@@ -79,7 +78,7 @@ class CacheTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(http))
+    suite.addTest(testutil.doctest_suite(http))
     suite.addTest(unittest.makeSuite(SessionTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ResponseBodyTestCase, 'test'))
     suite.addTest(unittest.makeSuite(CacheTestCase, 'test'))

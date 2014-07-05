@@ -6,9 +6,24 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+import doctest
 import random
+import re
 import sys
+
 from couchdb import client
+
+class Py23DocChecker(doctest.OutputChecker):
+    def check_output(self, want, got, optionflags):
+        if sys.version_info[0] > 2:
+            want = re.sub("u'(.*?)'", "'\\1'", want)
+            want = re.sub('u"(.*?)"', '"\\1"', want)
+            want = want.replace('ResourceConflict:',
+                                'couchdb.http.ResourceConflict:')
+        return doctest.OutputChecker.check_output(self, want, got, optionflags)
+
+def doctest_suite(mod):
+    return doctest.DocTestSuite(mod, checker=Py23DocChecker())
 
 class TempDatabaseMixin(object):
 

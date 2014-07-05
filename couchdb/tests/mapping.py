@@ -7,7 +7,6 @@
 # you should have received as part of this distribution.
 
 from decimal import Decimal
-import doctest
 import unittest
 
 from couchdb import design, mapping
@@ -253,7 +252,7 @@ class WrappingTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(mapping))
+    suite.addTest(testutil.doctest_suite(mapping))
     suite.addTest(unittest.makeSuite(DocumentTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ListFieldTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WrappingTestCase, 'test'))
