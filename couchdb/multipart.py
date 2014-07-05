@@ -215,7 +215,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     >>> envelope = write_multipart(buf, boundary='==123456789==')
     >>> envelope.add('text/plain', 'Just testing')
     >>> envelope.close()
-    >>> print(buf.getvalue().replace(b'\r\n', b'\n'))
+    >>> print(buf.getvalue().replace(b'\r\n', b'\n').decode('utf-8'))
     Content-Type: multipart/mixed; boundary="==123456789=="
     <BLANKLINE>
     --==123456789==
@@ -240,7 +240,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     >>> part.add('text/plain', 'Just testing')
     >>> part.close()
     >>> envelope.close()
-    >>> print(buf.getvalue().replace(b'\r\n', b'\n')) #:doctest +ELLIPSIS
+    >>> print(buf.getvalue().replace(b'\r\n', b'\n').decode('utf-8')) #:doctest +ELLIPSIS
     Content-Type: multipart/mixed; boundary="==123456789=="
     <BLANKLINE>
     --==123456789==
