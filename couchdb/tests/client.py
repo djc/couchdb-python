@@ -597,6 +597,11 @@ class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         view = client.PermanentView(self.db.resource('_all_docs').url, '_all_docs')
         self.assertEqual(len(list(view)), 1)
 
+    def test_update_seq(self):
+        self.db['foo'] = {}
+        rows = self.db.view('_all_docs', update_seq=True)
+        self.assertEqual(rows.update_seq, 1)
+
     def test_tmpview_repr(self):
         mapfunc = "function(doc) {emit(null, null);}"
         view = client.TemporaryView(self.db.resource('_temp_view'), mapfunc)
