@@ -533,7 +533,7 @@ class Database(object):
         >>> doc2 = db['johndoe']
         >>> doc2['age'] = 42
         >>> db['johndoe'] = doc2
-        >>> db.delete(doc)
+        >>> db.delete(doc) # doctest: +IGNORE_EXCEPTION_DETAIL
         Traceback (most recent call last):
           ...
         ResourceConflict: (u'conflict', u'Document update conflict.')
