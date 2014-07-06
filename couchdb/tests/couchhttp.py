@@ -32,21 +32,19 @@ class ResponseBodyTestCase(unittest.TestCase):
             def isclosed(self):
                 return len(self.getvalue()) == self.tell()
 
-        class Counter(object):
+        class ConnPool(object):
             def __init__(self):
                 self.value = 0
-
-            def __call__(self):
+            def release(self, url, conn):
                 self.value += 1
 
-        counter = Counter()
-
-        response = http.ResponseBody(TestStream(b'foobar'), counter)
+        conn_pool = ConnPool()
+        response = http.ResponseBody(TestStream(b'foobar'), conn_pool, 'a', 'b')
 
         response.read(10) # read more than stream has. close() is called
         response.read() # steam ended. another close() call
 
-        self.assertEqual(counter.value, 1)
+        self.assertEqual(conn_pool.value, 1)
 
     def test_double_iteration_over_same_response_body(self):
         class TestHttpResp(object):
@@ -60,7 +58,7 @@ class ResponseBodyTestCase(unittest.TestCase):
         data = b'foobarbaz'
         data = b'\n'.join([hex(len(data))[2:].encode('utf-8'), data])
         response = http.ResponseBody(TestHttpResp(util.StringIO(data)),
-                                     lambda *a, **k: None)
+                                     None, None, None)
         self.assertEqual(list(response.iterchunks()), [b'foobarbaz'])
         self.assertEqual(list(response.iterchunks()), [])
 

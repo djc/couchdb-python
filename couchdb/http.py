@@ -171,9 +171,11 @@ CHUNK_SIZE = 1024 * 8
 
 class ResponseBody(object):
 
-    def __init__(self, resp, callback):
+    def __init__(self, resp, conn_pool, url, conn):
         self.resp = resp
-        self.callback = callback
+        self.conn_pool = conn_pool
+        self.url = url
+        self.conn = conn
 
     def read(self, size=None):
         bytes = self.resp.read(size)
@@ -181,12 +183,15 @@ class ResponseBody(object):
             self.close()
         return bytes
 
+    def _release_conn(self):
+        self.conn_pool.release(self.url, self.conn)
+        self.conn_pool, self.url, self.conn = None, None, None
+
     def close(self):
         while not self.resp.isclosed():
             self.resp.read(CHUNK_SIZE)
-        if self.callback:
-            self.callback()
-            self.callback = None
+        if self.conn:
+            self._release_conn()
 
     def iterchunks(self):
         assert self.resp.msg.get('transfer-encoding') == 'chunked'
@@ -197,7 +202,7 @@ class ResponseBody(object):
             if not chunksz:
                 self.resp.fp.read(2) #crlf
                 self.resp.close()
-                self.callback()
+                self._release_conn()
                 break
             chunk = self.resp.fp.read(chunksz)
             for ln in chunk.splitlines():
@@ -381,8 +386,7 @@ class Session(object):
         # For large or chunked response bodies, do not buffer the full body,
         # and instead return a minimal file-like object
         else:
-            data = ResponseBody(resp,
-                                lambda: self.connection_pool.release(url, conn))
+            data = ResponseBody(resp, self.connection_pool, url, conn)
             streamed = True
 
         # Handle errors
