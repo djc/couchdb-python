@@ -39,7 +39,9 @@ class ResponseBodyTestCase(unittest.TestCase):
                 self.value += 1
 
         conn_pool = ConnPool()
-        response = http.ResponseBody(TestStream(b'foobar'), conn_pool, 'a', 'b')
+        stream = TestStream(b'foobar')
+        stream.msg = {}
+        response = http.ResponseBody(stream, conn_pool, 'a', 'b')
 
         response.read(10) # read more than stream has. close() is called
         response.read() # steam ended. another close() call
@@ -51,7 +53,8 @@ class ResponseBodyTestCase(unittest.TestCase):
             msg = {'transfer-encoding': 'chunked'}
             def __init__(self, fp):
                 self.fp = fp
-
+            def close(self):
+                pass
             def isclosed(self):
                 return len(self.fp.getvalue()) == self.fp.tell()
 

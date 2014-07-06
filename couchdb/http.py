@@ -173,9 +173,27 @@ class ResponseBody(object):
 
     def __init__(self, resp, conn_pool, url, conn):
         self.resp = resp
+        self.chunked = self.resp.msg.get('transfer-encoding') == 'chunked'
         self.conn_pool = conn_pool
         self.url = url
         self.conn = conn
+
+    def __del__(self):
+        if not self.chunked:
+            self.close()
+        else:
+            self.resp.close()
+            if self.conn:
+                # Since chunked responses can be infinite (i.e. for
+                # feed=continuous), and we want to avoid leaking sockets
+                # (even if just to prevent ResourceWarnings when running
+                # the test suite on Python 3), we'll close this connection
+                # eagerly. We can't get it into the clean state required to
+                # put it back into the ConnectionPool (since we don't know
+                # when it ends and we can only do blocking reads). Finding
+                # out whether it might in fact end would be relatively onerous
+                # and require a layering violation.
+                self.conn.close()
 
     def read(self, size=None):
         bytes = self.resp.read(size)
@@ -194,7 +212,7 @@ class ResponseBody(object):
             self._release_conn()
 
     def iterchunks(self):
-        assert self.resp.msg.get('transfer-encoding') == 'chunked'
+        assert self.chunked
         while True:
             if self.resp.isclosed():
                 break
