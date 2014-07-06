@@ -483,6 +483,12 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         doc = {'now': datetime.now()}
         self.assertRaises(TypeError, self.db.save, doc)
 
+    def test_security(self):
+        security = self.db.security
+        self.assertEqual(security, {})
+        security['members'] = {'names': ['test'], 'roles': []}
+        self.db.security = security
+
 
 class ViewTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
