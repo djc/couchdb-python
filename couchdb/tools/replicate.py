@@ -81,16 +81,21 @@ def main():
 
     if '*' in tpath:
         raise parser.error('invalid target path: must be single db or empty')
-    elif '*' in spath and tpath:
-        raise parser.error('target path must be empty with multiple sources')
 
     all = sorted(i for i in source if i[0] != '_') # Skip reserved names.
     if not spath:
         raise parser.error('source database must be specified')
 
-    databases = [(i, i) for i in all if fnmatch.fnmatchcase(i, spath)]
-    if not databases:
+    sources = [i for i in all if fnmatch.fnmatchcase(i, spath)]
+    if not sources:
         raise parser.error("no source databases match glob '%s'" % spath)
+
+    if len(sources) > 1 and tpath:
+        raise parser.error('target path must be empty with multiple sources')
+    elif len(sources) == 1:
+        databases = [(sources[0], tpath)]
+    else:
+        databases = [(i, i) for i in sources]
 
     # do the actual replication
 
