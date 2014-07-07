@@ -21,7 +21,6 @@ from couchdb import http, client, util
 import optparse
 import sys
 import time
-import urlparse
 import fnmatch
 
 def findpath(parser, s):
@@ -32,7 +31,7 @@ def findpath(parser, s):
     if not s.startswith('http'):
         return client.DEFAULT_BASE_URL, s
 
-    bits = urlparse.urlparse(s)
+    bits = util.urlparse(s)
     res = http.Resource('%s://%s/' % (bits.scheme, bits.netloc), None)
     parts = bits.path.split('/')[1:]
     if parts and not parts[-1]:
@@ -98,12 +97,12 @@ def main():
     for sdb, tdb in databases:
 
         start = time.time()
-        print sdb, '->', tdb,
+        print(sdb, '->', tdb)
         sys.stdout.flush()
 
         if tdb not in target:
             target.create(tdb)
-            print "created",
+            sys.stdout.write("created")
             sys.stdout.flush()
 
         sdb = '%s%s' % (sbase, util.urlquote(sdb, ''))
@@ -111,12 +110,12 @@ def main():
             target.replicate(sdb, tdb, continuous=options.continuous)
         else:
             target.replicate(sdb, tdb)
-        print '%.1fs' % (time.time() - start)
+        print('%.1fs' % (time.time() - start))
         sys.stdout.flush()
 
     if options.compact:
         for (sdb, tdb) in databases:
-            print 'compact', tdb
+            print('compact', tdb)
             target[tdb].compact()
 
 if __name__ == '__main__':
