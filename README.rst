@@ -1,7 +1,8 @@
 CouchDB-Python Library
 ======================
 
-A Python library for working with CouchDB.
+A Python library for working with CouchDB. `Downloads`_ are available via `PyPI`_.
+Our `documentation`_ is also hosted there. We have a `mailing list`_.
 
 This package currently encompasses four primary modules:
 
@@ -21,8 +22,6 @@ Prerequisites:
 * simplejson (or Python >= 2.6, which comes with a simplejson-based JSON module in the standard library)
 * Python 2.6 or later
 * CouchDB 0.10.x or later (0.9.x should probably work, as well)
-
-`Downloads`_ are available via `PyPI`_. Our `documentation`_ is also hosted there. We have a `mailing list`_.
 
 .. _Downloads: http://pypi.python.org/pypi/CouchDB
 .. _PyPI: http://pypi.python.org/
