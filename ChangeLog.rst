@@ -1,3 +1,12 @@
+Version 0.10 (2014-07-15)
+-------------------------
+
+ * Now compatible with Python 2.7, 3.3 and 3.4
+ * Added batch processing for the `couchdb-dump` tool
+ * A very basic API to access the `_security` object
+ * A way to access the `update_seq` value on view results
+
+
 Version 0.9 (2013-04-25)
 ------------------------
 
