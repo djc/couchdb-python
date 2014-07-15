@@ -5,7 +5,6 @@ A list of steps to perform when releasing.
 
 * Run tests against latest CouchDB release (ideally also trunk)
 * Run tests on different Python versions
-* Run setup.py build_doc and fix any errors that come up
 * Update ChangeLog and add a release date, then commit
 * Merge changes from default to stable
 * Edit setup.cfg (in the tag), remove the egg_info? and commit
