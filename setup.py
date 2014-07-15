@@ -140,7 +140,7 @@ interface for the CouchDB server.""",
     author = 'Christopher Lenz',
     author_email = 'cmlenz@gmx.de',
     license = 'BSD',
-    url = 'http://code.google.com/p/couchdb-python/',
+    url = 'https://github.com/djc/couchdb-python/',
 
     classifiers = [
         'Development Status :: 4 - Beta',
