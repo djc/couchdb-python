@@ -1,7 +1,0 @@
-syntax: glob
-**.pyc
-build/*
-dist/*
-*.egg*
-doc/api/*
-doc/index.html
