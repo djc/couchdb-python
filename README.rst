@@ -22,8 +22,9 @@ Prerequisites:
 * Python 2.6 or later
 * CouchDB 0.10.x or later (0.9.x should probably work, as well)
 
-`Downloads`_ are available via `PyPI`_. Our `documentation`_ is also hosted there.
+`Downloads`_ are available via `PyPI`_. Our `documentation`_ is also hosted there. We have a `mailing list`_.
 
 .. _Downloads: http://pypi.python.org/pypi/CouchDB
 .. _PyPI: http://pypi.python.org/
 .. _documentation: http://packages.python.org/CouchDB/
+.. _mailing list: http://groups.google.com/group/couchdb-python
