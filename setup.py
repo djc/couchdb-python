@@ -55,6 +55,8 @@ setup(
 interface for the CouchDB server.""",
     author = 'Christopher Lenz',
     author_email = 'cmlenz@gmx.de',
+    maintainer = 'Dirkjan Ochtman',
+    maintainer_email = 'dirkjan@ochtman.nl',
     license = 'BSD',
     url = 'https://github.com/djc/couchdb-python/',
     classifiers = [
