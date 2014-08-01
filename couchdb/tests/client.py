@@ -10,6 +10,7 @@ from datetime import datetime
 import os
 import os.path
 import shutil
+import sys
 import time
 import tempfile
 import threading
@@ -115,6 +116,20 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         assert type(ls) == list
         ls = self.server.uuids(count=10)
         assert type(ls) == list and len(ls) == 10
+
+    def test_235_unicode_server(self):
+
+        url = client.DEFAULT_BASE_URL
+        if not isinstance(url, util.utype):
+            url = url.decode('utf-8')
+
+        server = client.Server(url)
+        dbname = 'couchdb-python/test-235-unicode-server'
+        db = server.create(dbname)
+        try:
+            db.update([{'foo': u'\ua000'}])
+        finally:
+            server.delete(dbname)
 
 
 class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):

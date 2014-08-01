@@ -520,6 +520,8 @@ class ConnectionPool(object):
 class Resource(object):
 
     def __init__(self, url, session, headers=None):
+        if sys.version_info[0] == 2 and isinstance(url, util.utype):
+            url = url.encode('utf-8') # kind of an ugly hack for issue 235
         self.url, self.credentials = extract_credentials(url)
         if session is None:
             session = Session()
