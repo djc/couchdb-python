@@ -42,54 +42,6 @@ __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
 __docformat__ = 'restructuredtext en'
 
 
-if sys.version < '2.6':
-
-    class TimeoutMixin:
-        """Helper mixin to add timeout before socket connection"""
-
-        # taken from original python2.5 httplib source code with timeout setting added
-        def connect(self):
-            """Connect to the host and port specified in __init__."""
-            msg = "getaddrinfo returns an empty list"
-            for res in socket.getaddrinfo(self.host, self.port, 0,
-                                          socket.SOCK_STREAM):
-                af, socktype, proto, canonname, sa = res
-                try:
-                    self.sock = socket.socket(af, socktype, proto)
-                    if self.debuglevel > 0:
-                        print("connect: (%s, %s)" % (self.host, self.port))
-
-                    # setting socket timeout
-                    self.sock.settimeout(self.timeout)
-
-                    self.sock.connect(sa)
-                except socket.error as msg:
-                    if self.debuglevel > 0:
-                        print('connect fail:', self.host, self.port)
-                    if self.sock:
-                        self.sock.close()
-                    self.sock = None
-                    continue
-                break
-            if not self.sock:
-                raise socket.error(msg)
-
-    _HTTPConnection = HTTPConnection
-    _HTTPSConnection = HTTPSConnection
-
-    class HTTPConnection(TimeoutMixin, _HTTPConnection):
-        def __init__(self, *a, **k):
-            timeout = k.pop('timeout', None)
-            _HTTPConnection.__init__(self, *a, **k)
-            self.timeout = timeout
-
-    class HTTPSConnection(TimeoutMixin, _HTTPSConnection):
-        def __init__(self, *a, **k):
-            timeout = k.pop('timeout', None)
-            _HTTPSConnection.__init__(self, *a, **k)
-            self.timeout = timeout
-
-
 if sys.version < '2.7':
 
     from httplib import CannotSendHeader, _CS_REQ_STARTED, _CS_REQ_SENT
