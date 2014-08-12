@@ -82,6 +82,16 @@ class CacheTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         cache.remove(url)
         cache.remove(url)
 
+    def test_cache_clean(self):
+        cache = http.Cache()
+        cache.put('foo', (None, {'Date': 'Sat, 14 Feb 2009 02:31:28 -0000'}, None))
+        cache.put('bar', (None, {'Date': 'Sat, 14 Feb 2009 02:31:29 -0000'}, None))
+        cache.put('baz', (None, {'Date': 'Sat, 14 Feb 2009 02:31:30 -0000'}, None))
+        cache.keep_size = 1
+        cache._clean()
+        self.assertEqual(len(cache.by_url), 1)
+        self.assertTrue('baz' in cache.by_url)
+
 
 def suite():
     suite = unittest.TestSuite()

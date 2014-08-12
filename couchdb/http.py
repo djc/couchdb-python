@@ -464,7 +464,7 @@ class Cache(object):
         self.by_url.pop(url, None)
 
     def _clean(self):
-        ls = sorted(self.by_url.iteritems(), key=cache_sort)
+        ls = sorted(self.by_url.items(), key=cache_sort)
         self.by_url = dict(ls[-self.keep_size:])
 
 
