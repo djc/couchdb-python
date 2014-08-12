@@ -319,8 +319,9 @@ class Session(object):
                     except StopIteration:
                         # No more retries, raise last socket error.
                         raise e
-                    time.sleep(delay)
-                    conn.close()
+                    finally:
+                        time.sleep(delay)
+                        conn.close()
 
         def _try_request():
             try:
