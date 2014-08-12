@@ -315,7 +315,7 @@ class Session(object):
                     if ecode not in self.retryable_errors:
                         raise
                     try:
-                        delay = retries.next()
+                        delay = next(retries)
                     except StopIteration:
                         # No more retries, raise last socket error.
                         raise e

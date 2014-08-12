@@ -25,6 +25,12 @@ class SessionTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertRaises(socket.timeout, body.read)
         self.assertTrue(time.time() - start < timeout * 1.3)
 
+    def test_timeout_retry(self):
+        dbname, db = self.temp_db()
+        timeout = 1e-12
+        session = http.Session(timeout=timeout, retryable_errors=["timed out"])
+        self.assertRaises(socket.timeout, session.request, 'GET', db.resource.url)
+
 
 class ResponseBodyTestCase(unittest.TestCase):
     def test_close(self):
