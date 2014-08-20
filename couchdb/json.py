@@ -10,7 +10,7 @@
 and encoding JSON data.
 
 This module currently supports the following JSON modules:
- - ``simplejson``: http://code.google.com/p/simplejson/
+ - ``simplejson``: https://github.com/simplejson/simplejson
  - ``cjson``: http://pypi.python.org/pypi/python-cjson
  - ``json``: This is the version of ``simplejson`` that is bundled with the
    Python standard library since version 2.6

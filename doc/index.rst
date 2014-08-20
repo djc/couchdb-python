@@ -23,7 +23,7 @@ views written in Python.
 There may also be more information on the `project website`_.
 
 .. _couchdb: http://couchdb.org/
-.. _project website: http://code.google.com/p/couchdb-python
+.. _project website: https://github.com/djc/couchdb-python
 .. _views written in Python: views
 
 Documentation
