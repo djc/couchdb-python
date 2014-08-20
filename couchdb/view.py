@@ -175,7 +175,7 @@ Options:
   --debug               enable debug logging; requires --log-file to be
                         specified
 
-Report bugs via the web at <http://code.google.com/p/couchdb-python>.
+Report bugs via the web at <https://github.com/djc/couchdb-python/issues>.
 """
 
 
