@@ -786,6 +786,11 @@ class ViewIterationTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs))), self.num_docs)
         self.assertEqual(len(list(self.db.iterview('test/nums', self.num_docs + 1))), self.num_docs)
 
+    def test_batchsizes_with_skip(self):
+        self.assertEqual(
+            len(list(self.db.iterview('test/nums', self.num_docs / 10, skip=self.num_docs / 2))),
+            self.num_docs / 2)
+
     def test_limit(self):
         # limit=0 doesn't make sense for iterview.
         self.assertRaises(ValueError, lambda: next(self.db.iterview('test/nums', 10, limit=0)))
