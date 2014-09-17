@@ -886,7 +886,8 @@ class Database(object):
                 break
 
             # Update options with start keys for next loop.
-            options.update(startkey=rows[-1]['key'], startkey_docid=rows[-1]['id'], skip=0)
+            options.update(startkey=rows[-1]['key'],
+                           startkey_docid=rows[-1]['id'], skip=0)
 
     def show(self, name, docid=None, **options):
         """Call a 'show' function.
