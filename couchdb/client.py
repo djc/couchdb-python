@@ -867,19 +867,24 @@ class Database(object):
         if limit is not None and limit <= 0:
             raise ValueError('limit must be 1 or more')
         while True:
+
             loop_limit = min(limit or batch, batch)
             # Get rows in batches, with one extra for start of next batch.
             options['limit'] = loop_limit + 1
             rows = list(self.view(name, wrapper, **options))
+
             # Yield rows from this batch.
             for row in itertools.islice(rows, loop_limit):
                 yield row
+
             # Decrement limit counter.
             if limit is not None:
                 limit -= min(len(rows), batch)
+
             # Check if there is nothing else to yield.
             if len(rows) <= batch or (limit is not None and limit == 0):
                 break
+
             # Update options with start keys for next loop.
             options.update(startkey=rows[-1]['key'], startkey_docid=rows[-1]['id'], skip=0)
 
