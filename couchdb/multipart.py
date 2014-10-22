@@ -11,11 +11,14 @@
 from base64 import b64encode
 from cgi import parse_header
 from email import header
+
 try:
     from hashlib import md5
 except ImportError:
     from md5 import new as md5
+
 import sys
+import uuid
 
 from couchdb import util
 
@@ -120,7 +123,7 @@ class MultipartWriter(object):
     def __init__(self, fileobj, headers=None, subtype='mixed', boundary=None):
         self.fileobj = fileobj
         if boundary is None:
-            boundary = self._make_boundary()
+            boundary = '==' + uuid.uuid4().hex + '=='
         self.boundary = boundary
         if headers is None:
             headers = {}
@@ -172,15 +175,6 @@ class MultipartWriter(object):
         self.fileobj.write(self.boundary.encode('ascii'))
         self.fileobj.write(b'--')
         self.fileobj.write(CRLF)
-
-    def _make_boundary(self):
-        try:
-            from uuid import uuid4
-            return '==' + uuid4().hex + '=='
-        except ImportError:
-            from random import randrange
-            nonce = ('%%0%dd' % len(repr(sys.maxsize - 1))) % token
-            return '===============' + nonce + '=='
 
     def _write_headers(self, headers):
         if headers:
