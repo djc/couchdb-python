@@ -10,7 +10,6 @@ from datetime import datetime
 import os
 import os.path
 import shutil
-import sys
 import time
 import tempfile
 import threading

@@ -58,7 +58,7 @@ True
 >>> del server['python-tests']
 """
 
-import copy, sys
+import copy
 
 from calendar import timegm
 from datetime import date, datetime, time

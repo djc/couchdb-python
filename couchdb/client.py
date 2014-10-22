@@ -29,7 +29,6 @@ import os
 from types import FunctionType
 from inspect import getsource
 from textwrap import dedent
-import re
 import warnings
 
 from couchdb import http, json, util

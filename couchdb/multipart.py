@@ -17,7 +17,6 @@ try:
 except ImportError:
     from md5 import new as md5
 
-import sys
 import uuid
 
 from couchdb import util
