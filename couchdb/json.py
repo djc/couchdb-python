@@ -125,7 +125,12 @@ def _initialize():
     def _init_stdlib():
         global _decode, _encode
         json = __import__('json', {}, {})
-        _decode = lambda string, loads=json.loads: loads(string)
+
+        def _decode(string_, loads=json.loads):
+            if isinstance(string_, util.btype):
+                string_ = string_.decode("utf-8")
+            return loads(string_)
+
         _encode = lambda obj, dumps=json.dumps: \
             dumps(obj, allow_nan=False, ensure_ascii=False)
 
