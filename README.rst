@@ -1,6 +1,9 @@
 CouchDB-Python Library
 ======================
 
+.. image:: https://travis-ci.org/djc/couchdb-python.svg
+    :target: https://travis-ci.org/djc/couchdb-python
+
 A Python library for working with CouchDB. `Downloads`_ are available via `PyPI`_.
 Our `documentation`_ is also hosted there. We have a `mailing list`_.
 
