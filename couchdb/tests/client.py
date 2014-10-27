@@ -130,6 +130,12 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         finally:
             server.delete(dbname)
 
+    def test_basic_auth(self):
+        url = "http://root:password@localhost:5984/"
+        server = client.Server(url)
+        dbname = 'couchdb-python/test_basic_auth'
+        self.assertRaises(http.Unauthorized, server.create, dbname)
+
 
 class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 

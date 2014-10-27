@@ -563,13 +563,13 @@ def extract_credentials(url):
 def basic_auth(credentials):
     """Generates authorization header value for given credentials.
     >>> basic_auth(('root', 'relax'))
-    u'Basic cm9vdDpyZWxheA=='
+    b'Basic cm9vdDpyZWxheA=='
     >>> basic_auth(None)
     >>> basic_auth(())
     """
     if credentials:
         token = b64encode(('%s:%s' % credentials).encode('latin1'))
-        return 'Basic %s' % (token.strip().decode('latin1'))
+        return ('Basic %s' % token.strip().decode('latin1')).encode('ascii')
 
 
 def quote(string, safe=''):
