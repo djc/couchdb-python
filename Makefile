@@ -1,6 +1,7 @@
 .PHONY: test doc upload-doc
 
-test: test2 test3
+test:
+	tox
 
 test2:
 	PYTHONPATH=. python -m couchdb.tests
