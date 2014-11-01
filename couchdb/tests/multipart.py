@@ -195,6 +195,25 @@ Iñtërnâtiônàlizætiøn
         envelope = multipart.write_multipart(buf, boundary='==123456789==')
         envelope.add('application/json',
                      '{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09",'
+                     u' "_id": "文档"}',
+                     headers={'Content-ID': u"文档"})
+        self.assertEqual(u'''Content-Type: multipart/mixed; boundary="==123456789=="
+
+--==123456789==
+Content-ID: =?utf-8?b?5paH5qGj?=
+Content-Length: 63
+Content-MD5: Cpw3iC3xPua8YzKeWLzwvw==
+Content-Type: application/json;charset=utf-8
+
+{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09", "_id": "文档"}
+'''.encode('utf-8'), buf.getvalue().replace(b'\r\n', b'\n'))
+
+    def test_unicode_headers_charset(self):
+        # http://code.google.com/p/couchdb-python/issues/detail?id=179
+        buf = StringIO()
+        envelope = multipart.write_multipart(buf, boundary='==123456789==')
+        envelope.add('application/json;charset=utf-8',
+                     '{"_rev": "3-bc27b6930ca514527d8954c7c43e6a09",'
                      ' "_id": "文档"}',
                      headers={'Content-ID': u"文档"})
         self.assertEqual(u'''Content-Type: multipart/mixed; boundary="==123456789=="

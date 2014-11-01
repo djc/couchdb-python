@@ -152,11 +152,6 @@ class MultipartWriter(object):
             else:
                 content = content.encode('utf-8')
                 mimetype = mimetype + ';charset=utf-8'
-        elif 'charset' not in params:
-            try:
-                content.decode('utf-8')
-            finally:
-                mimetype = mimetype + ';charset=utf-8'
 
         headers['Content-Type'] = mimetype
         if content:
@@ -206,7 +201,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
 
     >>> buf = StringIO()
     >>> envelope = write_multipart(buf, boundary='==123456789==')
-    >>> envelope.add('text/plain', 'Just testing')
+    >>> envelope.add('text/plain', b'Just testing')
     >>> envelope.close()
     >>> print(buf.getvalue().replace(b'\r\n', b'\n').decode('utf-8'))
     Content-Type: multipart/mixed; boundary="==123456789=="
@@ -214,7 +209,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     --==123456789==
     Content-Length: 12
     Content-MD5: nHmX4a6el41B06x2uCpglQ==
-    Content-Type: text/plain;charset=utf-8
+    Content-Type: text/plain
     <BLANKLINE>
     Just testing
     --==123456789==--
@@ -230,7 +225,7 @@ def write_multipart(fileobj, subtype='mixed', boundary=None):
     >>> buf = StringIO()
     >>> envelope = write_multipart(buf, boundary='==123456789==')
     >>> part = envelope.open(boundary='==abcdefghi==')
-    >>> part.add('text/plain', 'Just testing')
+    >>> part.add('text/plain', u'Just testing')
     >>> part.close()
     >>> envelope.close()
     >>> print(buf.getvalue().replace(b'\r\n', b'\n').decode('utf-8')) #:doctest +ELLIPSIS
