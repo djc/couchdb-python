@@ -22,7 +22,7 @@ from couchdb.multipart import write_multipart
 
 BULK_SIZE = 1000
 
-def dump_docs(envelope, docs):
+def dump_docs(envelope, db, docs):
     for doc in docs:
 
         print >> sys.stderr, 'Dumping document %r' % doc.id
@@ -35,14 +35,19 @@ def dump_docs(envelope, docs):
                 'ETag': '"%s"' % doc.rev
             })
             parts.add('application/json', jsondoc)
-
             for name, info in attachments.items():
+
                 content_type = info.get('content_type')
                 if content_type is None: # CouchDB < 0.8
                     content_type = info.get('content-type')
-                parts.add(content_type, b64decode(info['data']), {
-                    'Content-ID': name
-                })
+
+                if 'data' not in info:
+                    data = db.get_attachment(doc, name).read()
+                else:
+                    data = b64decode(info['data'])
+
+                parts.add(content_type, data, {'Content-ID': name})
+
             parts.close()
 
         else:
@@ -62,7 +67,8 @@ def dump_db(dburl, username=None, password=None, boundary=None,
     start, num = 0, db.info()['doc_count']
     while start < num:
         opts = {'limit': bulk_size, 'skip': start, 'include_docs': True}
-        dump_docs(envelope, [row.doc for row in db.view('_all_docs', **opts)])
+        docs = (row.doc for row in db.view('_all_docs', **opts))
+        dump_docs(envelope, db, docs)
         start += bulk_size
 
     envelope.close()
