@@ -43,7 +43,7 @@ else:
 
 setup(
     name = 'CouchDB',
-    version = '0.10.1',
+    version = '1.0',
     description = 'Python library for working with CouchDB',
     long_description = \
 """This is a Python library for CouchDB. It provides a convenient high level
