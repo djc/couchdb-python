@@ -1,3 +1,11 @@
+Version 1.0 (2014-11-16)
+------------------------
+
+ * Many smaller Python 3 compatibility issues have been fixed
+ * Improve handling of binary attachments in the `couchdb-dump` tool
+ * Added testing via tox and support for Travis CI
+
+
 Version 0.10 (2014-07-15)
 -------------------------
 
