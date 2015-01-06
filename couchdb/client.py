@@ -271,6 +271,12 @@ class Database(object):
     2
 
     >>> del server['python-tests']
+
+    If you need to connect to a database with an unverified or self-signed SSL
+    certificate, you can re-initialize your ConnectionPool as follows (only
+    applicable for Python 2.7.9+):
+
+    >>> db.resource.session.disable_ssl_verification()
     """
 
     def __init__(self, url, name=None, session=None):
