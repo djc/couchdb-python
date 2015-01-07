@@ -442,9 +442,10 @@ class InsecureHTTPSConnection(HTTPSConnection):
 
     See: https://docs.python.org/2/library/httplib.html#httplib.HTTPSConnection
     """
-    def __init__(self, *a, **k):
-        k['context'] = ssl._create_unverified_context()
-        HTTPSConnection.__init__(self, *a, **k)
+    if sys.version_info >= (2,7,9):
+        def __init__(self, *a, **k):
+            k['context'] = ssl._create_unverified_context()
+            HTTPSConnection.__init__(self, *a, **k)
 
 
 class ConnectionPool(object):
