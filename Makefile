@@ -14,3 +14,7 @@ doc:
 
 upload-doc:
 	python setup.py upload_sphinx
+
+coverage:
+	PYTHONPATH=. coverage run couchdb/tests/__main__.py
+	coverage report

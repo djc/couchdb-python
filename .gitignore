@@ -4,3 +4,4 @@ build/*
 dist/*
 doc/build/*
 .tox
+.coverage

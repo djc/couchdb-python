@@ -1,0 +1,5 @@
+[run]
+source = couchdb
+
+[report]
+omit = couchdb/tests/*
