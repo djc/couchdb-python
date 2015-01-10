@@ -217,24 +217,23 @@ class Session(object):
         self.cache = cache
         self.max_redirects = max_redirects
         self.perm_redirects = {}
+
         self._disable_ssl_verification = False
         self._timeout = timeout
         self.connection_pool = ConnectionPool(
             self._timeout,
             disable_ssl_verification=self._disable_ssl_verification)
+
         self.retry_delays = list(retry_delays) # We don't want this changing on us.
         self.retryable_errors = set(retryable_errors)
 
     def disable_ssl_verification(self):
-        """
-        Disable verification of SSL certificates and re-initialize the ConnectionPool.
-        Only applicable on Python 2.7.9+ as previous versions of Python don't verify
-        SSL certs.
-
-        :return:
-        """
+        """Disable verification of SSL certificates and re-initialize the
+        ConnectionPool. Only applicable on Python 2.7.9+ as previous versions
+        of Python don't verify SSL certs."""
         self._disable_ssl_verification = True
-        self.connection_pool = ConnectionPool(self._timeout, disable_ssl_verification=self._disable_ssl_verification)
+        self.connection_pool = ConnectionPool(self._timeout,
+            disable_ssl_verification=self._disable_ssl_verification)
 
     def request(self, method, url, body=None, headers=None, credentials=None,
                 num_redirects=0):
@@ -437,12 +436,10 @@ class Cache(object):
 
 
 class InsecureHTTPSConnection(HTTPSConnection):
-    """ Wrapper class to create an HTTPSConnection without SSl verification (the default behavior in
-    Python < 2.7.9).
-
-    See: https://docs.python.org/2/library/httplib.html#httplib.HTTPSConnection
-    """
-    if sys.version_info >= (2,7,9):
+    """Wrapper class to create an HTTPSConnection without SSL verification
+    (the default behavior in Python < 2.7.9). See:
+    https://docs.python.org/2/library/httplib.html#httplib.HTTPSConnection"""
+    if sys.version_info >= (2, 7, 9):
         def __init__(self, *a, **k):
             k['context'] = ssl._create_unverified_context()
             HTTPSConnection.__init__(self, *a, **k)
