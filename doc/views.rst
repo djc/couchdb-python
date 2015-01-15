@@ -13,7 +13,7 @@ After restarting CouchDB, the Futon view editor should show ``python`` in
 the language pull-down menu. Here's some sample view code to get you started::
 
     def fun(doc):
-        if doc.get('date'):
+        if 'date' in doc:
             yield doc['date'], doc
 
 Note that the ``map`` function uses the Python ``yield`` keyword to emit
