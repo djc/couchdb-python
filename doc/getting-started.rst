@@ -9,7 +9,7 @@ Starting off::
     >>> couch = couchdb.Server()
 
 This gets you a Server object, representing a CouchDB server. By default, it
-assumes CouchDB is running on localhost:5894. If your CouchDB server is
+assumes CouchDB is running on localhost:5984. If your CouchDB server is
 running elsewhere, set it up like this:
 
     >>> couch = couchdb.Server('http://example.com:5984/')
