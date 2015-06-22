@@ -43,7 +43,9 @@ DEFAULT_BASE_URL = os.environ.get('COUCHDB_URL', 'http://localhost:5984/')
 class Server(object):
     """Representation of a CouchDB server.
 
-    >>> server = Server()
+    >>> server = Server() # connects to the local_server
+    >>> remote_server = Server('http://example.com:5984/')
+    >>> secure_remote_server = Server('https://username:password@example.com:5984/')
 
     This class behaves like a dictionary of databases. For example, to get a
     list of database names on the server, you can simply iterate over the
