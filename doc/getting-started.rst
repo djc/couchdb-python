@@ -14,7 +14,9 @@ running elsewhere, set it up like this:
 
     >>> couch = couchdb.Server('http://example.com:5984/')
 
-You can also pass authentication credentials or use SSL: https://username:password@host:port/
+You can also pass authentication credentials and/or use SSL:
+
+    >>> couch = couchdb.Server('https://username:password@host:port/')
 
 You can create a new database from Python, or use an existing database:
 
