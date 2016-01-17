@@ -40,7 +40,7 @@ def findpath(parser, s):
     cut = None
     for i in range(0, len(parts) + 1):
         try:
-            data = res.get_json(parts[:i])[2]
+            data = res.get_json('/'.join(parts[:i]))[2]
         except Exception:
             data = None
         if data and 'couchdb' in data:
