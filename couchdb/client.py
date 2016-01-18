@@ -1011,7 +1011,8 @@ class Document(dict):
 
         :rtype: basestring
         """
-        return self['_id']
+        return self.get('_id')
+
 
     @property
     def rev(self):
@@ -1019,7 +1020,7 @@ class Document(dict):
 
         :rtype: basestring
         """
-        return self['_rev']
+        return self.get('_rev')
 
 
 class View(object):
