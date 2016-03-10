@@ -227,6 +227,23 @@ class Server(object):
         status, headers, data = self.resource.post_json('_replicate', data)
         return data
 
+    def add_user(self, name, password, roles=None):
+        """Add regular user in authentication database.
+        :param name: name of regular user, normally user id
+        :param password: password of regular user
+        :param roles: roles of regular user
+        :return: (id, rev) tuple of the registered user
+        :rtype: `tuple`
+        """
+        user_db = self['_users']
+        return user_db.save({
+            '_id': 'org.couchdb.user:' + name,
+            'name': name,
+            'password': password,
+            'roles': roles or [],
+            'type': 'user',
+        })
+
 
 class Database(object):
     """Representation of a database on a CouchDB server.
