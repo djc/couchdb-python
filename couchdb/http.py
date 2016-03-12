@@ -160,7 +160,7 @@ class ResponseBody(object):
 
     def close(self):
         while not self.resp.isclosed():
-            chunk =  self.resp.read(CHUNK_SIZE)
+            chunk = self.resp.read(CHUNK_SIZE)
             if not chunk:
                 self.resp.close()
         if self.conn:
