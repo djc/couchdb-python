@@ -55,7 +55,7 @@ interface for the CouchDB server.""",
     license = 'BSD',
     url = 'https://github.com/djc/couchdb-python/',
     classifiers = [
-        'Development Status :: 4 - Beta',
+        'Development Status :: 6 - Mature',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
