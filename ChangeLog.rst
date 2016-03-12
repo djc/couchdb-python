@@ -1,3 +1,12 @@
+Version 1.0.1 (2016-03-12)
+--------------------------
+
+* Make sure connections are correctly closed on GAE (fixes #224)
+* Correctly join path parts in replicate script (fixes #269)
+* Fix id and rev for some special documents
+* Make it possible to disable SSL verification
+
+
 Version 1.0 (2014-11-16)
 ------------------------
 
