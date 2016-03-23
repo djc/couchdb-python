@@ -136,6 +136,21 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         dbname = 'couchdb-python/test_basic_auth'
         self.assertRaises(http.Unauthorized, server.create, dbname)
 
+    def test_user_management(self):
+        url = client.DEFAULT_BASE_URL
+        if not isinstance(url, util.utype):
+            url = url.decode('utf-8')
+
+        server = client.Server(url)
+        try:
+            server.add_user('foo', 'secret', roles=['hero'])
+            status, token = server.login_user('foo', 'secret')
+            self.assertEqual(status, 200)
+            self.assertTrue(server.verify_user(token))
+            self.assertTrue(server.logout_user(token))
+        finally:
+            server.remove_user('foo')
+
 
 class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
