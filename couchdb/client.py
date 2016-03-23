@@ -253,7 +253,7 @@ class Server(object):
         doc_id = 'org.couchdb.user:' + name
         del user_db[doc_id]
 
-    def login_user(self, name, password):
+    def login(self, name, password):
         """Login regular user in couch db
         :param name: name of regular user, normally user id
         :param password: password of regular user
@@ -275,7 +275,7 @@ class Server(object):
         except http.Unauthorized:
             return 401, None
 
-    def logout_user(self, token):
+    def logout(self, token):
         """Logout regular user in couch db
         :param token: token of login user
         :return: True if successfully logout
