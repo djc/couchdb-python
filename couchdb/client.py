@@ -30,6 +30,7 @@ from types import FunctionType
 from inspect import getsource
 from textwrap import dedent
 import warnings
+import sys
 
 from couchdb import http, json, util
 
@@ -243,6 +244,28 @@ class Server(object):
             'roles': roles or [],
             'type': 'user',
         })
+
+    def login_user(self, name, password):
+        """Login regular user in couch db
+        :param name: name of regular user, normally user id
+        :param password: password of regular user
+        :return: (status, token) tuple of the login user
+        :rtype: `tuple`
+        """
+        data = {
+            'name': name,
+            'password': password,
+        }
+        try:
+            status, headers, _ = self.resource.post_json('_session', data)
+            if sys.version_info > (3, ):
+                cookie = headers._headers[0][1]
+            else:
+                cookie = headers.headers[0].split(';')[0]
+            pos = cookie.find('=')
+            return status, cookie[pos + 1:]
+        except http.Unauthorized:
+            return 401, None
 
 
 class Database(object):
