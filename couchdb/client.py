@@ -280,6 +280,40 @@ class Server(object):
         status, _, _ = self.resource.delete_json('_session', headers=header)
         return status == 200
 
+    def verify_user(self, token_or_name, password=None):
+        """Verify user by token or username/password pairs
+        :param token_or_name: token or username of login user
+        :param password: password of login user if given
+        :return: True if authenticated ok
+        :rtype: bool
+        """
+        def generate_headers(token=None):
+            if token is None:
+                headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                }
+            else:
+                headers = {
+                    'Accept': 'application/json',
+                    'Cookie': 'AuthSession=' + token,
+                }
+            return headers
+
+        try:
+            if password is None:
+                header = generate_headers(token_or_name)
+                status, _, _ = self.resource.get_json('_session', header)
+            else:
+                header = generate_headers()
+                body = {
+                    'name': token_or_name,
+                    'password': password,
+                }
+                status, _, _ = self.resource.post_json('_session', body, header)
+        except http.Unauthorized:
+            return False
+        return status == 200
 
 
 class Database(object):
