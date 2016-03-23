@@ -248,15 +248,10 @@ class Server(object):
     def remove_user(self, name):
         """Remove regular user in authentication database.
         :param name: name of regular user, normally user id
-        :return: True if successfully removed
-        :rtype: bool
         """
         user_db = self['_users']
         doc_id = 'org.couchdb.user:' + name
-        if doc_id not in user_db:
-            return False
         del user_db[doc_id]
-        return True
 
     def login_user(self, name, password):
         """Login regular user in couch db
