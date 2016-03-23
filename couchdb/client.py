@@ -257,23 +257,18 @@ class Server(object):
         """Login regular user in couch db
         :param name: name of regular user, normally user id
         :param password: password of regular user
-        :return: (status, token) tuple of the login user
-        :rtype: `tuple`
+        :return: authentication token
         """
-        data = {
+        status, headers, _ = self.resource.post_json('_session', {
             'name': name,
             'password': password,
-        }
-        try:
-            status, headers, _ = self.resource.post_json('_session', data)
-            if sys.version_info > (3, ):
-                cookie = headers._headers[0][1]
-            else:
-                cookie = headers.headers[0].split(';')[0]
-            pos = cookie.find('=')
-            return status, cookie[pos + 1:]
-        except http.Unauthorized:
-            return 401, None
+        })
+        if sys.version_info[0] > 2:
+            cookie = headers._headers[0][1]
+        else:
+            cookie = headers.headers[0].split(';')[0]
+        pos = cookie.find('=')
+        return cookie[pos + 1:]
 
     def logout(self, token):
         """Logout regular user in couch db

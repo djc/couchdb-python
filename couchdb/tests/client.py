@@ -144,8 +144,7 @@ class ServerTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         server = client.Server(url)
         try:
             server.add_user('foo', 'secret', roles=['hero'])
-            status, token = server.login('foo', 'secret')
-            self.assertEqual(status, 200)
+            token = server.login('foo', 'secret')
             self.assertTrue(server.verify_token(token))
             self.assertTrue(server.logout(token))
         finally:
