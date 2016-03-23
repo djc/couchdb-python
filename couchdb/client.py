@@ -267,6 +267,20 @@ class Server(object):
         except http.Unauthorized:
             return 401, None
 
+    def logout_user(self, token):
+        """Logout regular user in couch db
+        :param token: token of login user
+        :return: True if successfully logout
+        :rtype: bool
+        """
+        header = {
+            'Accept': 'application/json',
+            'Cookie': 'AuthSession=' + token,
+        }
+        status, _, _ = self.resource.delete_json('_session', headers=header)
+        return status == 200
+
+
 
 class Database(object):
     """Representation of a database on a CouchDB server.
