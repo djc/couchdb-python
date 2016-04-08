@@ -1006,7 +1006,10 @@ class Database(object):
         :param name: the name of the update handler function in the format
                      ``designdoc/updatename``.
         :param docid: optional ID of a document to pass to the update handler.
-        :param options: optional query string parameters.
+        :param options: additional (optional) params to pass to the underlying
+                        http resource handler, including ``headers``, ``body``,
+                        and ```path```. Other arguments will be treated as
+                        query string params. See :class:`couchdb.http.Resource`
         :return: (headers, body) tuple, where headers is a dict of headers
                  returned from the list function and body is a readable
                  file-like instance
