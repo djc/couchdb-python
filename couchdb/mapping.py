@@ -406,6 +406,8 @@ class Document(DocumentMetaClass, Mapping):
             return cls.wrap(doc)
         data = row['value']
         data['_id'] = row['id']
+        if 'rev' in data:  # When data is client.Document
+            data['_rev'] = data['rev']
         return cls.wrap(data)
 
 

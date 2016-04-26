@@ -242,6 +242,12 @@ class WrappingTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
                                  include_docs=True)
         self.assertEqual(type(results.rows[0]), self.Item)
 
+    def test_wrapped_view(self):
+        self.Item().store(self.db)
+        results = self.db.view('_all_docs', wrapper=self.Item._wrap_row)
+        doc = results.rows[0]
+        self.db.delete(doc)
+
     def test_query(self):
         self.Item().store(self.db)
         results = self.Item.query(self.db, all_map_func, None)
