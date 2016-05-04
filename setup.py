@@ -28,6 +28,7 @@ else:
                 'couchdb-dump = couchdb.tools.dump:main',
                 'couchdb-load = couchdb.tools.load:main',
                 'couchdb-replicate = couchdb.tools.replicate:main',
+                'couchdb-load-design-doc = couchdb.loader:main',
             ],
         },
         'install_requires': [],
