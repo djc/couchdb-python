@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Load design documents from the filesystem into a dict.
 Subset of couchdbkit/couchapp functionality.
