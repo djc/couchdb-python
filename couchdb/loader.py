@@ -67,12 +67,16 @@ import pprint
 import codecs
 import json
 
-def load_design_doc(directory, strip=False):
+def load_design_doc(directory, strip=False, predicate=lambda x: True):
     """
     Load a design document from the filesystem.
 
     strip: remove leading and trailing whitespace from file contents,
         like couchdbkit.
+
+    predicate: function that is passed the full path to each file or directory.
+        Each entry is only added to the document if predicate returns True.
+        Can be used to ignore backup files etc.
     """
     objects = {}
 
@@ -87,6 +91,7 @@ def load_design_doc(directory, strip=False):
         for name in filenames:
             fkey = os.path.splitext(name)[0]
             fullname = os.path.join(dirpath, name)
+            if not predicate(fullname): continue
             with codecs.open(fullname, 'r', 'utf-8') as f:
                 contents = f.read()
                 if name.endswith('.json'):
@@ -98,7 +103,9 @@ def load_design_doc(directory, strip=False):
         for name in dirnames:
             if name == '_attachments':
                 raise NotImplementedError("_attachments are not supported")
-            subkey, subthing = objects[os.path.join(dirpath, name)]
+            fullpath = os.path.join(dirpath, name)
+            if not predicate(fullpath): continue
+            subkey, subthing = objects[fullpath]
             ob[subkey] = subthing
 
     return ob

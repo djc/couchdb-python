@@ -22,7 +22,10 @@ class LoaderTestCase(unittest.TestCase):
 
     def test_loader(self):
         directory = os.path.join(os.path.dirname(__file__), '_loader')
-        doc = loader.load_design_doc(directory, strip=True)
+        doc = loader.load_design_doc(directory,
+                                     strip=True,
+                                     predicate=lambda x: \
+                                        not x.endswith('.xml'))
         self.assertEqual(doc, expected)
 
     def test_bad_directory(self):
