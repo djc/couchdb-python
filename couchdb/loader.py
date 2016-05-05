@@ -67,6 +67,9 @@ import pprint
 import codecs
 import json
 
+class DuplicateKeyError(ValueError):
+    pass
+
 def load_design_doc(directory, strip=False, predicate=lambda x: True):
     """
     Load a design document from the filesystem.
@@ -92,6 +95,9 @@ def load_design_doc(directory, strip=False, predicate=lambda x: True):
             fkey = os.path.splitext(name)[0]
             fullname = os.path.join(dirpath, name)
             if not predicate(fullname): continue
+            if fkey in ob:
+                raise DuplicateKeyError("file '{0}' clobbers key '{1}'"
+                                        .format(fullname, fkey))
             with codecs.open(fullname, 'r', 'utf-8') as f:
                 contents = f.read()
                 if name.endswith('.json'):
@@ -106,6 +112,9 @@ def load_design_doc(directory, strip=False, predicate=lambda x: True):
             fullpath = os.path.join(dirpath, name)
             if not predicate(fullpath): continue
             subkey, subthing = objects[fullpath]
+            if subkey in ob:
+                raise DuplicateKeyError("directory '{0}' clobbers key '{1}'"
+                                        .format(fullpath,subkey))
             ob[subkey] = subthing
 
     return ob
