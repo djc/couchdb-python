@@ -97,7 +97,7 @@ def load_design_doc(directory, strip=False):
 
         for name in dirnames:
             if name == '_attachments':
-                raise NotImplementedError()
+                raise NotImplementedError("_attachments are not supported")
             subkey, subthing = objects[os.path.join(dirpath, name)]
             ob[subkey] = subthing
 
