@@ -25,6 +25,12 @@ class LoaderTestCase(unittest.TestCase):
         doc = loader.load_design_doc(directory, strip=True)
         self.assertEqual(doc, expected)
 
+    def test_bad_directory(self):
+        def bad_directory():
+            doc = loader.load_design_doc('directory_does_not_exist')
+
+        self.assertRaises(OSError, bad_directory)
+
 
 def suite():
     suite = unittest.TestSuite()

@@ -76,6 +76,9 @@ def load_design_doc(directory, strip=False):
     """
     objects = {}
 
+    if not os.path.isdir(directory):
+        raise OSError("No directory: '{0}'".format(directory))
+
     for (dirpath, dirnames, filenames) in os.walk(directory, topdown=False):
         key = os.path.split(dirpath)[-1]
         ob = {}
