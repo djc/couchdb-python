@@ -67,11 +67,11 @@ import pprint
 import codecs
 import json
 
-def load_design_doc(directory, strip_files=False):
+def load_design_doc(directory, strip=False):
     """
     Load a design document from the filesystem.
 
-    strip_files: remove leading and trailing whitespace from file contents,
+    strip: remove leading and trailing whitespace from file contents,
         like couchdbkit.
     """
     objects = {}
@@ -88,7 +88,7 @@ def load_design_doc(directory, strip_files=False):
                 contents = f.read()
                 if name.endswith('.json'):
                     contents = json.loads(contents)
-                elif strip_files:
+                elif strip:
                     contents = contents.strip()
                 ob[fkey] = contents
 

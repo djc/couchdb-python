@@ -22,7 +22,7 @@ class LoaderTestCase(unittest.TestCase):
 
     def test_loader(self):
         directory = os.path.join(os.path.dirname(__file__), '_loader')
-        doc = loader.load_design_doc(directory, strip_files=True)
+        doc = loader.load_design_doc(directory, strip=True)
         self.assertEqual(doc, expected)
 
 
