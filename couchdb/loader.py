@@ -106,7 +106,7 @@ def main():
     try:
         directory = sys.argv[1]
     except IndexError:
-        sys.stderr.write("Usage:\n\t{} [directory]\n".format(sys.argv[0]))
+        sys.stderr.write("Usage:\n\t{0} [directory]\n".format(sys.argv[0]))
         sys.exit(1)
     obj = load_design_doc(directory)
     sys.stdout.write(json.dumps(obj, indent=2))
