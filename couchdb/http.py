@@ -349,6 +349,14 @@ class Session(object):
             if num_redirects > self.max_redirects:
                 raise RedirectLimit('Redirection limit exceeded')
             location = resp.getheader('location')
+            
+            # in case of relative location: add scheme and host to the location
+            location_split = util.urlsplit(location)
+
+            if not location_split[0]:
+                orig_url_split = util.urlsplit(url)
+                location = util.urlunsplit(orig_url_split[:2] + location_split[2:])
+
             if status == 301:
                 self.perm_redirects[url] = location
             elif status == 303:
