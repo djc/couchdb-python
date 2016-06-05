@@ -12,7 +12,7 @@ test3:
 doc:
 	python setup.py build_sphinx
 
-upload-doc:
+upload-doc: doc
 	python setup.py upload_sphinx
 
 coverage:
