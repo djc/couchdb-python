@@ -11,6 +11,7 @@ import unittest
 
 from couchdb import design, mapping
 from couchdb.tests import testutil
+from datetime import datetime
 
 class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
 
@@ -82,6 +83,15 @@ class DocumentTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
     def test_old_datetime(self):
         dt = mapping.DateTimeField()
         assert dt._to_python('1880-01-01T00:00:00Z')
+
+    def test_datetime_with_microseconds(self):
+        dt = mapping.DateTimeField()
+        assert dt._to_python('2016-06-09T21:21:49.739248Z')
+
+    def test_datetime_to_json(self):
+        dt = mapping.DateTimeField()
+        d = datetime.now()
+        assert dt._to_json(d)
 
     def test_get_has_default(self):
         doc = mapping.Document()

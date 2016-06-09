@@ -474,12 +474,16 @@ class DateField(Field):
 
 class DateTimeField(Field):
     """Mapping field for storing date/time values.
-    
+
     >>> field = DateTimeField()
     >>> field._to_python('2007-04-01T15:30:00Z')
     datetime.datetime(2007, 4, 1, 15, 30)
-    >>> field._to_json(datetime(2007, 4, 1, 15, 30, 0, 9876))
+    >>> field._to_python('2007-04-01T15:30:00.009876Z')
+    datetime.datetime(2007, 4, 1, 15, 30, 0, 9876)
+    >>> field._to_json(datetime(2007, 4, 1, 15, 30, 0))
     '2007-04-01T15:30:00Z'
+    >>> field._to_json(datetime(2007, 4, 1, 15, 30, 0, 9876))
+    '2007-04-01T15:30:00.009876Z'
     >>> field._to_json(date(2007, 4, 1))
     '2007-04-01T00:00:00Z'
     """
@@ -487,9 +491,15 @@ class DateTimeField(Field):
     def _to_python(self, value):
         if isinstance(value, util.strbase):
             try:
-                value = value.split('.', 1)[0] # strip out microseconds
-                value = value.rstrip('Z') # remove timezone separator
-                value = datetime(*strptime(value, '%Y-%m-%dT%H:%M:%S')[:6])
+                split_value = value.split('.') # strip out microseconds
+                if len(split_value) == 1:   # No microseconds provided
+                    value = split_value[0]
+                    value = value.rstrip('Z')  #remove timezone separator
+                    value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')
+                else:
+                    value = value.rstrip('Z')
+                    value = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+
             except ValueError:
                 raise ValueError('Invalid ISO date/time %r' % value)
         return value
@@ -499,12 +509,12 @@ class DateTimeField(Field):
             value = datetime.utcfromtimestamp(timegm(value))
         elif not isinstance(value, datetime):
             value = datetime.combine(value, time(0))
-        return value.replace(microsecond=0).isoformat() + 'Z'
+        return value.isoformat() + 'Z'
 
 
 class TimeField(Field):
     """Mapping field for storing times.
-    
+
     >>> field = TimeField()
     >>> field._to_python('15:30:00')
     datetime.time(15, 30)
