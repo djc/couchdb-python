@@ -11,6 +11,7 @@
 file.
 """
 
+from __future__ import print_function
 from base64 import b64decode
 from optparse import OptionParser
 import sys
@@ -25,7 +26,7 @@ BULK_SIZE = 1000
 def dump_docs(envelope, db, docs):
     for doc in docs:
 
-        print >> sys.stderr, 'Dumping document %r' % doc.id
+        print('Dumping document %r' % doc.id, file=sys.stderr)
         attachments = doc.pop('_attachments', {})
         jsondoc = json.encode(doc)
 
@@ -57,7 +58,10 @@ def dump_docs(envelope, db, docs):
             })
 
 def dump_db(dburl, username=None, password=None, boundary=None,
-            output=sys.stdout, bulk_size=BULK_SIZE):
+            output=None, bulk_size=BULK_SIZE):
+
+    if output is None:
+        output = sys.stdout if sys.version_info[0] < 3 else sys.stdout.buffer
 
     db = Database(dburl)
     if username is not None and password is not None:
