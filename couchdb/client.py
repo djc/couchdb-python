@@ -481,7 +481,7 @@ class Database(object):
 
         If doc has no _id then the server will allocate a random ID and a new
         document will be created. Otherwise the doc's _id will be used to
-        identity the document to create or update. Trying to update an existing
+        identify the document to create or update. Trying to update an existing
         document with an incorrect _rev will raise a ResourceConflict exception.
 
         Note that it is generally better to avoid saving documents with no _id
