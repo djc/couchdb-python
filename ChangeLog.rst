@@ -1,3 +1,15 @@
+Version 1.1 (2016-08-05)
+------------------------
+
+* Add script to load design documents from disk
+* Add methods on ``Server`` for user/session management
+* Add microseconds support for DateTimeFields
+* Handle changes feed as emitted by CouchBase (fixes #289)
+* Support Python 3 in ``couchdb-dump`` script (fixes #296)
+* Expand relative URLs from Location headers (fixes #287)
+* Correctly handle ``_rev`` fields in mapped documents (fixes #278)
+
+
 Version 1.0.1 (2016-03-12)
 --------------------------
 
