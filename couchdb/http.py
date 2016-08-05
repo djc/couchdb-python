@@ -179,19 +179,15 @@ class ResponseBody(object):
                 self._release_conn()
                 break
             chunk = self.resp.fp.read(chunksz)
-
             for ln in chunk.splitlines(True):
                 end = (ln == b'\n') and not buffer # end of response
 
-                if ln and not end:
-                    if ln.endswith(b'\n'):
-                        # end of a document
-                        yield buffer + ln
-                        buffer = b''
-                    else:
-                        # a break inside a document --> add to buffer and reuse
-                        # later
-                        buffer += ln
+                if not ln or end:
+                    break
+                buffer += ln
+                if ln.endswith(b'\n'):
+                    yield buffer
+                    buffer = b''
 
             self.resp.fp.read(2) #crlf
 
