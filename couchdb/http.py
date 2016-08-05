@@ -168,7 +168,7 @@ class ResponseBody(object):
 
     def iterchunks(self):
         assert self.chunked
-        buffer = b''
+        buffer = []
         while True:
             if self.resp.isclosed():
                 break
@@ -184,10 +184,10 @@ class ResponseBody(object):
 
                 if not ln or end:
                     break
-                buffer += ln
+                buffer.append(ln)
                 if ln.endswith(b'\n'):
-                    yield buffer
-                    buffer = b''
+                    yield b''.join(buffer)
+                    buffer = []
 
             self.resp.fp.read(2) #crlf
 
