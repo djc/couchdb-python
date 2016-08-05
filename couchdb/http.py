@@ -170,20 +170,24 @@ class ResponseBody(object):
         assert self.chunked
         buffer = []
         while True:
+
             if self.resp.isclosed():
                 break
+
             chunksz = int(self.resp.fp.readline().strip(), 16)
             if not chunksz:
                 self.resp.fp.read(2) #crlf
                 self.resp.close()
                 self._release_conn()
                 break
+
             chunk = self.resp.fp.read(chunksz)
             for ln in chunk.splitlines(True):
-                end = (ln == b'\n') and not buffer # end of response
 
+                end = ln == b'\n' and not buffer # end of response
                 if not ln or end:
                     break
+
                 buffer.append(ln)
                 if ln.endswith(b'\n'):
                     yield b''.join(buffer)
