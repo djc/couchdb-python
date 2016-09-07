@@ -362,7 +362,7 @@ class Session(object):
             if num_redirects > self.max_redirects:
                 raise RedirectLimit('Redirection limit exceeded')
             location = resp.getheader('location')
-            
+
             # in case of relative location: add scheme and host to the location
             location_split = util.urlsplit(location)
 
@@ -592,7 +592,7 @@ class Resource(object):
 def extract_credentials(url):
     """Extract authentication (user name and password) credentials from the
     given URL.
-    
+
     >>> extract_credentials('http://localhost:5984/_config/')
     ('http://localhost:5984/_config/', None)
     >>> extract_credentials('http://joe:secret@localhost:5984/_config/')
@@ -620,8 +620,8 @@ def basic_auth(credentials):
     >>> basic_auth(())
     """
     if credentials:
-        token = b64encode(('%s:%s' % credentials).encode('latin1'))
-        return ('Basic %s' % token.strip().decode('latin1')).encode('ascii')
+        token = b64encode(('%s:%s' % credentials).encode('utf-8'))
+        return ('Basic %s' % token.strip().decode('utf-8')).encode('ascii')
 
 
 def quote(string, safe=''):
