@@ -38,8 +38,8 @@ from couchdb import json
 from couchdb import util
 
 __all__ = ['HTTPError', 'PreconditionFailed', 'ResourceNotFound',
-           'ResourceConflict', 'ServerError', 'Unauthorized', 'RedirectLimit',
-           'Session', 'Resource']
+           'ResourceConflict', 'ServerError', 'Unauthorized', 'Forbidden',
+           'RedirectLimit', 'Session', 'Resource']
 __docformat__ = 'restructuredtext en'
 
 
@@ -111,6 +111,12 @@ class ServerError(HTTPError):
 class Unauthorized(HTTPError):
     """Exception raised when the server requires authentication credentials
     but either none are provided, or they are incorrect.
+    """
+
+
+class Forbidden(HTTPError):
+    """Exception raised when the request requires an authorisation that the
+    current user does not have.
     """
 
 
@@ -411,6 +417,8 @@ class Session(object):
                 error = ''
             if status == 401:
                 raise Unauthorized(error)
+            elif status == 403:
+                raise Forbidden(error)
             elif status == 404:
                 raise ResourceNotFound(error)
             elif status == 409:

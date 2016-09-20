@@ -8,7 +8,8 @@
 
 from .client import Database, Document, Server
 from .http import HTTPError, PreconditionFailed, Resource, \
-        ResourceConflict, ResourceNotFound, ServerError, Session, Unauthorized
+        ResourceConflict, ResourceNotFound, ServerError, Session, \
+        Unauthorized, Forbidden
 
 try:
     __version__ = __import__('pkg_resources').get_distribution('CouchDB').version

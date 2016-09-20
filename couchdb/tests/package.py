@@ -11,7 +11,7 @@ class PackageTestCase(unittest.TestCase):
             'Server', 'Database', 'Document',
             # couchdb.http
             'HTTPError', 'PreconditionFailed', 'ResourceNotFound',
-            'ResourceConflict', 'ServerError', 'Unauthorized',
+            'ResourceConflict', 'ServerError', 'Unauthorized', 'Forbidden',
             'Resource', 'Session'
         ])
         exported = set(e for e in dir(couchdb) if not e.startswith('_'))
