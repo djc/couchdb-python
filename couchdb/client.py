@@ -113,7 +113,7 @@ class Server(object):
         try:
             self.resource.head()
             return True
-        except:
+        except http.ResourceNotFound:
             return False
 
     def __bool__(self):
@@ -391,7 +391,7 @@ class Database(object):
         try:
             self.resource.head()
             return True
-        except:
+        except http.ResourceNotFound:
             return False
 
     def __bool__(self):
