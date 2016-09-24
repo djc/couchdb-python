@@ -31,6 +31,7 @@ from inspect import getsource
 from textwrap import dedent
 import warnings
 import sys
+import socket
 
 from couchdb import http, json, util
 
@@ -95,7 +96,7 @@ class Server(object):
         try:
             self.resource.head(name)
             return True
-        except http.ResourceNotFound:
+        except (socket.error, http.ResourceNotFound):
             return False
 
     def __iter__(self):
@@ -113,7 +114,7 @@ class Server(object):
         try:
             self.resource.head()
             return True
-        except http.ResourceNotFound:
+        except (socket.error, http.ResourceNotFound):
             return False
 
     def __bool__(self):
