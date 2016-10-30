@@ -191,6 +191,31 @@ class CouchTests(testutil.TempDatabaseMixin, unittest.TestCase):
         for idx, row in enumerate(self.db.query(query)):
             self.assertEqual(texts[idx], row.key)
 
+    def test_update_with_unsafe_doc_ids(self):
+        doc_id = 'sanitise/the/doc/id/plz/'
+        design_doc = 'test_slashes_in_doc_ids'
+        handler_name = 'test'
+        func = """
+            function(doc, req) {
+              doc.test = 'passed';
+              return [doc, 'ok'];
+            }
+        """
+
+        # Stick an update handler in
+        self.db['_design/%s' % design_doc] = {
+            'updates': {handler_name: func}
+        }
+        # And a test doc
+        self.db[doc_id] = {'test': 'failed'}
+
+        response = self.db.update_doc(
+            '%s/%s' % (design_doc, handler_name),
+            docid=doc_id
+        )
+
+        self.assertEqual(self.db[doc_id]['test'], 'passed')
+
     def test_design_docs(self):
         for i in range(50): 
             self.db[str(i)] = {'integer': i, 'string': str(i)}
