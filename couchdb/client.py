@@ -1323,7 +1323,7 @@ class Row(dict):
     """Representation of a row as returned by database views."""
 
     def __repr__(self):
-        keys = 'id', 'key', 'error', 'value'
+        keys = 'id', 'key', 'doc', 'error', 'value'
         items = ['%s=%r' % (k, self[k]) for k in keys if k in self]
         return '<%s %s>' % (type(self).__name__, ', '.join(items))
 
