@@ -581,7 +581,10 @@ class Resource(object):
         all_headers = self.headers.copy()
         all_headers.update(headers or {})
         if path is not None:
-            url = urljoin(self.url, path, **params)
+            if isinstance(path, list):
+                url = urljoin(self.url, *path, **params)
+            else:
+                url = urljoin(self.url, path, **params)
         else:
             url = urljoin(self.url, **params)
         return self.session.request(method, url, body=body,
