@@ -85,6 +85,7 @@ class Server(object):
             self.resource = url # treat as a Resource object
         if not full_commit:
             self.resource.headers['X-Couch-Full-Commit'] = 'false'
+        self._version_info = None
 
     def __contains__(self, name):
         """Return whether the server contains a database with the specified
@@ -165,6 +166,18 @@ class Server(object):
         :rtype: `unicode`"""
         status, headers, data = self.resource.get_json()
         return data['version']
+
+    def version_info(self):
+        """The version of the CouchDB server as a tuple of ints.
+
+        Note that this results in a request being made only at the first call.
+        Afterwards the result will be cached.
+
+        :rtype: `tuple(int, int, int)`"""
+        if self._version_info is None:
+            version = self.version()
+            self._version_info = tuple(map(int, version.split('.')))
+        return self._version_info
 
     def stats(self, name=None):
         """Server statistics.
