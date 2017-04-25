@@ -775,6 +775,152 @@ class Database(object):
         }, rev=doc['_rev'])
         doc['_rev'] = data['rev']
 
+    def find(self, mango_query, wrapper=None):
+        """Execute a mango find-query against the database.
+
+        Note: only available for CouchDB version >= 2.0.0
+
+        More information on the `mango_query` structure can be found here:
+          http://docs.couchdb.org/en/master/api/database/find.html#find-selectors
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> mango = {'selector': {'type': 'Person'},
+        ...          'fields': ['name'],
+        ...          'sort':[{'name': 'asc'}]}
+        >>> for row in db.find(mango):                          # doctest: +SKIP
+        ...    print(row['name'])                               # doctest: +SKIP
+        John Doe
+        Mary Jane
+        >>> del server['python-tests']
+
+        :param mango_query: a dictionary describing criteria used to select
+                            documents
+        :param wrapper: an optional callable that should be used to wrap the
+                        resulting documents
+        :return: the query results as a list of `Document` (or whatever `wrapper` returns)
+        """
+        status, headers, data = self.resource.post_json('_find', mango_query)
+        return map(wrapper or Document, data.get('docs', []))
+
+    def explain(self, mango_query):
+        """Explain a mango find-query.
+
+        Note: only available for CouchDB version >= 2.0.0
+
+        More information on the `mango_query` structure can be found here:
+          http://docs.couchdb.org/en/master/api/database/find.html#db-explain
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> mango = {'selector': {'type': 'Person'}, 'fields': ['name']}
+        >>> db.explain(mango)                          #doctest: +ELLIPSIS +SKIP
+        {...}
+        >>> del server['python-tests']
+
+        :param mango_query: a `dict` describing criteria used to select
+                            documents
+        :return: the query results as a list of `Document` (or whatever
+                 `wrapper` returns)
+        :rtype: `dict`
+        """
+        _, _, data = self.resource.post_json('_explain', mango_query)
+        return data
+
+    def index(self):
+        """Get all available indexes.
+
+        Note: Only available for CouchDB version >= 2.0.0 .
+
+        More information here:
+          http://docs.couchdb.org/en/master/api/database/find.html#get--db-_index
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db.index()                                           #doctest: +SKIP
+        {'indexes': [{'ddoc': None,
+          'def': {'fields': [{'_id': 'asc'}]},
+          'name': '_all_docs',
+          'type': 'special'}],
+        'total_rows': 1}
+        >>> del server['python-tests']
+
+        :return: `dict` containing the number of indexes (`total_rows`) and
+                 a description of each index (`indexes`)
+        """
+        _, _, data = self.resource.get_json('_index')
+        return data
+
+    def add_index(self, index, ddoc=None, name=None):
+        """Add an index to the database.
+
+        Note: Only available for CouchDB version >= 2.0.0 .
+
+        More information here:
+          http://docs.couchdb.org/en/master/api/database/find.html#post--db-_index
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> db.add_index({'fields': [{'type': 'asc'}]},          #doctest: +SKIP
+        ...              ddoc='foo',
+        ...              name='bar')
+        {'id': '_design/foo', 'name': 'bar', 'result': 'created'}
+        >>> del server['python-tests']
+
+        :param index: `dict` describing the index to create
+        :param ddoc: (optional) name of the design document in which the index
+                                will be created
+        :param name: (optional) name of the index
+        :return: `dict` containing the `id`, the `name` and the `result` of
+                 creating the index
+        """
+        assert isinstance(index, dict)
+        query = {'index': index}
+        if ddoc:
+            query['ddoc'] = ddoc
+        if name:
+            query['name'] = name
+        _, _, data = self.resource.post_json('_index', query)
+        return data
+
+    def remove_index(self, ddoc, name):
+        """Remove an index from the database.
+
+        Note: Only available for CouchDB version >= 2.0.0 .
+
+        More information here:
+          http://docs.couchdb.org/en/master/api/database/find.html#delete--db-_index-designdoc-json-name
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> db.add_index({'fields': [{'type': 'asc'}]},          #doctest: +SKIP
+        ...              ddoc='foo',
+        ...              name='bar')
+        {'id': '_design/foo', 'name': 'bar', 'result': 'created'}
+        >>> db.remove_index('foo', 'bar')                        #doctest: +SKIP
+        {'ok': True}
+        >>> del server['python-tests']
+
+        :param ddoc: name of the design document containing the index
+        :param name: name of the index that is to be removed
+        :return: `dict` containing the `id`, the `name` and the `result` of
+                 creating the index
+        """
+        _, _, data = self.resource.delete_json(['_index', ddoc, 'json', name])
+        return data
+
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
         """Execute an ad-hoc query (a "temp view") against the database.
