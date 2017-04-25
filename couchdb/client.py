@@ -925,6 +925,8 @@ class Database(object):
               wrapper=None, **options):
         """Execute an ad-hoc query (a "temp view") against the database.
 
+        Note: not supported for CouchDB version >= 2.0.0
+
         >>> server = Server()
         >>> db = server.create('python-tests')
         >>> db['johndoe'] = dict(type='Person', name='John Doe')
@@ -957,7 +959,7 @@ class Database(object):
         :param wrapper: an optional callable that should be used to wrap the
                         result rows
         :param options: optional query string parameters
-        :return: the view reults
+        :return: the view results
         :rtype: `ViewResults`
         """
         return TemporaryView(self.resource('_temp_view'), map_fun,
