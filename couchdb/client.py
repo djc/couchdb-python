@@ -1186,7 +1186,12 @@ class Database(object):
         return headers, body
 
     def _changes(self, **opts):
-        _, _, data = self.resource.get('_changes', **opts)
+        # use streaming `get` and `post` methods
+        if opts.get('filter') == '_selector':
+            selector = opts.pop('_selector', None)
+            _, _, data = self.resource.post('_changes', selector, **opts)
+        else:
+            _, _, data = self.resource.get('_changes', **opts)
         lines = data.iterchunks()
         for ln in lines:
             if not ln: # skip heartbeats
@@ -1205,7 +1210,12 @@ class Database(object):
         """
         if opts.get('feed') == 'continuous':
             return self._changes(**opts)
-        _, _, data = self.resource.get_json('_changes', **opts)
+
+        if opts.get('filter') == '_selector':
+            selector = opts.pop('_selector', None)
+            _, _, data = self.resource.post_json('_changes', selector, **opts)
+        else:
+            _, _, data = self.resource.get_json('_changes', **opts)
         return data
 
 

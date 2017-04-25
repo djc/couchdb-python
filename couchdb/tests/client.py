@@ -570,6 +570,28 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         # in a good state from the previous request.
         self.assertTrue(self.db.info()['doc_count'] == 0)
 
+    def test_changes_conn_usable_selector(self):
+        if self.server.version_info()[0] < 2:
+            return
+        # Consume a changes feed to get a used connection in the pool.
+        list(self.db.changes(feed='continuous',
+                             filter='_selector',
+                             timeout=0,
+                             _selector={'selector': {}}))
+        # Try using the connection again to make sure the connection was left
+        # in a good state from the previous request.
+        self.assertTrue(self.db.info()['doc_count'] == 0)
+
+    def test_changes_usable_selector(self):
+        if self.server.version_info()[0] < 2:
+            return
+        # Consume a changes feed to get a used connection in the pool.
+        list(self.db.changes(filter='_selector',
+                             _selector={'selector': {}}))
+        # Try using the connection again to make sure the connection was left
+        # in a good state from the previous request.
+        self.assertTrue(self.db.info()['doc_count'] == 0)
+
     def test_changes_heartbeat(self):
         def wakeup():
             time.sleep(.3)
