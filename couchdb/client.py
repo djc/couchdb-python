@@ -834,92 +834,14 @@ class Database(object):
         return data
 
     def index(self):
-        """Get all available indexes.
+        """Get an object to manage the database indexes.
 
-        Note: Only available for CouchDB version >= 2.0.0 .
-
-        More information here:
-          http://docs.couchdb.org/en/master/api/database/find.html#get--db-_index
-
-        >>> server = Server()
-        >>> db = server.create('python-tests')
-        >>> db.index()                                           #doctest: +SKIP
-        {'indexes': [{'ddoc': None,
-          'def': {'fields': [{'_id': 'asc'}]},
-          'name': '_all_docs',
-          'type': 'special'}],
-        'total_rows': 1}
-        >>> del server['python-tests']
-
-        :return: `dict` containing the number of indexes (`total_rows`) and
-                 a description of each index (`indexes`)
+        :return: an `Indexes` object to manage the databes indexes
+        :rtype: `Indexes`
         """
-        _, _, data = self.resource.get_json('_index')
-        return data
+        return Indexes(self.resource('_index'))
 
-    def add_index(self, index, ddoc=None, name=None):
-        """Add an index to the database.
 
-        Note: Only available for CouchDB version >= 2.0.0 .
-
-        More information here:
-          http://docs.couchdb.org/en/master/api/database/find.html#post--db-_index
-
-        >>> server = Server()
-        >>> db = server.create('python-tests')
-        >>> db['johndoe'] = dict(type='Person', name='John Doe')
-        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
-        >>> db['gotham'] = dict(type='City', name='Gotham City')
-        >>> db.add_index({'fields': [{'type': 'asc'}]},          #doctest: +SKIP
-        ...              ddoc='foo',
-        ...              name='bar')
-        {'id': '_design/foo', 'name': 'bar', 'result': 'created'}
-        >>> del server['python-tests']
-
-        :param index: `dict` describing the index to create
-        :param ddoc: (optional) name of the design document in which the index
-                                will be created
-        :param name: (optional) name of the index
-        :return: `dict` containing the `id`, the `name` and the `result` of
-                 creating the index
-        """
-        assert isinstance(index, dict)
-        query = {'index': index}
-        if ddoc:
-            query['ddoc'] = ddoc
-        if name:
-            query['name'] = name
-        _, _, data = self.resource.post_json('_index', query)
-        return data
-
-    def remove_index(self, ddoc, name):
-        """Remove an index from the database.
-
-        Note: Only available for CouchDB version >= 2.0.0 .
-
-        More information here:
-          http://docs.couchdb.org/en/master/api/database/find.html#delete--db-_index-designdoc-json-name
-
-        >>> server = Server()
-        >>> db = server.create('python-tests')
-        >>> db['johndoe'] = dict(type='Person', name='John Doe')
-        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
-        >>> db['gotham'] = dict(type='City', name='Gotham City')
-        >>> db.add_index({'fields': [{'type': 'asc'}]},          #doctest: +SKIP
-        ...              ddoc='foo',
-        ...              name='bar')
-        {'id': '_design/foo', 'name': 'bar', 'result': 'created'}
-        >>> db.remove_index('foo', 'bar')                        #doctest: +SKIP
-        {'ok': True}
-        >>> del server['python-tests']
-
-        :param ddoc: name of the design document containing the index
-        :param name: name of the index that is to be removed
-        :return: `dict` containing the `id`, the `name` and the `result` of
-                 creating the index
-        """
-        _, _, data = self.resource.delete_json(['_index', ddoc, 'json', name])
-        return data
 
     def query(self, map_fun, reduce_fun=None, language='javascript',
               wrapper=None, **options):
@@ -1526,3 +1448,111 @@ class Row(dict):
         doc = self.get('doc')
         if doc:
             return Document(doc)
+
+
+class Indexes(object):
+    """Manage indexes in CouchDB 2.0.0 and later.
+
+    More information here:
+        http://docs.couchdb.org/en/2.0.0/api/database/find.html#db-index
+    """
+
+    def __init__(self, url, session=None):
+        if isinstance(url, util.strbase):
+            self.resource = http.Resource(url, session)
+        else:
+            self.resource = url
+
+    def __setitem__(self, ddoc_name, index):
+        """Add an index to the database.
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> idx = db.index()
+        >>> idx['foo', 'bar'] = [{'type': 'asc'}]                #doctest: +SKIP
+        >>> list(idx)                                           #doctest: +SKIP
+        [{'ddoc': None,
+          'def': {'fields': [{'_id': 'asc'}]},
+          'name': '_all_docs',
+          'type': 'special'},
+         {'ddoc': '_design/foo',
+          'def': {'fields': [{'type': 'asc'}]},
+          'name': 'bar',
+          'type': 'json'}]
+        >>> idx[None, None] = [{'type': 'desc'}]      #doctest: +SKIP
+        >>> list(idx)                                 #doctest: +SKIP, +ELLIPSIS
+        [{'ddoc': None,
+          'def': {'fields': [{'_id': 'asc'}]},
+          'name': '_all_docs',
+          'type': 'special'},
+         {'ddoc': '_design/...',
+          'def': {'fields': [{'type': 'desc'}]},
+          'name': '...',
+          'type': 'json'},
+         {'ddoc': '_design/foo',
+          'def': {'fields': [{'type': 'asc'}]},
+          'name': 'bar',
+          'type': 'json'}]
+        >>> del server['python-tests']
+
+        :param index: `list` of indexes to create
+        :param ddoc_name: `tuple` or `list` containing first the name of the
+                          design document, in which the index will be created,
+                          and second name of the index. Both can be `None`.
+        """
+        query = {'index': {'fields': index}}
+        ddoc, name = ddoc_name  # expect ddoc / name to be a slice or list
+        if ddoc:
+            query['ddoc'] = ddoc
+        if name:
+            query['name'] = name
+        self.resource.post_json(body=query)
+
+    def __delitem__(self, ddoc_name):
+        """Remove an index from the database.
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> db['johndoe'] = dict(type='Person', name='John Doe')
+        >>> db['maryjane'] = dict(type='Person', name='Mary Jane')
+        >>> db['gotham'] = dict(type='City', name='Gotham City')
+        >>> idx = db.index()
+        >>> idx['foo', 'bar'] = [{'type': 'asc'}]                #doctest: +SKIP
+        >>> del idx['foo', 'bar']                                #doctest: +SKIP
+        >>> list(idx)                                            #doctest: +SKIP
+        [{'ddoc': None,
+          'def': {'fields': [{'_id': 'asc'}]},
+          'name': '_all_docs',
+          'type': 'special'}]
+        >>> del server['python-tests']
+
+        :param ddoc: name of the design document containing the index
+        :param name: name of the index that is to be removed
+        :return: `dict` containing the `id`, the `name` and the `result` of
+                 creating the index
+        """
+        self.resource.delete_json([ddoc_name[0], 'json', ddoc_name[1]])
+
+    def _list(self):
+        _, _, data = self.resource.get_json()
+        return data
+
+    def __iter__(self):
+        """Iterate all indexes of the associated database.
+
+        >>> server = Server()
+        >>> db = server.create('python-tests')
+        >>> idx = db.index()
+        >>> list(idx)                                            #doctest: +SKIP
+        [{'ddoc': None,
+          'def': {'fields': [{'_id': 'asc'}]},
+          'name': '_all_docs',
+          'type': 'special'}]
+        >>> del server['python-tests']
+
+        :return: iterator yielding `dict`'s describing each index
+        """
+        return iter(self._list()['indexes'])

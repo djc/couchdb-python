@@ -384,6 +384,9 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
             dict(type='City', name='Gotham City')
         ]
         self.db.update(docs)
+        # the sort needs an index over `name`, the selector selects by `type`
+        idx = self.db.index()
+        idx['foo', 'bar'] = [{'type': 'asc'}, {'name': 'asc'}]
 
         res = list(self.db.find(
             {
@@ -391,7 +394,8 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
                     'type': 'Person'
                 },
                 'fields': ['name'],
-                'sort': [{'name': 'asc'}]
+                # we need to specify the complete index here
+                'sort': [{'type': 'asc'}, {'name': 'asc'}]
             }
         ))
         self.assertEqual(2, len(res))
@@ -415,34 +419,43 @@ class DatabaseTestCase(testutil.TempDatabaseMixin, unittest.TestCase):
         if self.server.version_info()[0] < 2:
             return
 
-        res = self.db.index()
-        self.assertEqual(1, res['total_rows'])
-        self.assertEqual(1, len(res['indexes']))
+        res = list(self.db.index())
+        self.assertEqual(1, len(res))
         self.assertEqual({'ddoc': None, 'def': {'fields': [{'_id': 'asc'}]},
                           'name': '_all_docs', 'type': 'special'},
-                         res['indexes'][0])
+                         res[0])
 
     def test_add_index(self):
         if self.server.version_info()[0] < 2:
             return
 
-        res = self.db.add_index({'fields': [{'type': 'asc'}]}, ddoc='foo', name='bar')
-        self.assertEqual({'id': '_design/foo',
-                          'name': 'bar',
-                          'result': 'created'},
-                         res)
-        res = self.db.index()
-        self.assertEqual(2, res['total_rows'])
+        idx = self.db.index()
+        idx['foo', 'bar'] = [{'type': 'asc'}]
+        idxs = list(idx)
+
+        self.assertEqual(2, len(idxs))
+        for i in idxs:
+            if i['ddoc'] is not None:  # special `_all_docs` index
+                self.assertEqual({'ddoc': '_design/foo',
+                                  'def': {'fields': [{'type': 'asc'}]},
+                                  'name': 'bar',
+                                  'type': 'json'},
+                                 i)
+                return
+        self.failed()
 
     def test_remove_index(self):
         if self.server.version_info()[0] < 2:
             return
 
-        self.db.add_index({'fields': [{'type': 'asc'}]}, ddoc='foo', name='bar')
-        res = self.db.remove_index('foo', 'bar')
-        self.assertEqual({'ok': True}, res)
-        res = self.db.index()
-        self.assertEqual(1, res['total_rows'])
+        idx = self.db.index()
+        idx['foo', 'bar'] = [{'type': 'asc'}]
+        res = list(idx)
+        self.assertEqual(2, len(res))
+        del idx['foo', 'bar']
+
+        res = list(idx)
+        self.assertEqual(1, len(res))
 
     def test_bulk_update_conflict(self):
         docs = [
