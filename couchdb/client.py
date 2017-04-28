@@ -244,6 +244,7 @@ class Server(object):
 
     def add_user(self, name, password, roles=None):
         """Add regular user in authentication database.
+
         :param name: name of regular user, normally user id
         :param password: password of regular user
         :param roles: roles of regular user
@@ -261,6 +262,7 @@ class Server(object):
 
     def remove_user(self, name):
         """Remove regular user in authentication database.
+
         :param name: name of regular user, normally user id
         """
         user_db = self['_users']
@@ -269,6 +271,7 @@ class Server(object):
 
     def login(self, name, password):
         """Login regular user in couch db
+
         :param name: name of regular user, normally user id
         :param password: password of regular user
         :return: authentication token
@@ -286,6 +289,7 @@ class Server(object):
 
     def logout(self, token):
         """Logout regular user in couch db
+
         :param token: token of login user
         :return: True if successfully logout
         :rtype: bool
@@ -299,6 +303,7 @@ class Server(object):
 
     def verify_token(self, token):
         """Verify user token
+
         :param token: authentication token
         :return: True if authenticated ok
         :rtype: bool
