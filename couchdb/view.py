@@ -24,13 +24,15 @@ __docformat__ = 'restructuredtext en'
 log = logging.getLogger('couchdb.view')
 
 
-def run(input=sys.stdin, output=sys.stdout):
+def run(input=sys.stdin, output=None):
     r"""CouchDB view function handler implementation for Python.
 
     :param input: the readable file-like object to read input from
     :param output: the writable file-like object to write output to
     """
     functions = []
+    if output is None:
+        output = sys.stdout if sys.version_info[0] < 3 else sys.stdout.buffer
 
     def _writejson(obj):
         obj = json.encode(obj)
