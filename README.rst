@@ -22,9 +22,10 @@ It also provides a couple of command-line tools:
 
 Prerequisites:
 
-* simplejson (or Python >= 2.6, which comes with a simplejson-based JSON module in the standard library)
-* Python 2.6 or later
+* Python 2.7, 3.4 or later
 * CouchDB 0.10.x or later (0.9.x should probably work, as well)
+
+``simplejson`` will be used if installed.
 
 .. _Downloads: http://pypi.python.org/pypi/CouchDB
 .. _PyPI: http://pypi.python.org/
