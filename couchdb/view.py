@@ -45,7 +45,7 @@ def run(input=sys.stdin, output=None):
     def _log(message):
         if not isinstance(message, util.strbase):
             message = json.encode(message)
-        _writejson({'log': message})
+        _writejson(['log', message])
 
     def reset(config=None):
         del functions[:]
@@ -57,15 +57,15 @@ def run(input=sys.stdin, output=None):
         try:
             util.pyexec(string, {'log': _log}, globals_)
         except Exception as e:
-            return {'error': {
-                'id': 'map_compilation_error',
-                'reason': e.args[0]
-            }}
-        err = {'error': {
-            'id': 'map_compilation_error',
-            'reason': 'string must eval to a function '
+            return ['error',
+                'map_compilation_error',
+                e.args[0]
+            ]
+        err = ['error',
+            'map_compilation_error',
+            'string must eval to a function '
                       '(ex: "def(doc): return 1")'
-        }}
+        ]
         if len(globals_) != 1:
             return err
         function = list(globals_.values())[0]
@@ -95,15 +95,15 @@ def run(input=sys.stdin, output=None):
         except Exception as e:
             log.error('runtime error in reduce function: %s', e,
                       exc_info=True)
-            return {'error': {
-                'id': 'reduce_compilation_error',
-                'reason': e.args[0]
-            }}
-        err = {'error': {
-            'id': 'reduce_compilation_error',
-            'reason': 'string must eval to a function '
+            return ['error',
+                'reduce_compilation_error',
+                e.args[0]
+            ]
+        err = ['error',
+            'reduce_compilation_error',
+            'string must eval to a function '
                       '(ex: "def(keys, values): return 1")'
-        }}
+        ]
         if len(globals_) != 1:
             return err
         function = list(globals_.values())[0]

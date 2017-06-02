@@ -53,7 +53,7 @@ class ViewServerTestCase(unittest.TestCase):
         view.run(input=input, output=output)
         self.assertEqual(output.getvalue(),
                          b'true\n'
-                         b'{"log": "running"}\n'
+                         b'["log", "running"]\n'
                          b'[[[null, {"foo": "bar"}]]]\n')
 
     def test_map_doc_with_logging_json(self):
@@ -64,7 +64,7 @@ class ViewServerTestCase(unittest.TestCase):
         view.run(input=input, output=output)
         self.assertEqual(output.getvalue(),
                          b'true\n'
-                         b'{"log": "[1, 2, 3]"}\n'
+                         b'["log", "[1, 2, 3]"]\n'
                          b'[[[null, {"foo": "bar"}]]]\n')
 
     def test_reduce(self):
@@ -82,7 +82,7 @@ class ViewServerTestCase(unittest.TestCase):
         output = StringIO()
         view.run(input=input, output=output)
         self.assertEqual(output.getvalue(),
-                         b'{"log": "Summing (1, 2, 3)"}\n'
+                         b'["log", "Summing (1, 2, 3)"]\n'
                          b'[true, [6]]\n')
 
     def test_rereduce(self):
