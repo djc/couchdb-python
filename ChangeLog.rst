@@ -1,3 +1,16 @@
+Version 1.2 (2018-02-09)
+------------------------
+
+* Fixed some issues relating to usage with Python 3
+* Remove support for Python 2.6 and 3.x with x < 4
+* Fix logging response in query server (fixes #321)
+* Fix HTTP authentication password encoding (fixes #302)
+* Add missing ``http.Forbidden`` error (fixes #305)
+* Show ``doc`` property on ``Row`` string representation
+* Add methods for mango queries and indexes
+* Allow mango filters in ``_changes`` API
+
+
 Version 1.1 (2016-08-05)
 ------------------------
 
