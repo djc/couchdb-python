@@ -4,6 +4,12 @@ CouchDB-Python Library
 .. image:: https://travis-ci.org/djc/couchdb-python.svg
     :target: https://travis-ci.org/djc/couchdb-python
 
+**Note: CouchDB-Python is no longer being maintained. After 8 years of maintaining
+CouchDB-Python, I no longer have time to address open issues and new bug reports.
+Consider https://github.com/cloudant/python-cloudant as an alternative.
+If you're interested in taking over maintenance of CouchDB-Python, please start a
+discussion on the mailing list, or open an issue or PR.**
+
 A Python library for working with CouchDB. `Downloads`_ are available via `PyPI`_.
 Our `documentation`_ is also hosted there. We have a `mailing list`_.
 
