@@ -13,7 +13,7 @@ doc:
 	python setup.py build_sphinx
 
 upload-doc: doc
-	python setup.py upload_sphinx
+	python2 setup.py upload_sphinx
 
 coverage:
 	PYTHONPATH=. coverage run couchdb/tests/__main__.py
