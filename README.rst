@@ -35,5 +35,5 @@ Prerequisites:
 
 .. _Downloads: http://pypi.python.org/pypi/CouchDB
 .. _PyPI: http://pypi.python.org/
-.. _documentation: http://packages.python.org/CouchDB/
+.. _documentation: http://couchdb-python.readthedocs.io/en/latest/
 .. _mailing list: http://groups.google.com/group/couchdb-python
